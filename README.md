@@ -13,6 +13,9 @@ TrynDraft is an intelligent drafting assistant for League of Legends that provid
 - Multi-mode support (Ranked, ARAM, Draft, Pro, etc.)
 - Live draft tracking and opponent analysis
 - Win rate statistics and matchup data
+- User profiles and personalized recommendations
+- Community-driven data and feedback
+- LLM integration for advanced insights and specific game tactics
 
 ## Current Status
 
@@ -30,7 +33,8 @@ TrynDraft is an intelligent drafting assistant for League of Legends that provid
 - **Backend**: Node.js/Python + FastAPI
 - **Database**: PostgreSQL + Redis
 - **Infrastructure**: AWS/Azure
-- **Data Sources**: Riot API + Community Data
+- **Data Sources**: Riot API + Community Data ( [LoLalytics](https://lolalytics.com), [MOBAFire](https://www.mobafire.com), etc.)
+- **LLM Integration**: OpenAI GPT-4 or similar
 
 ## Contributing
 
