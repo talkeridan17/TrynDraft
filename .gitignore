@@ -311,3 +311,9 @@ tryndraft.log
 *.code-workspace
 .project
 .settings/
+
+# GitHub Pages
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
