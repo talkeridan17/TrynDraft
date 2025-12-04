@@ -262,3 +262,52 @@ jspm_packages/
 # OS generated files
 Thumbs.db
 ehthumbs.db
+
+# ==============================================
+# TRYNDRAFT SPECIFIC IGNORES
+# ==============================================
+
+# Docker/Deployment
+docker-compose.override.yml
+*.tar.gz
+*.container
+
+# Frontend Build
+dist/
+build/
+.out/
+.next/
+.cache/
+.tmp/
+
+# Local Databases & Data
+*.db
+*.sqlite
+tryndraft_*.db
+data/
+storage/
+uploads/
+temp/
+tmp/
+
+# Configuration files with secrets
+config.local.yaml
+config.local.json
+docker-compose.*.yml  # Except base docker-compose.yml
+
+# SSL/Certificates
+*.pem
+*.crt
+*.key
+*.p12
+
+# Project-specific
+cache/
+riot_cache/
+matches/
+tryndraft.log
+
+# IDE specific - if you use more than VSCode
+*.code-workspace
+.project
+.settings/
