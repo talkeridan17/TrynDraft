@@ -317,3 +317,26 @@ _site/
 .sass-cache/
 .jekyll-cache/
 .jekyll-metadata
+
+# =================================
+# FRONTEND SPECIFIC
+# =================================
+# Frontend environment files
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.env
+
+# Frontend build outputs
+frontend/dist/
+frontend/dist-ssr/
+
+# Frontend logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Frontend dependencies
+frontend/node_modules/
