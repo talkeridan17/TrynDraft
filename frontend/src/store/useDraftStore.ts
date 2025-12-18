@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// Re-export these types for use in components
 export type GameModeType = 'SWIFT' | 'DRAFT' | 'RANKED' | 'ARAM' | 'FLEX' | 'CLASH' | 'CUSTOM' | 'PRO';
 export type TeamSide = 'BLUE' | 'RED';
 export type RoleType = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' | 'FILL';
@@ -14,7 +13,6 @@ interface DraftSettings {
   region: string;
   patch: string;
   phase: 'BAN' | 'PICK';
-  currentTurn: number;
 }
 
 interface DraftSelections {
@@ -31,7 +29,10 @@ interface DraftSelections {
 interface DraftState {
   settings: DraftSettings;
   selections: DraftSelections;
+  currentTurn: number; // Simple turn counter instead of complex draftOrder
   availablePatches: string[];
+  champions: string[];
+  isLoading: boolean;
   
   // Actions
   setGameMode: (mode: GameModeType) => void;
@@ -42,10 +43,15 @@ interface DraftState {
   setPatch: (patch: string) => void;
   setPhase: (phase: 'BAN' | 'PICK') => void;
   nextTurn: () => void;
+  
   addBan: (champion: string, side: TeamSide) => void;
   addPick: (champion: string, role: RoleType, side: TeamSide) => void;
   removePick: (index: number, side: TeamSide) => void;
+  movePick: (fromIndex: number, toIndex: number, side: TeamSide) => void;
   resetDraft: () => void;
+  
+  setChampions: (champions: string[]) => void;
+  setLoading: (loading: boolean) => void;
 }
 
 const defaultSettings: DraftSettings = {
@@ -56,7 +62,6 @@ const defaultSettings: DraftSettings = {
   region: 'NA',
   patch: '14.1',
   phase: 'BAN',
-  currentTurn: 1,
 };
 
 const defaultSelections: DraftSelections = {
@@ -77,7 +82,10 @@ export const useDraftStore = create<DraftState>()(
     (set) => ({
       settings: defaultSettings,
       selections: defaultSelections,
+      currentTurn: 1,
       availablePatches,
+      champions: [],
+      isLoading: false,
 
       setGameMode: (mode) => set((state) => ({ 
         settings: { ...state.settings, mode } 
@@ -108,10 +116,7 @@ export const useDraftStore = create<DraftState>()(
       })),
 
       nextTurn: () => set((state) => ({
-        settings: { 
-          ...state.settings, 
-          currentTurn: state.settings.currentTurn + 1 
-        }
+        currentTurn: state.currentTurn + 1
       })),
 
       addBan: (champion, side) => set((state) => {
@@ -161,10 +166,36 @@ export const useDraftStore = create<DraftState>()(
         };
       }),
 
+      movePick: (fromIndex, toIndex, side) => set((state) => {
+        const picks = [...state.selections.picks[side.toLowerCase() as keyof typeof state.selections.picks]];
+        
+        // Direct swap instead of insert
+        if (fromIndex >= 0 && toIndex >= 0 && fromIndex < picks.length && toIndex < picks.length) {
+          const temp = picks[fromIndex];
+          picks[fromIndex] = picks[toIndex];
+          picks[toIndex] = temp;
+        }
+        
+        return {
+          selections: {
+            ...state.selections,
+            picks: {
+              ...state.selections.picks,
+              [side.toLowerCase()]: picks,
+            },
+          },
+        };
+      }),
+
       resetDraft: () => set({
         settings: defaultSettings,
         selections: defaultSelections,
+        currentTurn: 1,
       }),
+
+      setChampions: (champions) => set({ champions }),
+      
+      setLoading: (loading) => set({ isLoading: loading }),
     }),
     {
       name: 'tryndraft-draft-state',
