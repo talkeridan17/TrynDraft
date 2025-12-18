@@ -1,167 +1,211 @@
-import React from 'react';
-import type { TeamSide, RoleType } from '../../store/useDraftStore';
-import { Users, Shield, Sword, X } from 'lucide-react';
+import { X, Shield, Sword, GripVertical } from 'lucide-react';
+import { useState } from 'react';
 
 interface TeamDisplayProps {
-  side: TeamSide;
-  picks: Array<{ champion: string; role: RoleType }>;
+  side: 'BLUE' | 'RED';
+  picks: Array<{ champion: string; role: string }>;
   bans: string[];
   phase: 'BAN' | 'PICK';
+  isUserSide: boolean;
   onSelectChampion: (position: number) => void;
   onRemovePick: (position: number) => void;
-  onRemoveBan: (index: number) => void;
+  onMovePick: (fromIndex: number, toIndex: number) => void;
+  currentPicker?: {
+    side: 'BLUE' | 'RED';
+    position: number;
+  };
 }
-
-const ROLE_ICONS: Record<RoleType, string> = {
-  TOP: 'TOP',
-  JUNGLE: 'JG',
-  MID: 'MID',
-  ADC: 'ADC',
-  SUPPORT: 'SUP',
-  FILL: 'FILL',
-};
-
-const POSITION_NAMES = ['First Pick', 'Second Pick', 'Third Pick', 'Fourth Pick', 'Fifth Pick'];
 
 export const TeamDisplay: React.FC<TeamDisplayProps> = ({
   side,
   picks,
   bans,
   phase,
+  isUserSide,
+  currentPicker,
   onSelectChampion,
   onRemovePick,
-  onRemoveBan,
+  onMovePick,
 }) => {
-  const isBlueSide = side === 'BLUE';
-  const sideColor = isBlueSide 
-    ? 'border-blue-500/30 bg-blue-500/5' 
-    : 'border-red-500/30 bg-red-500/5';
-  const textColor = isBlueSide ? 'text-blue-300' : 'text-red-300';
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const isBlue = side === 'BLUE';
+  const sideColor = isBlue ? 'border-blue-500/40' : 'border-red-500/40';
+  const glowColor = isBlue ? 'shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'shadow-[0_0_30px_rgba(239,68,68,0.3)]';
+
+  const getChampionImage = (championName: string) => {
+    return `https://ddragon.leagueoflegends.com/cdn/14.4.1/img/champion/${championName.replace(/[^a-zA-Z]/g, '')}.png`;
+  };
+
+  const getRoleIcon = (role: string) => {
+    // Fallback role icons - will be replaced with backend
+    const roleIcons: Record<string, string> = {
+      TOP: 'T',
+      JUNGLE: 'J',
+      MID: 'M',
+      ADC: 'A',
+      SUPPORT: 'S',
+      FILL: 'F'
+    };
+    return roleIcons[role] || '?';
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (!picks[index].champion) return;
+    setDraggingIndex(index);
+    e.dataTransfer.setData('text/plain', index.toString());
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    
+    if (!isNaN(dragIndex) && dragIndex !== dropIndex && picks[dragIndex].champion) {
+      onMovePick(dragIndex, dropIndex);
+    }
+    
+    setDraggingIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>, text: string) => {
+    const target = e.target as HTMLImageElement;
+    target.style.display = 'none';
+    const fallback = document.createElement('div');
+    fallback.className = 'w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-600/30 to-secondary-600/30 rounded-lg font-bold text-white';
+    fallback.textContent = text.substring(0, 2);
+    if (target.parentNode) {
+      target.parentNode.appendChild(fallback);
+    }
+  };
+
+  const showBans = phase === 'PICK' && bans.length > 0;
 
   return (
-    <div className={`card border-2 ${sideColor}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg ${isBlueSide ? 'bg-blue-500/20' : 'bg-red-500/20'}`}>
-            {isBlueSide ? (
-              <Shield size={20} className="text-blue-400" />
-            ) : (
-              <Sword size={20} className="text-red-400" />
-            )}
-          </div>
-          <div>
-            <h3 className={`font-bold ${textColor}`}>
-              {isBlueSide ? 'Blue Side' : 'Red Side'}
-            </h3>
-            <p className="text-sm text-gray-400">
-              {isBlueSide ? 'First Pick' : 'Second Pick'}
-            </p>
-          </div>
-        </div>
-        <div className="text-sm text-gray-400">
-          <Users size={16} className="inline mr-1" />
-          {picks.filter(p => p.champion).length}/5 Picked
+    <div className={`relative border-2 ${sideColor} rounded-2xl p-4 ${isUserSide ? glowColor : ''} h-full`}>
+      {/* Side Indicator */}
+      <div className="absolute -top-3 left-4">
+        <div className={`flex items-center space-x-2 px-3 py-1 rounded-full ${isBlue ? 'bg-blue-900/80' : 'bg-red-900/80'}`}>
+          {isBlue ? <Shield size={14} className="text-blue-300" /> : <Sword size={14} className="text-red-300" />}
+          <span className={`text-sm font-medium ${isBlue ? 'text-blue-300' : 'text-red-300'}`}>
+            {side} {isUserSide && '(You)'} • {phase}
+          </span>
         </div>
       </div>
 
       {/* Bans Display */}
-      {phase === 'PICK' && bans.length > 0 && (
-        <div className="mb-6">
-          <h4 className="text-sm font-medium text-gray-300 mb-2">Bans</h4>
+      {showBans && (
+        <div className="mb-4">
+          <div className="text-xs text-gray-400 mb-2">Bans:</div>
           <div className="flex flex-wrap gap-2">
             {bans.map((ban, index) => (
-              <div
-                key={index}
-                className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 rounded-lg"
-              >
-                <div className="w-6 h-6 bg-gradient-to-br from-gray-700 to-gray-900 rounded flex items-center justify-center">
-                  <X size={12} className="text-gray-400" />
-                </div>
-                <span className="text-gray-300">{ban || 'Empty Ban'}</span>
-                <button
-                  onClick={() => onRemoveBan(index)}
-                  className="ml-2 text-gray-500 hover:text-red-400"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-            {Array(5 - bans.length).fill(0).map((_, index) => (
-              <div
-                key={`empty-${index}`}
-                className="px-3 py-1.5 bg-white/5 rounded-lg border border-dashed border-gray-700"
-              >
-                <span className="text-gray-500">Empty Ban</span>
+              <div key={index} className="flex items-center px-3 py-1.5 bg-white/5 rounded-lg">
+                <X size={12} className="text-gray-500 mr-1" />
+                <span className="text-sm text-gray-300">{ban}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Picks Display */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-300">Picks</h4>
-        {picks.map((pick, index) => (
-          <div
-            key={index}
-            className={`flex items-center justify-between p-3 rounded-lg transition-all ${
-              pick.champion
-                ? 'bg-white/5 hover:bg-white/10'
-                : 'bg-white/2 hover:bg-white/5 border border-dashed border-gray-700'
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+      {/* Picks */}
+      <div className="space-y-2">
+        {picks.map((pick, index) => {
+          const isDragging = draggingIndex === index;
+          const isDragOver = dragOverIndex === index;
+          const isCurrentPick = currentPicker && 
+            currentPicker.side === side && 
+            currentPicker.position === index;
+
+          return (
+            <div
+              key={index}
+              className={`flex items-center justify-between p-3 rounded-xl transition-all relative cursor-pointer ${
                 pick.champion
-                  ? 'bg-gradient-to-br from-primary-600/20 to-secondary-600/20'
-                  : 'bg-white/5'
-              }`}>
-                {pick.champion ? (
-                  <div className="text-center">
-                    <div className="font-bold text-white">{pick.champion.substring(0, 3)}</div>
-                    <div className="text-xs text-gray-400">Lv 1</div>
+                  ? 'bg-white/5 hover:bg-white/10'
+                  : 'bg-white/2 hover:bg-white/5 border-2 border-dashed border-white/20'
+              } ${isDragging ? 'opacity-50' : ''} ${isDragOver ? 'ring-2 ring-primary-500' : ''}
+              ${isCurrentPick ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-900 animate-pulse' : ''}`}
+              onClick={() => !pick.champion && onSelectChampion?.(index)}
+              draggable={isUserSide && !!pick.champion}
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, index)}
+            >
+              {/* Current picker indicator */}
+              {isCurrentPick && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-500 rounded-full animate-pulse"></div>
+              )}
+
+              <div className="flex items-center space-x-3 w-full">
+                {/* Drag Handle */}
+                {isUserSide && pick.champion && (
+                  <div className="cursor-grab active:cursor-grabbing">
+                    <GripVertical size={16} className="text-gray-500" />
                   </div>
-                ) : (
-                  <div className="text-gray-500">?</div>
                 )}
-              </div>
-              <div>
-                <div className="font-medium text-white">
-                  {pick.champion || 'Empty Slot'}
+
+                {/* Role Badge */}
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  pick.role === 'FILL' 
+                    ? 'bg-gray-700/50' 
+                    : isBlue ? 'bg-blue-500/20' : 'bg-red-500/20'
+                }`}>
+                  <div className="w-6 h-6 flex items-center justify-center font-bold text-white">
+                    {getRoleIcon(pick.role)}
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <span className="text-gray-400">{POSITION_NAMES[index]}</span>
-                  <span className="text-gray-500">•</span>
-                  <span className={`px-2 py-0.5 rounded text-xs ${
-                    pick.role === 'FILL' 
-                      ? 'bg-gray-700 text-gray-300'
-                      : 'bg-primary-500/20 text-primary-300'
-                  }`}>
-                    {ROLE_ICONS[pick.role]}
-                  </span>
+
+                {/* Champion Display */}
+                <div className="min-w-0 flex-1">
+                  {pick.champion ? (
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden">
+                        <img
+                          src={getChampionImage(pick.champion)}
+                          alt={pick.champion}
+                          className="w-full h-full object-cover"
+                          onError={(e) => handleImageError(e, pick.champion)}
+                        />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-white">{pick.champion}</div>
+                        <div className="text-xs text-gray-400">Position {index + 1}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-center">Empty slot</div>
+                  )}
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              {pick.champion ? (
+
+              {/* Remove button for filled slots */}
+              {isUserSide && pick.champion && (
                 <button
-                  onClick={() => onRemovePick(index)}
-                  className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemovePick(index);
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg ml-2"
                 >
                   <X size={16} />
                 </button>
-              ) : (
-                <button
-                  onClick={() => onSelectChampion(index)}
-                  className="px-3 py-1.5 text-sm bg-gradient-to-r from-primary-600 to-primary-800 rounded-lg hover:from-primary-700 hover:to-primary-900 transition-all"
-                >
-                  Select Champ
-                </button>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
