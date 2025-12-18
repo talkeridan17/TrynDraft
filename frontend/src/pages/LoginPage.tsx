@@ -1,3 +1,4 @@
+// frontend/src/pages/LoginPage.tsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sword, Mail, Lock, User, Gamepad2 } from 'lucide-react';
@@ -101,7 +102,7 @@ export const LoginPage: React.FC = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    required
+                    required={!isLogin}
                     className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
                     placeholder="your@email.com"
                   />

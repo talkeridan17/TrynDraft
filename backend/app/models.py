@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey, Text, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -109,3 +109,36 @@ class DraftRecommendation(Base):
     recommendation_type = Column(String)  # PICK, BAN, COUNTER, SYNERGY
     
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class ScrapedContent(Base):
+    __tablename__ = "scraped_content"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    source = Column(String, nullable=False)  # 'mobafire', 'lolalytics', 'reddit'
+    url = Column(String)
+    title = Column(String)
+    content = Column(Text, nullable=False)
+    champion = Column(String)  # Which champion this is about
+    role = Column(String)      # TOP, JUNGLE, etc.
+    tags = Column(JSON, default=[])  # ['guide', 'matchup', 'build']
+    patch_version = Column(String)
+    quality_score = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # For full-text search
+    __table_args__ = (Index('ix_scraped_content_search', 'content', postgresql_using='gin'),)
+
+class LLMInteraction(Base):
+    __tablename__ = "llm_interactions"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    draft_id = Column(String, ForeignKey("drafts.id"))
+    turn_number = Column(Integer)
+    phase = Column(String)  # 'BAN' or 'PICK'
+    champion_in_question = Column(String)
+    prompt = Column(Text)
+    response = Column(Text)
+    model_used = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    draft = relationship("Draft", back_populates="llm_interactions")

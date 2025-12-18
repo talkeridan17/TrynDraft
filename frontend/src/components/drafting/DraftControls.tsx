@@ -1,5 +1,7 @@
 import { Globe, RefreshCw } from 'lucide-react';
 import type { RoleType } from '../../store/useDraftStore';
+import { useEffect, useState } from 'react';
+import { championService } from '../../utils/api';
 
 interface DraftControlsProps {
   side: 'BLUE' | 'RED';
@@ -50,6 +52,57 @@ export const DraftControls: React.FC<DraftControlsProps> = ({
   onPhaseChange,
   onReset,
 }) => {
+  // Add state for rank icons
+  const [rankIcons, setRankIcons] = useState<Record<string, string>>({});
+  const [loadingIcons, setLoadingIcons] = useState(true);
+
+  // Load rank icons
+  useEffect(() => {
+    const loadRankIcons = async () => {
+      const icons: Record<string, string> = {};
+      
+      // Create a fallback emoji mapping
+      const fallbackEmojis: Record<string, string> = {
+        'IRON': '🛡️',
+        'BRONZE': '🥉',
+        'SILVER': '🥈',
+        'GOLD': '🥇',
+        'PLATINUM': '💎',
+        'EMERALD': '💚',
+        'DIAMOND': '💎',
+        'MASTER': '🌟',
+        'GRANDMASTER': '🏆',
+        'CHALLENGER': '👑'
+      };
+      
+      for (const rank of ELO_RANKS) {
+        try {
+          // Try to get rank icon from backend
+          const iconData = await championService.getRankIcon(rank);
+          
+          if (iconData?.url) {
+            // Create image element HTML
+            icons[rank] = `<img src="${iconData.url}" alt="${rank}" class="w-4 h-4 inline mr-2" />`;
+          } else if (iconData?.emoji) {
+            icons[rank] = iconData.emoji;
+          } else {
+            // Use fallback emoji
+            icons[rank] = fallbackEmojis[rank] || '⭐';
+          }
+        } catch (error) {
+          console.warn(`Failed to load icon for rank ${rank}:`, error);
+          // Use fallback emoji
+          icons[rank] = fallbackEmojis[rank] || '⭐';
+        }
+      }
+      
+      setRankIcons(icons);
+      setLoadingIcons(false);
+    };
+    
+    loadRankIcons();
+  }, []);
+
   return (
     <div className="flex justify-center mb-6 w-full">
       <div className="inline-flex items-center bg-white/10 rounded-xl p-4 border border-white/20">
@@ -94,7 +147,7 @@ export const DraftControls: React.FC<DraftControlsProps> = ({
             </select>
           </div>
 
-          {/* Elo */}
+          {/* Elo - Updated with icons */}
           <div className="flex flex-col">
             <label className="text-sm text-gray-400 mb-1">Rank</label>
             <select
@@ -104,7 +157,17 @@ export const DraftControls: React.FC<DraftControlsProps> = ({
             >
               {ELO_RANKS.map((rank) => (
                 <option key={rank} value={rank}>
-                  {rank}
+                  {loadingIcons ? (
+                    <span className="text-gray-400">Loading...</span>
+                  ) : (
+                    <>
+                      <span 
+                        className="inline-flex items-center mr-2"
+                        dangerouslySetInnerHTML={{ __html: rankIcons[rank] || '' }}
+                      />
+                      {rank}
+                    </>
+                  )}
                 </option>
               ))}
             </select>

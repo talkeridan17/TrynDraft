@@ -1,3 +1,4 @@
+// frontend/src/store/useDraftStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -27,12 +28,17 @@ interface DraftSelections {
 }
 
 interface DraftState {
+  // State
   settings: DraftSettings;
   selections: DraftSelections;
-  currentTurn: number; // Simple turn counter instead of complex draftOrder
+  currentTurn: number;
   availablePatches: string[];
   champions: string[];
   isLoading: boolean;
+  gameplan: any;
+  
+  // Draft ID for backend sync
+  draftId: string | null;
   
   // Actions
   setGameMode: (mode: GameModeType) => void;
@@ -42,16 +48,30 @@ interface DraftState {
   setRegion: (region: string) => void;
   setPatch: (patch: string) => void;
   setPhase: (phase: 'BAN' | 'PICK') => void;
+  
+  // Draft actions
   nextTurn: () => void;
+  previousTurn: () => void;
+  setTurn: (turn: number) => void;
   
   addBan: (champion: string, side: TeamSide) => void;
+  removeBan: (champion: string, side: TeamSide) => void;
   addPick: (champion: string, role: RoleType, side: TeamSide) => void;
   removePick: (index: number, side: TeamSide) => void;
   movePick: (fromIndex: number, toIndex: number, side: TeamSide) => void;
-  resetDraft: () => void;
   
+  resetDraft: () => void;
+  saveDraft: () => Promise<void>;
+  loadDraft: (draftId: string) => Promise<void>;
+  
+  // Data loading
   setChampions: (champions: string[]) => void;
   setLoading: (loading: boolean) => void;
+  setGameplan: (gameplan: any) => void;
+  generateGameplan: () => Promise<void>;
+  
+  // Current picker info
+  getCurrentPicker: () => { side: TeamSide; position: number; isBan: boolean } | null;
 }
 
 const defaultSettings: DraftSettings = {
@@ -60,7 +80,7 @@ const defaultSettings: DraftSettings = {
   role: 'TOP',
   elo: 'PLATINUM',
   region: 'NA',
-  patch: '14.1',
+  patch: '14.4.1',
   phase: 'BAN',
 };
 
@@ -75,17 +95,17 @@ const defaultSelections: DraftSelections = {
   },
 };
 
-const availablePatches = ['14.1', '13.24', '13.23'];
-
 export const useDraftStore = create<DraftState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       settings: defaultSettings,
       selections: defaultSelections,
-      currentTurn: 1,
-      availablePatches,
+      currentTurn: 0,
+      availablePatches: ['14.4.1', '14.3.1', '14.2.1', '14.1.1'],
       champions: [],
       isLoading: false,
+      gameplan: null,
+      draftId: null,
 
       setGameMode: (mode) => set((state) => ({ 
         settings: { ...state.settings, mode } 
@@ -116,13 +136,36 @@ export const useDraftStore = create<DraftState>()(
       })),
 
       nextTurn: () => set((state) => ({
-        currentTurn: state.currentTurn + 1
+        currentTurn: Math.min(state.currentTurn + 1, 19)
       })),
+
+      previousTurn: () => set((state) => ({
+        currentTurn: Math.max(state.currentTurn - 1, 0)
+      })),
+
+      setTurn: (turn) => set({ currentTurn: Math.max(0, Math.min(turn, 19)) }),
 
       addBan: (champion, side) => set((state) => {
         const bans = [...state.selections.bans[side.toLowerCase() as keyof typeof state.selections.bans]];
-        if (bans.length < 5) {
+        if (bans.length < 5 && !bans.includes(champion)) {
           bans.push(champion);
+        }
+        return {
+          selections: {
+            ...state.selections,
+            bans: {
+              ...state.selections.bans,
+              [side.toLowerCase()]: bans,
+            },
+          },
+        };
+      }),
+
+      removeBan: (champion, side) => set((state) => {
+        const bans = [...state.selections.bans[side.toLowerCase() as keyof typeof state.selections.bans]];
+        const index = bans.indexOf(champion);
+        if (index !== -1) {
+          bans.splice(index, 1);
         }
         return {
           selections: {
@@ -169,12 +212,10 @@ export const useDraftStore = create<DraftState>()(
       movePick: (fromIndex, toIndex, side) => set((state) => {
         const picks = [...state.selections.picks[side.toLowerCase() as keyof typeof state.selections.picks]];
         
-        // Direct swap instead of insert
-        if (fromIndex >= 0 && toIndex >= 0 && fromIndex < picks.length && toIndex < picks.length) {
-          const temp = picks[fromIndex];
-          picks[fromIndex] = picks[toIndex];
-          picks[toIndex] = temp;
-        }
+        // Direct swap
+        const temp = picks[fromIndex];
+        picks[fromIndex] = picks[toIndex];
+        picks[toIndex] = temp;
         
         return {
           selections: {
@@ -190,12 +231,74 @@ export const useDraftStore = create<DraftState>()(
       resetDraft: () => set({
         settings: defaultSettings,
         selections: defaultSelections,
-        currentTurn: 1,
+        currentTurn: 0,
+        gameplan: null,
+        draftId: null,
       }),
+
+      saveDraft: async () => {
+        const state = get();
+        try {
+          // This will be implemented when backend is ready
+          console.log('Saving draft:', state);
+        } catch (error) {
+          console.error('Failed to save draft:', error);
+        }
+      },
+
+      loadDraft: async (draftId: string) => {
+        try {
+          // This will be implemented when backend is ready
+          console.log('Loading draft:', draftId);
+        } catch (error) {
+          console.error('Failed to load draft:', error);
+        }
+      },
 
       setChampions: (champions) => set({ champions }),
       
       setLoading: (loading) => set({ isLoading: loading }),
+      
+      setGameplan: (gameplan) => set({ gameplan }),
+      
+      generateGameplan: async () => {
+        const state = get();
+        try {
+          // This will be implemented when LLM is ready
+          console.log('Generating gameplan for:', state.selections);
+          set({ gameplan: { summary: 'Gameplan will be generated by LLM' } });
+        } catch (error) {
+          console.error('Failed to generate gameplan:', error);
+        }
+      },
+
+      getCurrentPicker: () => {
+        const state = get();
+        const turn = state.currentTurn;
+        
+        if (turn < 10) {
+          // Ban phase
+          const side: TeamSide = turn % 2 === 0 ? 'BLUE' : 'RED';
+          const position = Math.floor(turn / 2);
+          return { side, position, isBan: true };
+        } else {
+          // Pick phase
+          const pickOrder = [
+            { side: 'BLUE' as TeamSide, position: 0 },
+            { side: 'RED' as TeamSide, position: 0 },
+            { side: 'RED' as TeamSide, position: 1 },
+            { side: 'BLUE' as TeamSide, position: 1 },
+            { side: 'BLUE' as TeamSide, position: 2 },
+            { side: 'RED' as TeamSide, position: 2 },
+            { side: 'RED' as TeamSide, position: 3 },
+            { side: 'BLUE' as TeamSide, position: 3 },
+            { side: 'BLUE' as TeamSide, position: 4 },
+            { side: 'RED' as TeamSide, position: 4 },
+          ];
+          const picker = pickOrder[turn - 10];
+          return { ...picker, isBan: false };
+        }
+      },
     }),
     {
       name: 'tryndraft-draft-state',

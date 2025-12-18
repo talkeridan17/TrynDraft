@@ -1,5 +1,6 @@
 import { X, Shield, Sword, GripVertical } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { championService } from '../../utils/api';
 
 interface TeamDisplayProps {
   side: 'BLUE' | 'RED';
@@ -10,6 +11,7 @@ interface TeamDisplayProps {
   onSelectChampion: (position: number) => void;
   onRemovePick: (position: number) => void;
   onMovePick: (fromIndex: number, toIndex: number) => void;
+  onRemoveBan: (ban: string) => void;
   currentPicker?: {
     side: 'BLUE' | 'RED';
     position: number;
@@ -26,29 +28,79 @@ export const TeamDisplay: React.FC<TeamDisplayProps> = ({
   onSelectChampion,
   onRemovePick,
   onMovePick,
+  onRemoveBan,
 }) => {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [roleIcons, setRoleIcons] = useState<Record<string, string>>({});
+  const [championImages, setChampionImages] = useState<Record<string, string>>({});
 
   const isBlue = side === 'BLUE';
   const sideColor = isBlue ? 'border-blue-500/40' : 'border-red-500/40';
   const glowColor = isBlue ? 'shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'shadow-[0_0_30px_rgba(239,68,68,0.3)]';
 
+  // Load role icons
+  useEffect(() => {
+    const loadRoleIcons = async () => {
+      const icons: Record<string, string> = {};
+      const roles = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT', 'FILL'];
+      
+      for (const role of roles) {
+        try {
+          const icon = await championService.getRoleIcon(role);
+          icons[role] = icon;
+        } catch (error) {
+          console.error(`Failed to load icon for role ${role}:`, error);
+        }
+      }
+      
+      setRoleIcons(icons);
+    };
+    
+    loadRoleIcons();
+  }, []);
+
+  // Load champion images
+  useEffect(() => {
+    const loadChampionImages = async () => {
+      const images: Record<string, string> = {};
+      
+      // Load images for picks
+      for (const pick of picks) {
+        if (pick.champion && !images[pick.champion]) {
+          try {
+            const url = await championService.getImageUrl(pick.champion);
+            images[pick.champion] = url;
+          } catch (error) {
+            console.error(`Failed to load image for ${pick.champion}:`, error);
+          }
+        }
+      }
+      
+      // Load images for bans
+      for (const ban of bans) {
+        if (ban && !images[ban]) {
+          try {
+            const url = await championService.getImageUrl(ban);
+            images[ban] = url;
+          } catch (error) {
+            console.error(`Failed to load image for ban ${ban}:`, error);
+          }
+        }
+      }
+      
+      setChampionImages(images);
+    };
+    
+    loadChampionImages();
+  }, [picks, bans]);
+
   const getChampionImage = (championName: string) => {
-    return `https://ddragon.leagueoflegends.com/cdn/14.4.1/img/champion/${championName.replace(/[^a-zA-Z]/g, '')}.png`;
+    return championImages[championName] || `https://ddragon.leagueoflegends.com/cdn/14.4.1/img/champion/${championName.replace(/[^a-zA-Z]/g, '')}.png`;
   };
 
   const getRoleIcon = (role: string) => {
-    // Fallback role icons - will be replaced with backend
-    const roleIcons: Record<string, string> = {
-      TOP: 'T',
-      JUNGLE: 'J',
-      MID: 'M',
-      ADC: 'A',
-      SUPPORT: 'S',
-      FILL: 'F'
-    };
-    return roleIcons[role] || '?';
+    return roleIcons[role] || role.charAt(0);
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -104,17 +156,40 @@ export const TeamDisplay: React.FC<TeamDisplayProps> = ({
         </div>
       </div>
 
-      {/* Bans Display */}
+      {/* Bans Display with Images */}
       {showBans && (
         <div className="mb-4">
-          <div className="text-xs text-gray-400 mb-2">Bans:</div>
+          <div className="text-xs text-gray-400 mb-2">Bans ({bans.length}/5):</div>
           <div className="flex flex-wrap gap-2">
             {bans.map((ban, index) => (
-              <div key={index} className="flex items-center px-3 py-1.5 bg-white/5 rounded-lg">
-                <X size={12} className="text-gray-500 mr-1" />
-                <span className="text-sm text-gray-300">{ban}</span>
+              <div key={index} className="relative group">
+                <div className="flex items-center px-2 py-1.5 bg-white/5 rounded-lg group hover:bg-white/10 transition-colors">
+                  <div className="w-6 h-6 rounded overflow-hidden mr-2">
+                    <img
+                      src={getChampionImage(ban)}
+                      alt={ban}
+                      className="w-full h-full object-cover opacity-50"
+                      onError={(e) => handleImageError(e, ban)}
+                    />
+                  </div>
+                  <span className="text-sm text-gray-300">{ban}</span>
+                </div>
+                {isUserSide && (
+                  <button
+                    onClick={() => onRemoveBan(ban)}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    title="Remove ban"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
+            {bans.length < 5 && isUserSide && (
+              <div className="text-xs text-gray-500 italic">
+                {5 - bans.length} more bans available
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -157,13 +232,13 @@ export const TeamDisplay: React.FC<TeamDisplayProps> = ({
                   </div>
                 )}
 
-                {/* Role Badge */}
+                {/* Role Badge with Icon */}
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                   pick.role === 'FILL' 
                     ? 'bg-gray-700/50' 
                     : isBlue ? 'bg-blue-500/20' : 'bg-red-500/20'
                 }`}>
-                  <div className="w-6 h-6 flex items-center justify-center font-bold text-white">
+                  <div className="w-6 h-6 flex items-center justify-center text-lg">
                     {getRoleIcon(pick.role)}
                   </div>
                 </div>
@@ -182,11 +257,13 @@ export const TeamDisplay: React.FC<TeamDisplayProps> = ({
                       </div>
                       <div>
                         <div className="font-semibold text-white">{pick.champion}</div>
-                        <div className="text-xs text-gray-400">Position {index + 1}</div>
+                        <div className="text-xs text-gray-400">Position {index + 1} • {pick.role}</div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-gray-500 text-center">Empty slot</div>
+                    <div className="text-gray-500 text-center">
+                      {isCurrentPick ? 'Click to pick champion' : 'Empty slot'}
+                    </div>
                   )}
                 </div>
               </div>
@@ -199,6 +276,7 @@ export const TeamDisplay: React.FC<TeamDisplayProps> = ({
                     onRemovePick(index);
                   }}
                   className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg ml-2"
+                  title="Remove champion"
                 >
                   <X size={16} />
                 </button>
