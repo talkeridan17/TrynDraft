@@ -8,7 +8,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import logging
 from urllib.parse import urljoin, urlparse
-import time
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +242,40 @@ class WebScraper:
         
         return content
     
+    async def scrape_champion_forum_posts(self, champion: str) -> List[Dict]:
+        """Scrape Reddit posts specifically about a champion."""
+        content = []
+        
+        # Search Reddit for champion-specific posts
+        search_url = f"https://www.reddit.com/r/summonerschool/search.json?q={champion}&restrict_sr=on&sort=relevance"
+        
+        try:
+            async with self.session.get(search_url, headers=self.headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    posts = data.get('data', {}).get('children', [])
+                    
+                    for post in posts[:5]:  # Get 5 most relevant posts
+                        post_data = post['data']
+                        
+                        # Get the post content
+                        post_text = f"Title: {post_data.get('title', '')}\n\n"
+                        post_text += f"Content: {post_data.get('selftext', '')}"
+                        
+                        if len(post_text) > 200:  # Only include substantial posts
+                            content.append({
+                                'source': 'reddit_champion',
+                                'champion': champion,
+                                'url': f"https://reddit.com{post_data.get('permalink', '')}",
+                                'content': post_text[:2000],  # Limit length
+                                'type': 'forum_discussion',
+                                'created_at': datetime.now().isoformat()
+                            })
+        except Exception as e:
+            logger.error(f"Error scraping Reddit for {champion}: {e}")
+        
+        return content
+    
     def extract_comments(self, replies: Dict) -> List[str]:
         """Extract comments from Reddit replies."""
         comments = []
@@ -354,22 +388,120 @@ class WebScraper:
         
         return None
     
-    async def run_scraping_job(self, sources: List[str] = None) -> List[Dict]:
-        """Run scraping for specified sources."""
+    async def scrape_champions_data(self, champions: List[str], sources: List[str] = None) -> List[Dict]:
+        """Scrape data for specific champions from specified sources."""
         if sources is None:
-            sources = list(self.sources.keys())
+            sources = ['mobafire', 'reddit_champion']  # Focus on these
         
         await self.initialize()
         
         all_content = []
-        for source in sources:
-            logger.info(f"Starting scraping for {source}")
-            try:
-                content = await self.scrape_source(source)
-                all_content.extend(content)
-                logger.info(f"Scraped {len(content)} items from {source}")
-            except Exception as e:
-                logger.error(f"Failed to scrape {source}: {str(e)}")
+        
+        for champion in champions:
+            logger.info(f"Scraping data for {champion}")
+            
+            for source in sources:
+                try:
+                    if source == 'mobafire':
+                        content = await self.scrape_mobafire_champion_guide(champion)
+                    elif source == 'reddit_champion':
+                        content = await self.scrape_champion_forum_posts(champion)
+                    elif source == 'lolalytics':
+                        content = await self.scrape_lolalytics_champion(champion)
+                    else:
+                        continue
+                    
+                    all_content.extend(content)
+                    logger.info(f"  - {source}: {len(content)} items")
+                    
+                    # Be nice to servers
+                    await asyncio.sleep(2)
+                    
+                except Exception as e:
+                    logger.error(f"Failed to scrape {source} for {champion}: {e}")
+                    continue
         
         await self.close()
+        
+        # Save the data
+        if all_content:
+            self.save_scraped_data(all_content)
+        
         return all_content
+
+    # Add this method to your class:
+    async def scrape_mobafire_champion_guide(self, champion: str) -> List[Dict]:
+        """Scrape Mobafire guide for a specific champion."""
+        url_name = champion.lower().replace("'", "").replace(" ", "-").replace(".", "")
+        url = f"https://www.mobafire.com/league-of-legends/champion/{url_name}"
+        
+        content = []
+        
+        try:
+            async with self.session.get(url) as response:
+                if response.status != 200:
+                    return []
+                
+                html = await response.text()
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                # Get ALL text from the page (mountains of text)
+                all_text = soup.get_text(separator='\n', strip=True)
+                
+                if len(all_text) > 1000:  # Only if substantial content
+                    # Split into chunks (for training examples)
+                    chunks = self._split_text_into_chunks(all_text, 500)
+                    
+                    for i, chunk in enumerate(chunks):
+                        content.append({
+                            'source': 'mobafire',
+                            'champion': champion,
+                            'url': url,
+                            'content': chunk,
+                            'chunk': i,
+                            'total_chunks': len(chunks),
+                            'type': 'guide_chunk',
+                            'created_at': datetime.now().isoformat()
+                        })
+        
+        except Exception as e:
+            logger.error(f"Error scraping Mobafire guide for {champion}: {e}")
+        
+        return content
+
+    def _split_text_into_chunks(self, text: str, chunk_size: int = 500) -> List[str]:
+        """Split text into chunks for training."""
+        words = text.split()
+        chunks = []
+        
+        for i in range(0, len(words), chunk_size):
+            chunk = ' '.join(words[i:i + chunk_size])
+            chunks.append(chunk)
+        
+        return chunks
+    
+    def save_scraped_data(self, data: List[Dict], filename: str = None):
+        """Save scraped data to JSON file."""
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"scraped_data_{timestamp}.json"
+        
+        filepath = os.path.join("scraped_data", filename)
+        
+        # Create directory if it doesn't exist
+        os.makedirs("scraped_data", exist_ok=True)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"Saved {len(data)} items to {filepath}")
+        return filepath
+
+    def load_scraped_data(self, filename: str) -> List[Dict]:
+        """Load previously scraped data."""
+        filepath = os.path.join("scraped_data", filename)
+        
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []

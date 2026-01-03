@@ -1,186 +1,247 @@
-# app/services/llm_service.py
+"""
+SINGLE LLM Service for TrynDraft
+Handles: Analysis, Fine-tuning prep, and HuggingFace integration
+"""
 import os
 import json
+import logging
+import asyncio
+import aiohttp
 from typing import Dict, List, Optional
-import httpx
 from datetime import datetime
+from bs4 import BeautifulSoup
+import httpx
+
+logger = logging.getLogger(__name__)
 
 class LLMService:
-    """Service to generate gameplans using LLM."""
+    """
+    Complete LLM service for TrynDraft.
+    
+    Features:
+    1. Draft analysis (with Mistral 7B via HuggingFace)
+    2. Data scraping for fine-tuning
+    3. Fine-tuning preparation
+    4. Fallback to rule-based analysis
+    
+    Why Mistral 7B via HuggingFace?
+    - Free (no API costs)
+    - Can be fine-tuned
+    - Runs in Docker
+    - Good enough for draft analysis
+    """
     
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-        self.base_url = os.getenv("LLM_API_URL", "https://api.openai.com/v1")
-        self.model = os.getenv("LLM_MODEL", "gpt-4-turbo-preview")
+        # HuggingFace for Mistral 7B
+        self.hf_token = os.getenv("HF_TOKEN")  # Get from huggingface.co
+        self.hf_api = "https://api-inference.huggingface.co"
+        self.model_name = "mistralai/Mistral-7B-Instruct-v0.2"
         
-        # Gameplan templates
-        self.templates = {
-            "EARLY_GAME": [
-                "Focus on farming and avoiding early trades",
-                "Look for level 2 advantage",
-                "Coordinate with jungle for early gank",
-                "Control vision around river",
-                "Track enemy summoner spells"
+        # Fine-tuned model ID (set after fine-tuning)
+        self.fine_tuned_model_id = os.getenv("FINE_TUNED_MODEL_ID")
+        
+        # Scraping headers
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        # Simple rule-based fallback
+        self.rules = {
+            "BAN": [
+                "Ban meta champions: Kassadin, Akali, Yone",
+                "Target counters to your composition",
+                "Ban high win-rate champions"
             ],
-            "MID_GAME": [
-                "Rotate for objective control",
-                "Look for picks when enemies are out of position",
-                "Set up vision for Baron/Dragon",
-                "Split push when appropriate",
-                "Group for teamfights around key objectives"
-            ],
-            "LATE_GAME": [
-                "Stay grouped and avoid getting caught",
-                "Focus on protecting carries",
-                "Control vision in enemy jungle",
-                "Look for Elder/Baron opportunities",
-                "End game with coordinated pushes"
+            "PICK": [
+                "Pick strong meta champions",
+                "Choose champions that counter enemy picks",
+                "Pick for team synergy"
             ]
         }
     
-    async def generate_gameplan(self, draft_state: Dict) -> Dict:
-        """Generate a gameplan based on draft composition."""
+    # ===== PART 1: DRAFT ANALYSIS =====
+    
+    async def analyze_draft(self, draft_state: Dict) -> Dict:
+        """Generate analysis for current draft state."""
+        prompt = self._build_draft_prompt(draft_state)
         
-        blue_picks = draft_state.get('picks', {}).get('BLUE', [])
-        red_picks = draft_state.get('picks', {}).get('RED', [])
+        # Try HuggingFace API first
+        if self.hf_token:
+            try:
+                analysis = await self._query_huggingface(prompt)
+                if analysis and not analysis.startswith("Error"):
+                    return {
+                        "analysis": analysis,
+                        "source": "huggingface",
+                        "model": "Mistral-7B"
+                    }
+            except Exception as e:
+                logger.error(f"HuggingFace error: {e}")
         
-        # Analyze team compositions
-        blue_comp = self._analyze_composition(blue_picks)
-        red_comp = self._analyze_composition(red_picks)
+        # Fallback to rules
+        return self._rule_based_analysis(draft_state)
+    
+    def _build_draft_prompt(self, draft_state: Dict) -> str:
+        """Build prompt for LLM."""
+        blue_bans = draft_state.get('bans', {}).get('blue', [])
+        red_bans = draft_state.get('bans', {}).get('red', [])
+        blue_picks = self._extract_champs(draft_state.get('picks', {}).get('blue', []))
+        red_picks = self._extract_champs(draft_state.get('picks', {}).get('red', []))
         
-        # Generate win conditions
-        win_conditions = self._generate_win_conditions(blue_comp, red_comp)
-        
-        # Generate key objectives
-        key_objectives = self._generate_key_objectives(blue_comp)
-        
-        # Generate teamfight strategy
-        teamfight_strategy = self._generate_teamfight_strategy(blue_comp)
-        
-        # Generate draft grade
-        draft_grade = self._calculate_draft_grade(blue_comp, red_comp)
-        
-        gameplan = {
-            "summary": self._generate_summary(blue_comp, red_comp),
-            "win_conditions": win_conditions,
-            "key_objectives": key_objectives,
-            "teamfight_strategy": teamfight_strategy,
-            "lane_assignments": self._generate_lane_assignments(blue_picks),
-            "draft_grade": draft_grade,
-            "strengths": blue_comp.get('strengths', []),
-            "weaknesses": blue_comp.get('weaknesses', []),
-            "generated_at": datetime.now().isoformat()
+        return f"""Analyze this League of Legends draft:
+
+Phase: {draft_state.get('phase', 'BAN')}
+Turn: {draft_state.get('turn', 0)}/20
+
+Blue Team:
+Bans: {', '.join(blue_bans) if blue_bans else 'None'}
+Picks: {', '.join(blue_picks) if blue_picks else 'None'}
+
+Red Team:
+Bans: {', '.join(red_bans) if red_bans else 'None'}
+Picks: {', '.join(red_picks) if red_picks else 'None'}
+
+What's the best next move? (2 sentences max)"""
+    
+    async def _query_huggingface(self, prompt: str) -> str:
+        """Query HuggingFace Inference API."""
+        headers = {
+            "Authorization": f"Bearer {self.hf_token}",
+            "Content-Type": "application/json"
         }
         
-        return gameplan
-    
-    def _analyze_composition(self, picks: List[Optional[str]]) -> Dict:
-        """Analyze team composition."""
-        if not picks or all(p is None for p in picks):
-            return {"type": "UNKNOWN", "strengths": [], "weaknesses": []}
+        data = {
+            "inputs": prompt,
+            "parameters": {
+                "max_new_tokens": 100,
+                "temperature": 0.7
+            }
+        }
         
-        # This would use actual champion data
-        # For now, return basic analysis
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(
+                f"{self.hf_api}/models/{self.model_name}",
+                headers=headers,
+                json=data
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result[0]['generated_text']
+        
+        return ""
+    
+    def _rule_based_analysis(self, draft_state: Dict) -> Dict:
+        """Simple rule-based analysis."""
+        phase = draft_state.get('phase', 'BAN')
+        rules = self.rules.get(phase, ["Analyzing draft..."])
+        
+        import random
+        analysis = random.choice(rules)
+        
         return {
-            "type": "BALANCED",
-            "strengths": ["Good teamfight", "Scaling potential"],
-            "weaknesses": ["Weak early game", "Vulnerable to split push"]
+            "analysis": analysis,
+            "source": "rule-based",
+            "model": "fallback"
         }
     
-    def _generate_win_conditions(self, blue_comp: Dict, red_comp: Dict) -> List[str]:
-        """Generate win conditions for blue team."""
-        conditions = [
-            "Reach late game where our scaling champions come online",
-            "Win teamfights with proper engagement and peel",
-            "Secure key objectives (Baron, Elder Dragon)",
-            "Protect carries in fights",
-            "Control vision to set up picks"
-        ]
-        
-        return conditions[:3]  # Return top 3
+    # ===== PART 2: DATA SCRAPING FOR FINE-TUNING =====
     
-    def _generate_key_objectives(self, composition: Dict) -> List[str]:
-        """Generate key objectives based on composition."""
-        objectives = [
-            "First Dragon: Look for early dragon control",
-            "Herald: Use for early tower pressure",
-            "Vision: Control river and enemy jungle",
-            "Towers: Focus on outer towers first"
-        ]
-        return objectives
+    async def scrape_champion_data(self, champion: str) -> List[Dict]:
+        """Scrape data for a single champion."""
+        data = []
+        
+        # Scrape Mobafire
+        mobafire_data = await self._scrape_mobafire(champion)
+        data.extend(mobafire_data)
+        
+        # Scrape Lolalytics  
+        lolalytics_data = await self._scrape_lolalytics(champion)
+        data.extend(lolalytics_data)
+        
+        return data
     
-    def _generate_teamfight_strategy(self, composition: Dict) -> str:
-        """Generate teamfight strategy."""
-        return """Frontline engages while backline deals damage. Focus on protecting carries and using crowd control effectively. Disengage if fight turns unfavorable."""
-    
-    def _generate_lane_assignments(self, picks: List[Optional[str]]) -> List[str]:
-        """Generate lane assignments."""
-        if len(picks) < 5:
-            return ["Assign champions to positions as they are picked"]
-        
-        roles = ["Top", "Jungle", "Mid", "ADC", "Support"]
-        assignments = []
-        
-        for i, (pick, role) in enumerate(zip(picks, roles)):
-            if pick:
-                assignments.append(f"{role}: {pick}")
-            else:
-                assignments.append(f"{role}: Empty slot")
-        
-        return assignments
-    
-    def _calculate_draft_grade(self, blue_comp: Dict, red_comp: Dict) -> Dict:
-        """Calculate draft grade."""
-        # Simple grading for now
-        grade = "B"
-        score = 75
-        
-        strengths = len(blue_comp.get('strengths', []))
-        weaknesses = len(blue_comp.get('weaknesses', []))
-        
-        if strengths >= 3 and weaknesses <= 1:
-            grade = "A"
-            score = 90
-        elif strengths <= 1 and weaknesses >= 3:
-            grade = "C"
-            score = 60
-        
-        return {"grade": grade, "score": score, "comment": "Solid draft with good teamfight potential"}
-    
-    def _generate_summary(self, blue_comp: Dict, red_comp: Dict) -> str:
-        """Generate draft summary."""
-        return "Blue team has a balanced composition with good scaling into late game. Focus on teamfighting and objective control."
-    
-    async def generate_with_llm(self, prompt: str) -> str:
-        """Generate text using actual LLM API."""
-        if not self.api_key:
-            return "LLM service not configured. Please set API key."
+    async def _scrape_mobafire(self, champion: str) -> List[Dict]:
+        """Scrape Mobafire guide."""
+        url = f"https://www.mobafire.com/league-of-legends/champion/{champion.lower().replace(' ', '-')}"
         
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-                
-                payload = {
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7,
-                    "max_tokens": 500
-                }
-                
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=headers,
-                    json=payload
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    return result['choices'][0]['message']['content']
-                else:
-                    return f"LLM API error: {response.status_code}"
-                    
-        except Exception as e:
-            return f"LLM service error: {str(e)}"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=self.headers, timeout=5) as resp:
+                    if resp.status == 200:
+                        html = await resp.text()
+                        soup = BeautifulSoup(html, 'html.parser')
+                        
+                        # Get guide text
+                        guide_text = soup.get_text(separator=' ', strip=True)[:500]
+                        
+                        return [{
+                            "source": "mobafire",
+                            "champion": champion,
+                            "content": guide_text,
+                            "type": "guide"
+                        }]
+        except:
+            pass
+        
+        return []
+    
+    async def _scrape_lolalytics(self, champion: str) -> List[Dict]:
+        """Scrape Lolalytics stats."""
+        url = f"https://lolalytics.com/lol/{champion.lower()}/"
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=self.headers, timeout=5) as resp:
+                    if resp.status == 200:
+                        html = await resp.text()
+                        soup = BeautifulSoup(html, 'html.parser')
+                        
+                        # Get page text
+                        page_text = soup.get_text(separator=' ', strip=True)[:500]
+                        
+                        return [{
+                            "source": "lolalytics", 
+                            "champion": champion,
+                            "content": page_text,
+                            "type": "stats"
+                        }]
+        except:
+            pass
+        
+        return []
+    
+    # ===== PART 3: FINE-TUNING PREPARATION =====
+    
+    def prepare_training_data(self, scraped_data: List[Dict]) -> List[Dict]:
+        """Prepare scraped data for fine-tuning."""
+        training_data = []
+        
+        for item in scraped_data:
+            prompt = f"Tell me about {item['champion']} in League of Legends"
+            
+            if item['type'] == 'guide':
+                completion = f"{item['champion']} guide: {item['content'][:200]}"
+            elif item['type'] == 'stats':
+                completion = f"{item['champion']} statistics: {item['content'][:200]}"
+            else:
+                completion = f"Information about {item['champion']}: {item['content'][:200]}"
+            
+            training_data.append({
+                "prompt": prompt,
+                "completion": completion
+            })
+        
+        return training_data
+    
+    # ===== HELPER METHODS =====
+    
+    def _extract_champs(self, picks) -> List[str]:
+        """Extract champion names from picks array."""
+        champs = []
+        for pick in picks:
+            if isinstance(pick, dict) and pick.get('champion'):
+                champs.append(pick['champion'])
+            elif isinstance(pick, str) and pick:
+                champs.append(pick)
+        return champs

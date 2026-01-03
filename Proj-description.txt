@@ -1,0 +1,161 @@
+TrynDraft is my League of Legends drafting tool, planning and implementing with
+production and release online via docker in mind. A full stack application, goal
+is for the app to allow the user to pick all draft states picks and bans on an
+orderly neat way, and the app gives suggestions and explanations on each pick at
+ecery stage in the draft. I am looking for two main parts in the logic: a neural
+net composed of information about champ statictics etc, and a LLM agent that is 
+finetuned on textual data that gives explantions and logic in a textbox that is 
+integrated into the frontend. This project is meant to be released on the 
+internt and be viable for production, so always keep that in mind when working
+on it and don't do stuff that will be local or placeholder stuff. If you need 
+to get all the champions, don't create an in place list and be lazy, but call an
+api to get all the current champs. If you suggest changes/deletions/new files,
+you HAVE to explain why. You can't just tell me what to do if you don't explain
+the issue and why you are doing what you are doing.
+My project structure is currently as follows:
+
+backend/
+    .venv/
+    alembic/
+        versions/
+            001_initial_migration.py
+    app/
+        api/
+            v1/
+                __init__.py
+                endpoints/
+                    __init__.py
+                    champions.py
+                    drafts.py
+                    llm.py
+                    metadeta.py
+                    users.py
+        core/
+            __init__.py
+            config.py
+        models/
+        services/
+            data_dragon.py
+            draft_logic.py
+            llm_service.py
+            web_scraper.py
+        __init__.py
+        auth.py
+        database.py
+        main.py
+        models.py
+        schemas.py
+    data_cache/
+        version.json
+    scripts/
+        initial_scrape.py
+        run_scraper.py
+    tests/
+    .env
+    alembic.ini
+    Dockerfile
+    Makefile
+    requirements.txt
+    tryndraft.db
+docker/
+docs/ ...
+planning/ ...
+frontend/
+    node_modules/ ...
+    public/
+        vite.svg
+    src/
+        assests/
+            react.svg
+        components/
+            auth/
+                ProtectedRoute.tsx
+            champion/
+            drafting/
+                ChampionPicker.tsx
+                DraftAssistantPanel.tsx
+                DraftControl.tsx
+                GameModeSelector.tsx
+                LLMAnalysisBox.tsx
+                TeamDisplay.tsx
+            layout/
+                Header.tsx
+                Layout.tsx
+            ui/
+                RoleIcon.tsx
+        constants/
+        hooks/
+        pages/
+            DraftPage.tsx
+            LoginPage.tsx
+            ProfilePage.tsx
+        services/
+        store/
+            useDraftStore.ts
+        types/
+            index.ts
+        utils/
+            api.ts
+            icons.ts
+        App.css
+        App.tsx
+        index.css
+        main.tsx
+    .env.development
+    .env.production
+    Dockerfile
+    eslint.config.js
+    index.html
+    nginx.conf
+    package-lock.json
+    package.json
+    postcss.config.js
+    README.md
+    tailwind.config.js
+    tsconfig.app.json
+    tsconfig.json
+    tsconfig.node.json
+    vite.config.ts
+README.md
+LICENSE
+SECURITY.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+.dockerignore
+.gitignore
+
+
+
+My current problems are:
+
+1) I don't know how to scrape the Mobafire and Lolaytics with the script, also
+it is still using the placeholder champion names instead of calling api and
+getting ALL the possible champions
+
+2) it allows for the role in the draft part of the frontend to be fill, which is
+useless since when they are in draft everyone is already assigned a role and 
+it should just assign role to everyone at random then let the user sort who is
+who, also it shouldn't display roles at all on the enemy team boxes since you
+can't know who is playing what role
+
+3) the makefile to start the backend is not working, and a lot of the api calls
+are not working like getting the role icons (i dont want emojis i want the 
+actual icons), like getting all the champs etc etc. a lot of the backend in
+general is not working so pls take a look. 
+
+4) the entire frontend is bugged, it should let the user decide who picks, it
+should remove the yellow box in the top right saying what stage it is, it should
+not allow champions that were banned to be picked (remove them as an option)
+
+5) the login and profile page are not connected yet, also there is no clear way
+to store information like user info, etc. The profile page should also allow 
+user to specify a lot of his specific game stuff like champ pool, etc, and the
+system sould then tailor its suggestions to it, but right now we haven't even
+started working on getting the champ statictics because we have so much to do
+before it
+
+6) like i said, none of the icons are loading so the frontend is overloaded with
+words and emojis, the bar where user sets his role, region etc is not looking
+great because of it so it needs fixing, also there shouldn't be a reigon option
+I don't think it matters at all so please remove it. 
+

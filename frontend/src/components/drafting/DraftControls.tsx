@@ -1,4 +1,4 @@
-import { Globe, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import type { RoleType } from '../../store/useDraftStore';
 import { useEffect, useState } from 'react';
 import { championService } from '../../utils/api';
@@ -7,14 +7,12 @@ interface DraftControlsProps {
   side: 'BLUE' | 'RED';
   role: RoleType;
   elo: string;
-  region: string;
   patch: string;
   availablePatches: string[];
   phase: 'BAN' | 'PICK';
   onSideChange: (side: 'BLUE' | 'RED') => void;
   onRoleChange: (role: RoleType) => void;
   onEloChange: (elo: string) => void;
-  onRegionChange: (region: string) => void;
   onPatchChange: (patch: string) => void;
   onPhaseChange: (phase: 'BAN' | 'PICK') => void;
   onReset: () => void;
@@ -25,8 +23,7 @@ const ROLES = [
   { id: 'JUNGLE' as RoleType, name: 'Jungle' },
   { id: 'MID' as RoleType, name: 'Mid' },
   { id: 'ADC' as RoleType, name: 'ADC' },
-  { id: 'SUPPORT' as RoleType, name: 'Support' },
-  { id: 'FILL' as RoleType, name: 'Fill' }
+  { id: 'SUPPORT' as RoleType, name: 'Support' }
 ];
 
 const ELO_RANKS = [
@@ -34,25 +31,20 @@ const ELO_RANKS = [
   'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'
 ];
 
-const REGIONS = ['NA', 'EUW', 'EUNE', 'KR', 'BR', 'LAN', 'LAS', 'OCE', 'RU', 'TR', 'JP'];
-
 export const DraftControls: React.FC<DraftControlsProps> = ({
   side,
   role,
   elo,
-  region,
   patch,
   availablePatches,
   phase,
   onSideChange,
   onRoleChange,
   onEloChange,
-  onRegionChange,
   onPatchChange,
   onPhaseChange,
   onReset,
 }) => {
-  // Add state for rank icons
   const [rankIcons, setRankIcons] = useState<Record<string, string>>({});
   const [loadingIcons, setLoadingIcons] = useState(true);
 
@@ -61,37 +53,25 @@ export const DraftControls: React.FC<DraftControlsProps> = ({
     const loadRankIcons = async () => {
       const icons: Record<string, string> = {};
       
-      // Create a fallback emoji mapping
-      const fallbackEmojis: Record<string, string> = {
-        'IRON': '🛡️',
-        'BRONZE': '🥉',
-        'SILVER': '🥈',
-        'GOLD': '🥇',
-        'PLATINUM': '💎',
-        'EMERALD': '💚',
-        'DIAMOND': '💎',
-        'MASTER': '🌟',
-        'GRANDMASTER': '🏆',
-        'CHALLENGER': '👑'
-      };
-      
       for (const rank of ELO_RANKS) {
         try {
-          // Try to get rank icon from backend
-          const iconData = await championService.getRankIcon(rank);
-          
-          if (iconData?.url) {
-            // Create image element HTML
-            icons[rank] = `<img src="${iconData.url}" alt="${rank}" class="w-4 h-4 inline mr-2" />`;
-          } else if (iconData?.emoji) {
-            icons[rank] = iconData.emoji;
-          } else {
-            // Use fallback emoji
-            icons[rank] = fallbackEmojis[rank] || '⭐';
-          }
+          const iconUrl = await championService.getRankIcon(rank);
+          icons[rank] = iconUrl;
         } catch (error) {
           console.warn(`Failed to load icon for rank ${rank}:`, error);
           // Use fallback emoji
+          const fallbackEmojis: Record<string, string> = {
+            'IRON': '🛡️',
+            'BRONZE': '🥉',
+            'SILVER': '🥈',
+            'GOLD': '🥇',
+            'PLATINUM': '💎',
+            'EMERALD': '💚',
+            'DIAMOND': '💎',
+            'MASTER': '🌟',
+            'GRANDMASTER': '🏆',
+            'CHALLENGER': '👑'
+          };
           icons[rank] = fallbackEmojis[rank] || '⭐';
         }
       }
@@ -133,7 +113,7 @@ export const DraftControls: React.FC<DraftControlsProps> = ({
 
           {/* Your Role */}
           <div className="flex flex-col">
-            <label className="text-sm text-gray-400 mb-1">Role</label>
+            <label className="text-sm text-gray-400 mb-1">Your Role</label>
             <select
               value={role}
               onChange={(e) => onRoleChange(e.target.value as RoleType)}
@@ -147,7 +127,7 @@ export const DraftControls: React.FC<DraftControlsProps> = ({
             </select>
           </div>
 
-          {/* Elo - Updated with icons */}
+          {/* Elo */}
           <div className="flex flex-col">
             <label className="text-sm text-gray-400 mb-1">Rank</label>
             <select
@@ -160,36 +140,30 @@ export const DraftControls: React.FC<DraftControlsProps> = ({
                   {loadingIcons ? (
                     <span className="text-gray-400">Loading...</span>
                   ) : (
-                    <>
-                      <span 
-                        className="inline-flex items-center mr-2"
-                        dangerouslySetInnerHTML={{ __html: rankIcons[rank] || '' }}
-                      />
+                    <span className="flex items-center">
+                      {rankIcons[rank].startsWith('http') ? (
+                        <img 
+                          src={rankIcons[rank]}
+                          alt={rank}
+                          className="w-4 h-4 mr-2"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.textContent = rank.charAt(0);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="mr-2">{rankIcons[rank]}</span>
+                      )}
                       {rank}
-                    </>
+                    </span>
                   )}
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Region */}
-          <div className="flex flex-col">
-            <label className="text-sm text-gray-400 mb-1">Region</label>
-            <div className="flex items-center bg-white/5 border border-white/20 rounded-lg px-4 py-3 min-w-[120px]">
-              <Globe size={20} className="text-gray-300 mr-2" />
-              <select
-                value={region}
-                onChange={(e) => onRegionChange(e.target.value)}
-                className="bg-transparent text-white text-lg focus:outline-none w-full"
-              >
-                {REGIONS.map((reg) => (
-                  <option key={reg} value={reg}>
-                    {reg}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {/* Patch */}

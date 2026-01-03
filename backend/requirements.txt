@@ -1,13 +1,43 @@
-# requirements.txt
+# Core
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database
 sqlalchemy==2.0.23
-pydantic==2.5.0
+alembic==1.12.1
+psycopg2-binary==2.9.9  # PostgreSQL support for production
+asyncpg==0.29.0
+
+# Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-dotenv==1.0.0
-alembic==1.12.1
-psycopg2-binary==2.9.9
+python-multipart==0.0.6
+
+# HTTP Client
 httpx==0.25.1
+aiohttp==3.9.1
+
+# Web Scraping
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Environment
+python-dotenv==1.0.0
+
+# LLM/HuggingFace
+transformers==4.36.0
+torch==2.1.0
+sentencepiece==0.1.99
+
+# Data Processing
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Testing
 pytest==7.4.3
-email-validator==2.1.0  # Add this line
+pytest-asyncio==0.21.1
+
+# Development
+black==23.11.0
+flake8==6.1.0
