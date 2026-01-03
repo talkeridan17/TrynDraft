@@ -1,33 +1,22 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { DraftPage } from './pages/DraftPage';
+import { LoginPage } from './pages/LoginPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Layout wrapper for all pages with header */}
         <Route path="/" element={<Layout />}>
-          {/* Redirect root to /draft */}
-          <Route index element={<Navigate to="/draft" replace />} />
+          {/* Redirect root to draft */}
+          <Route index element={<DraftPage />} />
           
-          {/* Main drafting interface */}
+          {/* Main pages */}
           <Route path="/draft" element={<DraftPage />} />
-          
-          {/* Profile page */}
-          <Route path="/profile" element={
-            <div className="p-6">
-              <h1 className="text-3xl font-bold text-white mb-4">Profile & Settings</h1>
-              <p className="text-gray-300">Manage your champion pool and preferences.</p>
-            </div>
-          } />
-          
-          {/* Login page (to be built) */}
-          <Route path="/login" element={
-            <div className="p-6">
-              <h1 className="text-3xl font-bold text-white mb-4">Login / Sign Up</h1>
-              <p className="text-gray-300">Authentication will go here.</p>
-            </div>
-          } />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           
           {/* Catch-all route for 404 */}
           <Route path="*" element={

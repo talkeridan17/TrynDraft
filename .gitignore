@@ -340,3 +340,33 @@ frontend/yarn-error.log*
 
 # Frontend dependencies
 frontend/node_modules/
+
+# Frontend
+frontend/.env
+frontend/.env.local
+frontend/dist/
+frontend/coverage/
+frontend/*.log
+
+# Backend
+backend/.venv/
+backend/tryndraft.db
+backend/alembic/versions/*.py
+!backend/alembic/versions/__init__.py
+backend/__pycache__/
+backend/*.pyc
+backend/data_cache/
+backend/logs/
+
+# Docker
+docker-compose.override.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

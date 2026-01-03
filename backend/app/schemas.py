@@ -18,12 +18,39 @@ class UserCreate(UserBase):
             raise ValueError('Password must be at least 6 characters')
         return v
 
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    summoner_name: Optional[str] = None
+    region: Optional[str] = None
+    password: Optional[str] = None
+
 class UserResponse(UserBase):
     id: str
     is_active: bool
     is_premium: bool
     created_at: datetime
     updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Champion pool schemas
+class UserChampionPoolBase(BaseModel):
+    champion_name: str
+    role: Optional[str] = None
+    proficiency: Optional[int] = 1
+    is_favorite: Optional[bool] = False
+    games_played: Optional[int] = 0
+    win_rate: Optional[int] = None
+
+class UserChampionPoolCreate(UserChampionPoolBase):
+    pass
+
+class UserChampionPoolResponse(UserChampionPoolBase):
+    id: str
+    user_id: str
+    created_at: datetime
     
     class Config:
         from_attributes = True
@@ -56,16 +83,18 @@ class ChampionResponse(ChampionBase):
     class Config:
         from_attributes = True
 
-# Draft schemas
+# Draft schemas - FIXED to match your frontend store
 class DraftBase(BaseModel):
     game_mode: str = "DRAFT"
     side: str = "BLUE"
     role: str = "TOP"
     elo: str = "PLATINUM"
     region: str = "NA"
-    patch: str = "14.1"
+    patch: str = "14.4.1"
     phase: str = "BAN"
-    current_turn: int = 1
+    current_turn: int = 0
+    
+    # Draft state
     bans_blue: List[str] = []
     bans_red: List[str] = []
     picks_blue: List[Dict[str, Any]] = []
@@ -73,6 +102,14 @@ class DraftBase(BaseModel):
 
 class DraftCreate(DraftBase):
     pass
+
+class DraftUpdate(BaseModel):
+    phase: Optional[str] = None
+    current_turn: Optional[int] = None
+    bans_blue: Optional[List[str]] = None
+    bans_red: Optional[List[str]] = None
+    picks_blue: Optional[List[Dict[str, Any]]] = None
+    picks_red: Optional[List[Dict[str, Any]]] = None
 
 class DraftResponse(DraftBase):
     id: str
@@ -84,6 +121,17 @@ class DraftResponse(DraftBase):
     
     class Config:
         from_attributes = True
+
+# LLM schemas
+class LLMAnalysisRequest(BaseModel):
+    draft_state: Dict[str, Any]
+    available_champions: List[str]
+    top_recommendation: str
+
+class LLMAnalysisResponse(BaseModel):
+    analysis: str
+    top_recommendation: str
+    available_count: int
 
 # Recommendation schemas
 class Recommendation(BaseModel):
