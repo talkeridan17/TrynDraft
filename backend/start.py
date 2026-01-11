@@ -43,8 +43,21 @@ def main():
     print("Access the API at: http://localhost:8000")
     print("API Documentation at: http://localhost:8000/api/docs")
     print("\nPress Ctrl+C to stop the server\n")
-    
-    os.system("uvicorn app.main:app --reload --host 0.0.0.0 --port 8000")
+
+    # Use subprocess.run with argument list to avoid shell injection
+    try:
+        subprocess.run([
+            "uvicorn",
+            "app.main:app",
+            "--reload",
+            "--host", "0.0.0.0",
+            "--port", "8000"
+        ], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Server exited with error code {e.returncode}")
+        sys.exit(e.returncode)
+    except KeyboardInterrupt:
+        print("\n✅ Server stopped by user")
 
 if __name__ == "__main__":
     main()

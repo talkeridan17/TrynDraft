@@ -1,13 +1,12 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
 from dotenv import load_dotenv
+from .core.config import settings
 
 load_dotenv()
 
-# Database URL from environment variable or use SQLite for development
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tryndraft.db")
+# Get database URL from settings (which loads from environment)
+DATABASE_URL = settings.DATABASE_URL
 
 # SQLite requires special connection args
 if DATABASE_URL.startswith("sqlite"):
@@ -21,14 +20,14 @@ else:
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
-        pool_recycle=300
+        pool_recycle=300,
+        echo=settings.DEBUG  # Log SQL queries in debug mode
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
-
 def get_db():
+    """Dependency for getting database sessions."""
     db = SessionLocal()
     try:
         yield db

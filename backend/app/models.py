@@ -1,10 +1,11 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey, Text, Index
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
-from datetime import datetime
+from sqlalchemy.orm import DeclarativeBase, relationship
+from datetime import datetime, timezone
 import uuid
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    """Base class for all database models."""
+    pass
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -21,9 +22,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_premium = Column(Boolean, default=False)
     preferences = Column(JSON, default={})
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
     drafts = relationship("Draft", back_populates="user")
     champion_pool = relationship("UserChampionPool", back_populates="user")
 
@@ -50,11 +51,12 @@ class Draft(Base):
     # Analysis
     analysis = Column(Text)
     win_prediction = Column(JSON)
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
     user = relationship("User", back_populates="drafts")
+    llm_interactions = relationship("LLMInteraction", back_populates="draft")
 
 class UserChampionPool(Base):
     __tablename__ = "user_champion_pool"
@@ -94,8 +96,8 @@ class Champion(Base):
     # Synergy and counter data
     synergies = Column(JSON, default={})
     counters = Column(JSON, default={})
-    
-    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class DraftRecommendation(Base):
     __tablename__ = "draft_recommendations"
@@ -107,8 +109,8 @@ class DraftRecommendation(Base):
     reason = Column(Text)
     score = Column(Integer)
     recommendation_type = Column(String)  # PICK, BAN, COUNTER, SYNERGY
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class ScrapedContent(Base):
     __tablename__ = "scraped_content"
@@ -123,8 +125,8 @@ class ScrapedContent(Base):
     tags = Column(JSON, default=[])  # ['guide', 'matchup', 'build']
     patch_version = Column(String)
     quality_score = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
     # For full-text search
     __table_args__ = (Index('ix_scraped_content_search', 'content', postgresql_using='gin'),)
 
@@ -139,6 +141,6 @@ class LLMInteraction(Base):
     prompt = Column(Text)
     response = Column(Text)
     model_used = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
     draft = relationship("Draft", back_populates="llm_interactions")

@@ -48,9 +48,14 @@ export const ProfilePage: React.FC = () => {
       const userData = await authService.getCurrentUser();
       if (userData) {
         setUser(userData);
-        // Load champion pool
-        // This would be from your API
-        setChampionPool([]); // Placeholder
+        // Load champion pool from API
+        try {
+          const pool = await authService.getChampionPool();
+          setChampionPool(pool);
+        } catch (error) {
+          console.error('Failed to load champion pool:', error);
+          setChampionPool([]);
+        }
       } else {
         navigate('/login');
       }
@@ -68,29 +73,45 @@ export const ProfilePage: React.FC = () => {
   };
 
   const handleUpdateProfile = async () => {
-    // Implement update logic
-    setEditing(false);
+    if (!user) return;
+
+    try {
+      await authService.updateUser({
+        summoner_name: user.summoner_name,
+        region: user.region
+      });
+      setEditing(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    }
   };
 
   const handleAddChampion = async () => {
     if (!newChampion.trim()) return;
-    
-    // Add to champion pool
-    const newItem: ChampionPoolItem = {
-      id: Date.now().toString(),
-      champion_name: newChampion,
-      role: newRole,
-      proficiency: 1,
-      is_favorite: false,
-      games_played: 0
-    };
-    
-    setChampionPool([...championPool, newItem]);
-    setNewChampion('');
+
+    try {
+      await authService.addToChampionPool({
+        champion_name: newChampion,
+        role: newRole,
+        proficiency: 1
+      });
+
+      // Reload champion pool
+      const pool = await authService.getChampionPool();
+      setChampionPool(pool);
+      setNewChampion('');
+    } catch (error) {
+      console.error('Failed to add champion:', error);
+    }
   };
 
-  const handleRemoveChampion = (id: string) => {
-    setChampionPool(championPool.filter(item => item.id !== id));
+  const handleRemoveChampion = async (championName: string) => {
+    try {
+      await authService.removeFromChampionPool(championName);
+      setChampionPool(championPool.filter(item => item.champion_name !== championName));
+    } catch (error) {
+      console.error('Failed to remove champion:', error);
+    }
   };
 
   const handleToggleFavorite = (id: string) => {
@@ -277,7 +298,7 @@ export const ProfilePage: React.FC = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => handleRemoveChampion(champ.id)}
+                      onClick={() => handleRemoveChampion(champ.champion_name)}
                       className="p-1 text-gray-500 hover:text-red-400"
                     >
                       <Trash2 size={16} />

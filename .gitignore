@@ -134,8 +134,11 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environments - NEVER commit actual .env files
 .env
+.env.local
+.env.*.local
+!.env.example
 .envrc
 .venv
 env/
@@ -218,12 +221,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment variables
+# Environment variables - NEVER commit actual .env files
 .env
 .env.local
+.env.development
+.env.production
 .env.development.local
 .env.test.local
 .env.production.local
+!.env.example
 
 # Logs
 logs
@@ -280,10 +286,11 @@ build/
 .cache/
 .tmp/
 
-# Local Databases & Data
+# Local Databases & Data - NEVER commit database files
 *.db
 *.sqlite
-tryndraft_*.db
+*.sqlite3
+tryndraft*.db
 data/
 storage/
 uploads/
@@ -357,6 +364,7 @@ backend/__pycache__/
 backend/*.pyc
 backend/data_cache/
 backend/logs/
+backend/training_data/  # LLM training data (can be large)
 
 # Docker
 docker-compose.override.yml

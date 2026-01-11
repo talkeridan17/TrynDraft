@@ -5,13 +5,14 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 import uvicorn
 
-from .database import get_db, engine, Base
+from .database import get_db, engine
+from .models import Base
 from . import models, schemas
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
 from .api.v1.endpoints import champions, drafts, llm, metadata, users
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables (not needed with Alembic, but kept for backwards compatibility)
+# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="TrynDraft API", version="1.0.0")
 

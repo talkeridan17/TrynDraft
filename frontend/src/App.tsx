@@ -8,17 +8,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Layout wrapper for all pages with header */}
-        <Route path="/" element={<Layout />}>
-          {/* Redirect root to draft */}
-          <Route index element={<DraftPage />} />
-          
-          {/* Main pages */}
-          <Route path="/draft" element={<DraftPage />} />
+        {/* Draft page - full screen, no layout wrapper */}
+        <Route path="/" element={<DraftPage />} />
+        <Route path="/draft" element={<DraftPage />} />
+
+        {/* Other pages with layout */}
+        <Route element={<Layout />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          
-          {/* Catch-all route for 404 */}
+
+          {/* 404 */}
           <Route path="*" element={
             <div className="p-6 text-center">
               <h1 className="text-4xl font-bold text-white mb-4">404 - Page Not Found</h1>

@@ -11,11 +11,23 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    
+
     @validator('password')
     def password_strength(cls, v):
-        if len(v) < 6:
-            raise ValueError('Password must be at least 6 characters')
+        if len(v) < 12:
+            raise ValueError('Password must be at least 12 characters')
+
+        # Check for complexity requirements
+        has_upper = any(c.isupper() for c in v)
+        has_lower = any(c.islower() for c in v)
+        has_digit = any(c.isdigit() for c in v)
+        has_special = any(c in '!@#$%^&*(),.?":{}|<>' for c in v)
+
+        if not (has_upper and has_lower and has_digit and has_special):
+            raise ValueError(
+                'Password must contain at least one uppercase letter, '
+                'one lowercase letter, one digit, and one special character'
+            )
         return v
 
 class UserUpdate(BaseModel):

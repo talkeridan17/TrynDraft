@@ -1,347 +1,445 @@
-import { GameModeSelector } from '../components/drafting/GameModeSelector';
-import { DraftControls } from '../components/drafting/DraftControls';
-import { TeamDisplay } from '../components/drafting/TeamDisplay';
-import { ChampionPicker } from '../components/drafting/ChampionPicker';
-import { useDraftStore } from '../store/useDraftStore';
-import { LLMAnalysisBox } from '../components/drafting/LLMAnalysisBox';
 import { useEffect, useState } from 'react';
-import { championService } from '../utils/api';
+import { Link } from 'react-router-dom';
+import { useDraftStore } from '../store/useDraftStore';
+import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
+import { Search, X, Sword, Settings } from 'lucide-react';
+import { RoleIcon } from '../components/common/RoleIcon';
+import type { RoleType } from '../store/useDraftStore';
 
-// Simple DraftRulesService for now - you'll need to expand this
-class DraftRulesService {
-  private bans: Set<string> = new Set();
-  private picks: Set<string> = new Set();
-  
-  private mode: string;
-  
-  constructor(mode: string) {
-    this.mode = mode;
-  }
-
-  addBan(champion: string) {
-    this.bans.add(champion);
-  }
-
-  addPick(champion: string) {
-    this.picks.add(champion);
-  }
-
-  get_available_champions(allChampions: string[]): string[] {
-    // Filter out banned and picked champions
-    return allChampions.filter(champ => 
-      !this.bans.has(champ) && !this.picks.has(champ)
-    );
-  }
-
-  reset() {
-    this.bans.clear();
-    this.picks.clear();
-  }
-}
+const ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
+const RANKS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
 
 export const DraftPage: React.FC = () => {
   const {
     settings,
-    selections,
+    bans,
+    picks,
     currentTurn,
-    availablePatches,
-    setGameMode,
-    setTeamSide,
-    setRole,
-    setElo,
-    setRegion,
-    setPatch,
-    setPhase,
+    setSettings,
+    setCurrentTurn,
     nextTurn,
-    previousTurn,
     addBan,
-    removeBan,
     addPick,
-    removePick,
-    movePick,
     resetDraft,
     getCurrentPicker,
+    allChampions,
+    loadChampions,
+    movePick,
   } = useDraftStore();
 
-  const currentPicker = getCurrentPicker();
-  
-  // Add state for LLM Analysis
-  const [availableChampions, setAvailableChampions] = useState<string[]>([]);
-  const [topRecommendation, setTopRecommendation] = useState<string>('Analyzing...');
-  const [draftRules, setDraftRules] = useState<DraftRulesService | null>(null);
-  const [allChampions, setAllChampions] = useState<string[]>([]);
+  const [latestPatch, setLatestPatch] = useState('16.1.1');
+  const [search, setSearch] = useState('');
+  const [isBanPhase, setIsBanPhase] = useState(true);
+  const [shouldAdvanceCursor, setShouldAdvanceCursor] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [draggedSide, setDraggedSide] = useState<'BLUE' | 'RED' | null>(null);
+  const [hoveredSlot, setHoveredSlot] = useState<{side: 'BLUE' | 'RED', index: number} | null>(null);
+  const [draggedChampion, setDraggedChampion] = useState<string | null>(null);
 
-  // Load all champions on mount
+  const currentPicker = getCurrentPicker();
+
   useEffect(() => {
-    const loadChampions = async () => {
-      try {
-        const championsData = await championService.getAll();
-        // Extract champion names from the data
-        const championNames = championsData.map((champ: any) => champ.name || champ);
-        setAllChampions(championNames);
-      } catch (error) {
-        console.error('Failed to load champions:', error);
-        // Use mock champions as fallback
-        const mockChamps = [
-          "Aatrox", "Ahri", "Akali", "Alistar", "Amumu", "Anivia", "Annie", "Aphelios",
-          "Ashe", "Aurelion Sol", "Azir", "Bard", "Blitzcrank", "Brand", "Braum",
-          "Caitlyn", "Camille", "Cassiopeia", "Cho'Gath", "Corki", "Darius", "Diana",
-          "Draven", "Dr. Mundo", "Ekko", "Elise", "Evelynn", "Ezreal", "Fiddlesticks",
-          "Fiora", "Fizz", "Galio", "Gangplank", "Garen", "Gnar", "Gragas", "Graves",
-          "Hecarim", "Heimerdinger", "Illaoi", "Irelia", "Ivern", "Janna", "Jarvan IV",
-          "Jax", "Jayce", "Jhin", "Jinx", "Kai'Sa", "Kalista", "Karma", "Karthus",
-          "Kassadin", "Katarina", "Kayle", "Kayn", "Kennen", "Kha'Zix", "Kindred",
-          "Kled", "Kog'Maw", "LeBlanc", "Lee Sin", "Leona", "Lillia", "Lissandra",
-          "Lucian", "Lulu", "Lux", "Malphite", "Malzahar", "Maokai", "Master Yi",
-          "Miss Fortune", "Mordekaiser", "Morgana", "Nami", "Nasus", "Nautilus",
-          "Neeko", "Nidalee", "Nocturne", "Nunu & Willump", "Olaf", "Orianna",
-          "Ornn", "Pantheon", "Poppy", "Pyke", "Qiyana", "Quinn", "Rakan", "Rammus",
-          "Rek'Sai", "Rell", "Renekton", "Rengar", "Riven", "Rumble", "Ryze",
-          "Samira", "Sejuani", "Senna", "Seraphine", "Sett", "Shaco", "Shen",
-          "Shyvana", "Singed", "Sion", "Sivir", "Skarner", "Sona", "Soraka",
-          "Swain", "Sylas", "Syndra", "Tahm Kench", "Taliyah", "Talon", "Taric",
-          "Teemo", "Thresh", "Tristana", "Trundle", "Tryndamere", "Twisted Fate",
-          "Twitch", "Udyr", "Urgot", "Varus", "Vayne", "Veigar", "Vel'Koz",
-          "Vex", "Vi", "Viego", "Viktor", "Vladimir", "Volibear", "Warwick",
-          "Wukong", "Xayah", "Xerath", "Xin Zhao", "Yasuo", "Yone", "Yorick",
-          "Yuumi", "Zac", "Zed", "Zeri", "Ziggs", "Zilean", "Zoe", "Zyra"
-        ];
-        setAllChampions(mockChamps);
-      }
-    };
-    
-    loadChampions();
+    if (allChampions.length === 0) {
+      loadChampions();
+    }
+
+    getLatestPatch().then(version => {
+      setLatestPatch(version);
+      setSettings({ patch: version });
+    });
   }, []);
 
-  // Initialize draft rules based on game mode
   useEffect(() => {
-    const rules = new DraftRulesService(settings.mode);
-    setDraftRules(rules);
-  }, [settings.mode]);
+    setIsBanPhase(currentTurn < 10);
+  }, [currentTurn]);
 
-  // Update available champions when picks/bans change
+  // Auto-advance cursor after champion selection
   useEffect(() => {
-    if (!draftRules || allChampions.length === 0) return;
-    
-    // Reset and update rules
-    draftRules.reset();
-    
-    // Update rules with current bans
-    selections.bans.blue.forEach(ban => draftRules.addBan(ban));
-    selections.bans.red.forEach(ban => draftRules.addBan(ban));
-    
-    // Update rules with current picks
-    selections.picks.blue
-      .filter(p => p.champion)
-      .forEach(p => draftRules.addPick(p.champion));
-    selections.picks.red
-      .filter(p => p.champion)
-      .forEach(p => draftRules.addPick(p.champion));
-    
-    // Get available champions
-    const available = draftRules.get_available_champions(allChampions);
-    setAvailableChampions(available);
-    
-    // Set top recommendation (for now, first available)
-    // TODO: Add better recommendation logic based on role, team comp, etc.
-    if (available.length > 0) {
-      setTopRecommendation(available[0]);
-    } else {
-      setTopRecommendation('No champions available');
+    if (shouldAdvanceCursor) {
+      findNextUnfilledSlot();
+      setShouldAdvanceCursor(false);
     }
-  }, [selections, draftRules, allChampions]);
+  }, [bans, picks, shouldAdvanceCursor]);
 
-  // Global picker indicator component
-  const PickerIndicator = () => {
-    if (!currentPicker) return null;
-    
-    return (
-      <div className="fixed top-20 right-4 bg-black/80 backdrop-blur-sm border border-yellow-500 rounded-lg p-4 z-50 shadow-xl">
-        <div className="flex items-center space-x-3">
-          <div className={`w-3 h-3 rounded-full ${currentPicker.side === 'BLUE' ? 'bg-blue-500' : 'bg-red-500'}`}></div>
-          <div>
-            <div className="text-white font-bold">
-              {currentPicker.isBan ? 'Banning' : 'Picking'} • Turn {currentTurn + 1}/20
-            </div>
-            <div className="text-yellow-300 text-sm">
-              {currentPicker.side} Team • Position {currentPicker.position + 1}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const handleChampionSelected = (champion: string) => {
-    if (!currentPicker) return;
-    
-    if (currentPicker.isBan) {
-      addBan(champion, currentPicker.side);
-    } else {
-      const picks = currentPicker.side === 'BLUE' ? selections.picks.blue : selections.picks.red;
-      const currentRole = picks[currentPicker.position]?.role || 'FILL';
-      addPick(champion, currentRole, currentPicker.side);
-    }
-    
-    // Move to next turn
-    nextTurn();
-  };
-
-  const handleRemovePick = (index: number, side: 'BLUE' | 'RED') => {
-    removePick(index, side);
-  };
-
-  const handleMovePick = (fromIndex: number, toIndex: number, side: 'BLUE' | 'RED') => {
-    movePick(fromIndex, toIndex, side);
-  };
-
-  const handleRemoveBan = (ban: string, side: 'BLUE' | 'RED') => {
-    removeBan(ban, side);
-  };
-
-  const handleSelectChampion = (position: number, side: 'BLUE' | 'RED') => {
-    // Find the turn for this position
-    let targetTurn = -1;
-    
-    // Check ban phase
-    for (let i = 0; i < 10; i++) {
-      const sideForTurn = i % 2 === 0 ? 'BLUE' : 'RED';
-      const positionForTurn = Math.floor(i / 2);
-      if (sideForTurn === side && positionForTurn === position) {
-        targetTurn = i;
-        break;
-      }
-    }
-    
-    // Check pick phase
-    if (targetTurn === -1) {
-      const pickOrder = [
-        { side: 'BLUE' as const, position: 0 },
-        { side: 'RED' as const, position: 0 },
-        { side: 'RED' as const, position: 1 },
-        { side: 'BLUE' as const, position: 1 },
-        { side: 'BLUE' as const, position: 2 },
-        { side: 'RED' as const, position: 2 },
-        { side: 'RED' as const, position: 3 },
-        { side: 'BLUE' as const, position: 3 },
-        { side: 'BLUE' as const, position: 4 },
-        { side: 'RED' as const, position: 4 },
-      ];
-      
-      for (let i = 0; i < pickOrder.length; i++) {
-        if (pickOrder[i].side === side && pickOrder[i].position === position) {
-          targetTurn = i + 10;
-          break;
+  // Keyboard handler for clearing slots
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'Backspace' || e.key === 'Delete') && hoveredSlot) {
+        e.preventDefault();
+        const pickList = hoveredSlot.side === 'BLUE' ? picks.blue : picks.red;
+        if (pickList[hoveredSlot.index]?.champion) {
+          // Clear the champion from the slot
+          addPick('', pickList[hoveredSlot.index].role, hoveredSlot.side, hoveredSlot.index);
         }
       }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hoveredSlot, picks]);
+
+  // Remove banned and picked champions from available list
+  const allBannedPicked = [...bans.blue, ...bans.red, ...picks.blue.map(p => p.champion).filter(Boolean), ...picks.red.map(p => p.champion).filter(Boolean)];
+
+  const filteredChamps = allChampions
+    .filter(champ => {
+      const matchesSearch = champ.toLowerCase().includes(search.toLowerCase());
+      const isAvailable = !allBannedPicked.includes(champ);
+      return matchesSearch && isAvailable;
+    })
+    .sort((a, b) => a.localeCompare(b));
+
+  const handleChampionSelect = (champion: string) => {
+    if (!currentPicker) return;
+
+    if (currentPicker.isBan) {
+      // Place ban in the EXACT slot that's currently selected
+      addBan(champion, currentPicker.side, currentPicker.position);
+    } else {
+      // Place pick in the EXACT slot that's currently selected
+      const currentPicks = currentPicker.side === 'BLUE' ? picks.blue : picks.red;
+      const currentRole = currentPicks[currentPicker.position]?.role || 'TOP';
+      addPick(champion, currentRole, currentPicker.side, currentPicker.position);
     }
-    
-    if (targetTurn !== -1) {
-      useDraftStore.getState().setTurn(targetTurn);
+
+    // Trigger cursor advance on next render
+    setShouldAdvanceCursor(true);
+    setSearch('');
+  };
+
+  const findNextUnfilledSlot = () => {
+    // Ban phase sequence (turns 0-9)
+    const banSequence = [
+      { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 },
+      { side: 'BLUE', pos: 1 }, { side: 'RED', pos: 1 },
+      { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 },
+      { side: 'BLUE', pos: 3 }, { side: 'RED', pos: 3 },
+      { side: 'BLUE', pos: 4 }, { side: 'RED', pos: 4 },
+    ];
+
+    // Pick phase sequence (turns 10-19)
+    const pickSequence = [
+      { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 }, { side: 'RED', pos: 1 }, { side: 'BLUE', pos: 1 },
+      { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 }, { side: 'RED', pos: 3 }, { side: 'BLUE', pos: 3 },
+      { side: 'BLUE', pos: 4 }, { side: 'RED', pos: 4 },
+    ];
+
+    // Check bans first (turns 0-9)
+    for (let i = 0; i < banSequence.length; i++) {
+      const slot = banSequence[i];
+      const banList = slot.side === 'BLUE' ? bans.blue : bans.red;
+      if (!banList[slot.pos]) {
+        setCurrentTurn(i);
+        return;
+      }
+    }
+
+    // Then check picks (turns 10-19)
+    for (let i = 0; i < pickSequence.length; i++) {
+      const slot = pickSequence[i];
+      const pickList = slot.side === 'BLUE' ? picks.blue : picks.red;
+      if (!pickList[slot.pos]?.champion) {
+        setCurrentTurn(10 + i);
+        return;
+      }
+    }
+
+    // If all filled, stay at current position
+  };
+
+  const handleSlotClick = (side: 'BLUE' | 'RED', position: number, isBan: boolean) => {
+    if (isBan) {
+      const turn = side === 'BLUE' ? position * 2 : position * 2 + 1;
+      setCurrentTurn(turn);
+    } else {
+      const pickOrder = [
+        { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 }, { side: 'RED', pos: 1 }, { side: 'BLUE', pos: 1 },
+        { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 }, { side: 'RED', pos: 3 }, { side: 'BLUE', pos: 3 },
+        { side: 'BLUE', pos: 4 }, { side: 'RED', pos: 4 },
+      ];
+      const turnIndex = pickOrder.findIndex(p => p.side === side && p.pos === position);
+      if (turnIndex !== -1) setCurrentTurn(10 + turnIndex);
     }
   };
 
-  const handleNextPicker = () => {
-    nextTurn();
+  const handleDragStart = (side: 'BLUE' | 'RED', index: number) => {
+    // Allow dragging on both sides for flexibility
+    setDraggedIndex(index);
+    setDraggedSide(side);
   };
 
-  const handlePreviousPicker = () => {
-    previousTurn();
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
   };
+
+  const handleDrop = (side: 'BLUE' | 'RED', targetIndex: number) => {
+    // If dragging a champion from selector
+    if (draggedChampion) {
+      const pickList = side === 'BLUE' ? picks.blue : picks.red;
+      addPick(draggedChampion, pickList[targetIndex].role, side, targetIndex);
+      setDraggedChampion(null);
+      setShouldAdvanceCursor(true);
+      return;
+    }
+
+    // If dragging from a slot
+    if (draggedIndex === null || draggedSide === null) return;
+
+    // Only allow dropping on the same side it was dragged from
+    if (draggedSide !== side) return;
+
+    if (draggedIndex !== targetIndex) {
+      movePick(draggedIndex, targetIndex, side);
+    }
+
+    setDraggedIndex(null);
+    setDraggedSide(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDraggedSide(null);
+    setDraggedChampion(null);
+  };
+
+  // Handle dragging champion back to center selector to clear slot
+  const handleDropOnCenter = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedSide !== null) {
+      const pickList = draggedSide === 'BLUE' ? picks.blue : picks.red;
+      if (pickList[draggedIndex]?.champion) {
+        // Clear the champion from the slot
+        addPick('', pickList[draggedIndex].role, draggedSide, draggedIndex);
+
+        // Move cursor to the now-empty slot
+        const pickOrder = [
+          { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 }, { side: 'RED', pos: 1 }, { side: 'BLUE', pos: 1 },
+          { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 }, { side: 'RED', pos: 3 }, { side: 'BLUE', pos: 3 },
+          { side: 'BLUE', pos: 4 }, { side: 'RED', pos: 4 },
+        ];
+        const turnIndex = pickOrder.findIndex(p => p.side === draggedSide && p.pos === draggedIndex);
+        if (turnIndex !== -1) setCurrentTurn(10 + turnIndex);
+      }
+    }
+    setDraggedIndex(null);
+    setDraggedSide(null);
+  };
+
+  const phaseColor = isBanPhase ? 'red' : 'blue';
+  const phaseColorClass = isBanPhase ? 'border-red-500/30' : 'border-blue-500/30';
 
   return (
-    <div className="space-y-4 h-screen flex flex-col">
-      <PickerIndicator />
-      
-      {/* Compact Header Section */}
-      <div className="space-y-3">
-        <div className="flex justify-center">
-          <GameModeSelector
-            currentMode={settings.mode}
-            onModeChange={setGameMode}
-          />
-        </div>
-        
-        <DraftControls
-          side={settings.side}
-          role={settings.role}
-          elo={settings.elo}
-          region={settings.region}
-          patch={settings.patch}
-          availablePatches={availablePatches}
-          phase={settings.phase}
-          onSideChange={setTeamSide}
-          onRoleChange={setRole}
-          onEloChange={setElo}
-          onRegionChange={setRegion}
-          onPatchChange={setPatch}
-          onPhaseChange={setPhase}
-          onReset={resetDraft}
-        />
-      </div>
+    <div className="h-screen w-screen bg-black flex flex-col overflow-hidden">
+      {/* Top Header */}
+      <header className="h-20 bg-black/90 backdrop-blur border-b border-gray-900 flex items-center justify-between px-8">
+        <Link to="/draft" className="flex items-center gap-2">
+          <Sword size={22} className="text-amber-500" />
+          <span className="text-white font-bold text-base">TrynDraft</span>
+        </Link>
 
-      {/* Main Draft Area */}
-      <div className="grid grid-cols-12 gap-4 flex-1" style={{ height: 'calc(100vh - 250px)' }}>
-        {/* Blue Team */}
-        <div className="col-span-4">
-          <TeamDisplay
-            side="BLUE"
-            picks={selections.picks.blue}
-            bans={selections.bans.blue}
-            phase={settings.phase}
-            isUserSide={settings.side === 'BLUE'}
-            onSelectChampion={(position) => handleSelectChampion(position, 'BLUE')}
-            onRemovePick={(index) => handleRemovePick(index, 'BLUE')}
-            onMovePick={(fromIndex, toIndex) => handleMovePick(fromIndex, toIndex, 'BLUE')}
-            onRemoveBan={(ban) => handleRemoveBan(ban, 'BLUE')}
-            currentPicker={currentPicker ? { side: currentPicker.side, position: currentPicker.position } : undefined}
-          />
-        </div>
-
-        {/* Center Panel */}
-        <div className="col-span-4 flex flex-col space-y-4">
-          {/* Champion Picker */}
-          <div className="flex-1">
-            <ChampionPicker
-              currentSide={currentPicker?.side || 'BLUE'}
-              isBanPhase={currentPicker?.isBan || true}
-              pickIndex={currentTurn + 1}
-              onSelect={handleChampionSelected}
-              onNext={handleNextPicker}
-              onPrevious={handlePreviousPicker}
-            />
+        <div className="flex items-center gap-6">
+          {/* Side */}
+          <div className="flex gap-2 bg-gray-900 rounded p-1">
+            <button onClick={() => setSettings({ side: 'BLUE' })} className={`px-5 py-2 rounded text-sm font-medium ${settings.side === 'BLUE' ? 'bg-gray-700 text-white' : 'text-gray-500'}`}>Blue</button>
+            <button onClick={() => setSettings({ side: 'RED' })} className={`px-5 py-2 rounded text-sm font-medium ${settings.side === 'RED' ? 'bg-gray-700 text-white' : 'text-gray-500'}`}>Red</button>
           </div>
 
-          {/* LLM Analysis - Updated to use LLMAnalysisBox */}
-          <div className="flex-1">
-            <LLMAnalysisBox
-              draftState={{
-                phase: settings.phase,
-                turn: currentTurn,
-                picks: selections.picks,
-                bans: selections.bans
-              }}
-              availableChampions={availableChampions}
-              topRecommendation={topRecommendation}
-              isLoading={availableChampions.length === 0 && allChampions.length > 0}
-            />
+          {/* Roles */}
+          <div className="flex gap-2">
+            {ROLES.map(role => (
+              <button key={role} onClick={() => setSettings({ role })} className={`p-2 rounded bg-gray-900 ${settings.role === role ? 'ring-2 ring-gray-400' : ''}`} title={role}>
+                <RoleIcon role={role} size={18} className={settings.role === role ? 'opacity-100' : 'opacity-40'} />
+              </button>
+            ))}
+          </div>
+
+          {/* Rank - Icon Selector */}
+          <div className="flex gap-1.5 bg-gray-900 rounded p-1">
+            {RANKS.map(rank => {
+              const rankLower = rank.toLowerCase();
+              const rankIconUrl = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/${rankLower}.png`;
+              return (
+                <button
+                  key={rank}
+                  onClick={() => setSettings({ elo: rank })}
+                  className={`p-1.5 rounded ${settings.elo === rank ? 'ring-2 ring-gray-400' : ''}`}
+                  title={rank}
+                >
+                  <img src={rankIconUrl} alt={rank} className={`w-6 h-6 ${settings.elo === rank ? 'opacity-100' : 'opacity-40'}`} />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Patch */}
+          <div className="text-sm text-gray-500 font-mono">{latestPatch}</div>
+
+          {/* Phase Toggle */}
+          <div className="flex gap-2 bg-gray-900 rounded p-1">
+            <button onClick={() => { setCurrentTurn(0); }} className={`px-4 py-2 rounded text-sm font-bold ${isBanPhase ? 'bg-red-500 text-white' : 'text-gray-600'}`}>BAN</button>
+            <button onClick={() => { setCurrentTurn(10); }} className={`px-4 py-2 rounded text-sm font-bold ${!isBanPhase ? 'bg-blue-500 text-white' : 'text-gray-600'}`}>PICK</button>
+          </div>
+
+          <button onClick={resetDraft} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
+        </div>
+
+        <Link to="/profile" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white">
+          <Settings size={20} />
+        </Link>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex gap-2 p-2 overflow-hidden">
+        {/* LEFT - Blue Team */}
+        <div className="w-80 flex flex-col gap-3">
+          <div className="text-[10px] uppercase tracking-widest text-gray-700 font-bold">Blue Team</div>
+
+          {/* Bans - BIGGER */}
+          <div className="flex gap-2 mb-2">
+            {[0, 1, 2, 3, 4].map(i => {
+              const ban = bans.blue[i];
+              const isActive = currentPicker?.side === 'BLUE' && currentPicker?.isBan && currentPicker?.position === i;
+              return (
+                <button key={i} onClick={() => handleSlotClick('BLUE', i, true)}
+                  className={`w-12 h-12 rounded border ${isActive ? `ring-2 ${phaseColorClass}` : 'border-gray-900'} ${ban ? 'bg-gray-900' : 'bg-black'}`}>
+                  {ban && (
+                    <div className="relative w-full h-full">
+                      <img src={getChampionImageUrl(ban, latestPatch)} alt={ban} className="w-full h-full object-cover rounded" />
+                      <X className="absolute inset-0 m-auto text-gray-500/60" size={16} strokeWidth={2} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Picks - HORIZONTAL RECTANGLES with splash art */}
+          <div className="flex-1 flex flex-col gap-2">
+            {picks.blue.map((pick, i) => {
+              const isActive = currentPicker?.side === 'BLUE' && !currentPicker?.isBan && currentPicker?.position === i;
+              const isDragging = draggedIndex === i && draggedSide === 'BLUE';
+              const hasChampion = !!pick.champion;
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleSlotClick('BLUE', i, false)}
+                  draggable={hasChampion}
+                  onDragStart={() => handleDragStart('BLUE', i)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop('BLUE', i)}
+                  onDragEnd={handleDragEnd}
+                  onMouseEnter={() => setHoveredSlot({side: 'BLUE', index: i})}
+                  onMouseLeave={() => setHoveredSlot(null)}
+                  className={`h-[calc((100vh-16rem)/5)] rounded overflow-hidden relative border ${isActive ? `ring-2 ${phaseColorClass}` : 'border-gray-900'} flex items-center ${isDragging ? 'opacity-50' : ''} ${hasChampion ? 'cursor-move' : 'cursor-pointer'}`}>
+                  {pick.champion ? (
+                    <img src={getChampionSplashUrl(pick.champion)} alt={pick.champion} className="w-full h-full object-cover object-center pointer-events-none" />
+                  ) : (
+                    <div className="w-full h-full bg-gray-950 flex items-center justify-center border border-gray-900">
+                      <RoleIcon role={pick.role} size={24} className="text-gray-800" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Red Team */}
-        <div className="col-span-4">
-          <TeamDisplay
-            side="RED"
-            picks={selections.picks.red}
-            bans={selections.bans.red}
-            phase={settings.phase}
-            isUserSide={settings.side === 'RED'}
-            onSelectChampion={(position) => handleSelectChampion(position, 'RED')}
-            onRemovePick={(index) => handleRemovePick(index, 'RED')}
-            onMovePick={(fromIndex, toIndex) => handleMovePick(fromIndex, toIndex, 'RED')}
-            onRemoveBan={(ban) => handleRemoveBan(ban, 'RED')}
-            currentPicker={currentPicker ? { side: currentPicker.side, position: currentPicker.position } : undefined}
-          />
+        {/* CENTER - Champion Picker and LLM Box */}
+        <div className={`flex-1 flex flex-col border-l border-r ${phaseColorClass} min-w-0`}>
+          {/* Champion Picker - Top Half */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Search */}
+            <div className="relative m-3 mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+              <input type="text" placeholder="Search champion..." value={search} onChange={e => setSearch(e.target.value)}
+                className={`w-full pl-10 pr-4 py-2 bg-gray-950 border ${phaseColorClass} rounded text-white text-sm focus:outline-none`} />
+            </div>
+
+            {/* Champion Grid - SCROLLABLE & DROP ZONE */}
+            <div
+              className="flex-1 overflow-y-scroll custom-scrollbar px-3 pb-3 min-h-0"
+              onDragOver={handleDragOver}
+              onDrop={handleDropOnCenter}>
+              <div className="grid grid-cols-8 gap-2 pr-1">
+                {filteredChamps.map(champ => (
+                  <button
+                    key={champ}
+                    onClick={() => handleChampionSelect(champ)}
+                    draggable={true}
+                    onDragStart={() => setDraggedChampion(champ)}
+                    onDragEnd={handleDragEnd}
+                    className="aspect-square rounded overflow-hidden relative group hover:scale-105 hover:z-10 transition-transform border border-gray-900 hover:border-amber-500 cursor-grab active:cursor-grabbing">
+                    <img src={getChampionImageUrl(champ, latestPatch)} alt={champ} className="w-full h-full object-cover pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-1 pointer-events-none">
+                      <span className="text-white font-bold text-[10px] uppercase tracking-wide">{champ}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* LLM Box - Bottom Half */}
+          <div className={`h-1/2 bg-black/90 border-t-2 ${phaseColorClass} p-4 flex flex-col`}>
+            <div className="text-xs text-gray-600 uppercase tracking-wider font-bold mb-2">AI Analysis</div>
+            <div className="flex-1 text-sm text-gray-400">
+              {isBanPhase ? `${bans.blue.length + bans.red.length}/10 bans` : `${picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length}/10 picks`}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT - Red Team */}
+        <div className="w-80 flex flex-col gap-3">
+          <div className="text-[10px] uppercase tracking-widest text-gray-700 font-bold">Red Team</div>
+
+          {/* Bans */}
+          <div className="flex gap-2 mb-2">
+            {[0, 1, 2, 3, 4].map(i => {
+              const ban = bans.red[i];
+              const isActive = currentPicker?.side === 'RED' && currentPicker?.isBan && currentPicker?.position === i;
+              return (
+                <button key={i} onClick={() => handleSlotClick('RED', i, true)}
+                  className={`w-12 h-12 rounded border ${isActive ? `ring-2 ${phaseColorClass}` : 'border-gray-900'} ${ban ? 'bg-gray-900' : 'bg-black'}`}>
+                  {ban && (
+                    <div className="relative w-full h-full">
+                      <img src={getChampionImageUrl(ban, latestPatch)} alt={ban} className="w-full h-full object-cover rounded" />
+                      <X className="absolute inset-0 m-auto text-gray-500/60" size={16} strokeWidth={2} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Picks */}
+          <div className="flex-1 flex flex-col gap-2">
+            {picks.red.map((pick, i) => {
+              const isActive = currentPicker?.side === 'RED' && !currentPicker?.isBan && currentPicker?.position === i;
+              const isDragging = draggedIndex === i && draggedSide === 'RED';
+              const hasChampion = !!pick.champion;
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleSlotClick('RED', i, false)}
+                  draggable={hasChampion}
+                  onDragStart={() => handleDragStart('RED', i)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop('RED', i)}
+                  onDragEnd={handleDragEnd}
+                  onMouseEnter={() => setHoveredSlot({side: 'RED', index: i})}
+                  onMouseLeave={() => setHoveredSlot(null)}
+                  className={`h-[calc((100vh-16rem)/5)] rounded overflow-hidden relative border ${isActive ? `ring-2 ${phaseColorClass}` : 'border-gray-900'} flex items-center ${isDragging ? 'opacity-50' : ''} ${hasChampion ? 'cursor-move' : 'cursor-pointer'}`}>
+                  {pick.champion ? (
+                    <img src={getChampionSplashUrl(pick.champion)} alt={pick.champion} className="w-full h-full object-cover object-center pointer-events-none" />
+                  ) : (
+                    <div className="w-full h-full bg-gray-950 flex items-center justify-center border border-gray-900">
+                      <RoleIcon role={pick.role} size={24} className="text-gray-800" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
