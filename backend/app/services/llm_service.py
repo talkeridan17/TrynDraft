@@ -82,26 +82,49 @@ class LLMService:
         return self._rule_based_analysis(draft_state)
     
     def _build_draft_prompt(self, draft_state: Dict) -> str:
-        """Build prompt for LLM."""
+        """Build comprehensive prompt for continuous draft analysis."""
         blue_bans = draft_state.get('bans', {}).get('blue', [])
         red_bans = draft_state.get('bans', {}).get('red', [])
         blue_picks = self._extract_champs(draft_state.get('picks', {}).get('blue', []))
         red_picks = self._extract_champs(draft_state.get('picks', {}).get('red', []))
-        
-        return f"""Analyze this League of Legends draft:
+        phase = draft_state.get('phase', 'BAN')
+        turn = draft_state.get('turn', 0)
 
-Phase: {draft_state.get('phase', 'BAN')}
-Turn: {draft_state.get('turn', 0)}/20
+        # Build contextual prompt based on draft progress
+        if turn < 10:
+            stage = "Early Draft (Ban Phase)"
+            focus = "Analyze ban priorities and denied strategies"
+        elif turn < 16:
+            stage = "Mid Draft (Core Picks)"
+            focus = "Evaluate team compositions and win conditions"
+        else:
+            stage = "Late Draft (Final Picks)"
+            focus = "Assess team strengths, weaknesses, and gameplan"
+
+        return f"""You are a professional League of Legends draft analyst. Provide continuous commentary on this draft:
+
+=== DRAFT STATE ===
+Stage: {stage}
+Phase: {phase} | Turn: {turn}/20
 
 Blue Team:
-Bans: {', '.join(blue_bans) if blue_bans else 'None'}
-Picks: {', '.join(blue_picks) if blue_picks else 'None'}
+├─ Bans: {', '.join(blue_bans) if blue_bans else 'None yet'}
+└─ Picks: {', '.join(blue_picks) if blue_picks else 'None yet'}
 
 Red Team:
-Bans: {', '.join(red_bans) if red_bans else 'None'}
-Picks: {', '.join(red_picks) if red_picks else 'None'}
+├─ Bans: {', '.join(red_bans) if red_bans else 'None yet'}
+└─ Picks: {', '.join(red_picks) if red_picks else 'None yet'}
 
-What's the best next move? (2 sentences max)"""
+=== ANALYSIS TASK ===
+{focus}
+
+Provide:
+1. Which team has the advantage and why
+2. Key strengths of each composition
+3. Win conditions for both teams
+4. Strategic recommendations for next picks
+
+Keep response concise (3-4 sentences)."""
     
     async def _query_huggingface(self, prompt: str) -> str:
         """Query HuggingFace Inference API."""
@@ -181,9 +204,11 @@ What's the best next move? (2 sentences max)"""
                             "content": guide_text,
                             "type": "guide"
                         }]
-        except:
-            pass
-        
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            logger.error(f"Failed to scrape MOBAFire for {champion}: {e}")
+        except Exception as e:
+            logger.exception(f"Unexpected error scraping MOBAFire for {champion}: {e}")
+
         return []
     
     async def _scrape_lolalytics(self, champion: str) -> List[Dict]:
@@ -201,14 +226,16 @@ What's the best next move? (2 sentences max)"""
                         page_text = soup.get_text(separator=' ', strip=True)[:500]
                         
                         return [{
-                            "source": "lolalytics", 
+                            "source": "lolalytics",
                             "champion": champion,
                             "content": page_text,
                             "type": "stats"
                         }]
-        except:
-            pass
-        
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            logger.error(f"Failed to scrape LoLalytics for {champion}: {e}")
+        except Exception as e:
+            logger.exception(f"Unexpected error scraping LoLalytics for {champion}: {e}")
+
         return []
     
     # ===== PART 3: FINE-TUNING PREPARATION =====

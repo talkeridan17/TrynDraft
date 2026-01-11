@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source .venv/bin/activate)",
+      "Bash(uvicorn app.main:app:*)",
+      "Bash(python scripts/create_user.py:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(python start.py:*)",
+      "Bash(npm run dev:*)"
+    ]
+  }
+}

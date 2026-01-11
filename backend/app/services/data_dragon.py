@@ -143,15 +143,20 @@ class DataDragonService:
         return f"{self.base_url}/cdn/{version}/img/champion/{clean_id}.png"
     
     async def get_role_icons(self) -> Dict[str, str]:
-        """Get role icon URLs or emojis."""
-        # For now, use emojis - we'll replace with actual icons later
+        """Get role icon URLs from Community Dragon CDN."""
+        # Community Dragon provides League client assets including role icons
+        base_url = "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-champ-select/global/default"
+
         return {
-            'TOP': '🥊',
-            'JUNGLE': '🌿',
-            'MID': '⚔️',
-            'ADC': '🎯',
-            'SUPPORT': '🛡️',
-            'FILL': '🔄'
+            'TOP': f"{base_url}/position-top.png",
+            'JUNGLE': f"{base_url}/position-jungle.png",
+            'MID': f"{base_url}/position-middle.png",
+            'MIDDLE': f"{base_url}/position-middle.png",
+            'ADC': f"{base_url}/position-bottom.png",
+            'BOTTOM': f"{base_url}/position-bottom.png",
+            'SUPPORT': f"{base_url}/position-utility.png",
+            'UTILITY': f"{base_url}/position-utility.png",
+            'FILL': f"{base_url}/position-fill.png"
         }
     
     async def get_rank_icons(self) -> Dict[str, str]:

@@ -27,8 +27,8 @@ python-dotenv==1.0.0
 
 # LLM/HuggingFace
 transformers==4.36.0
-torch==2.1.0
-sentencepiece==0.1.99
+torch==2.2.2
+sentencepiece==0.2.0
 
 # Data Processing
 pydantic==2.5.0

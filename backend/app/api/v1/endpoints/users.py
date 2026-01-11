@@ -96,7 +96,7 @@ async def update_current_user(
     db.refresh(current_user)
     return current_user
 
-@router.get("/me/champion-pool", response_model=List[schemas.UserChampionPool])
+@router.get("/me/champion-pool", response_model=List[schemas.UserChampionPoolResponse])
 async def get_user_champion_pool(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)

@@ -125,7 +125,6 @@ SECURITY.md
 .gitignore
 
 
-
 My current problems are:
 
 1) I don't know how to scrape the Mobafire and Lolaytics with the script, also
@@ -159,3 +158,5 @@ words and emojis, the bar where user sets his role, region etc is not looking
 great because of it so it needs fixing, also there shouldn't be a reigon option
 I don't think it matters at all so please remove it. 
 
+7) a lot of old files that are no longer relevent from past iterations of trying
+to fix things.

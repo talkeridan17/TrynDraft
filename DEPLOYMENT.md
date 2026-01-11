@@ -1,28 +1,66 @@
-# TrynDraft Deployment Guide
+# TrynDraft - Production Deployment Guide
 
-## Prerequisites
+This guide covers deploying TrynDraft to production using Docker, cloud platforms, and best practices.
 
-1. **Docker** and **Docker Compose** installed
-2. **Git** for version control
-3. **Node.js 18+** (for frontend development)
-4. **Python 3.12+** (for backend development)
+---
 
-## Quick Start (Development)
+## 📋 Pre-Deployment Checklist
 
-### Option 1: Docker (Recommended)
+### 1. Environment Variables
+- [ ] Generate strong `SECRET_KEY` with `openssl rand -hex 32`
+- [ ] Set `DEBUG=False` in production
+- [ ] Configure PostgreSQL connection string
+- [ ] Set secure `POSTGRES_PASSWORD`
+- [ ] Add production domain to `CORS_ORIGINS`
+- [ ] Obtain Riot API Key (Production tier recommended)
+- [ ] Get HuggingFace API Token for LLM
+- [ ] Configure Redis password
 
-```bash
-# Clone the repository
-git clone <your-repo-url>
-cd tryndraft
+### 2. Security
+- [ ] All `.env` files excluded from git
+- [ ] Database backups configured
+- [ ] SSL/TLS certificates ready
+- [ ] Firewall rules configured
+- [ ] Rate limiting enabled
 
-# Copy environment file
-cp .env.example .env
+### 3. Data Collection
+- [ ] Run `make seed` to populate champion data
+- [ ] Run `make scrape-stats` for Riot API statistics
+- [ ] Verify database migrations completed
 
-# Edit .env file with your settings
-nano .env  # or use any text editor
+---
 
-# Start all services
-./deploy.sh  # Linux/Mac
-# or
-.\deploy.ps1  # Windows PowerShell
+## 🐳 Docker Deployment (Recommended)
+
+### Step 1: Build and Deploy
+
+\`\`\`bash
+# Build and start all services
+docker-compose up -d --build
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+\`\`\`
+
+### Step 2: Initialize Database
+
+\`\`\`bash
+# Run migrations
+docker-compose exec backend alembic upgrade head
+
+# Seed champion data
+docker-compose exec backend python scripts/seed_champions.py
+\`\`\`
+
+### Step 3: Verify Deployment
+
+- Frontend: `http://localhost`
+- Backend API: `http://localhost/api/docs`
+- Health Check: `http://localhost/api/health`
+
+---
+
+See README.md for detailed deployment instructions, cloud platform guides, and troubleshooting.
