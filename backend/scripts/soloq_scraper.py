@@ -1,6 +1,6 @@
 """
 Riot API Scraper
-Idan TODO refresh method (think, consult Rohan)
+Idan TODO refresh method
 """
 
 import os

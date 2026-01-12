@@ -6,7 +6,6 @@ and populates the champions table.
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add parent directory to path for imports
