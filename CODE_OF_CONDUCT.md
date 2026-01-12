@@ -2,7 +2,7 @@
 
 ## Pledge
 
-Don't be an asshole. Pls and thank you.
+Don't be an asshole. Please and thank you.
 
 ## Attribution
 
