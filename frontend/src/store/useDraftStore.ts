@@ -127,11 +127,19 @@ export const useDraftStore = create<DraftState>()(
       getCurrentPicker: () => {
         const state = get();
         const turn = state.currentTurn;
-        
-        if (turn < 10) { // Ban phase
-          const side: TeamSide = turn % 2 === 0 ? 'BLUE' : 'RED';
-          const position = Math.floor(turn / 2);
-          return { side, position, isBan: true };
+
+        // If turn is -1, no cursor (all slots filled)
+        if (turn === -1) return null;
+
+        const userSide = state.settings.side;
+        const enemySide: TeamSide = userSide === 'BLUE' ? 'RED' : 'BLUE';
+
+        if (turn < 10) { // Ban phase - user's 5 bans first, then enemy's 5
+          if (turn < 5) {
+            return { side: userSide, position: turn, isBan: true };
+          } else {
+            return { side: enemySide, position: turn - 5, isBan: true };
+          }
         } else { // Pick phase
           const pickOrder = [
             { side: 'BLUE' as TeamSide, position: 0 },
@@ -180,24 +188,22 @@ export const useDraftStore = create<DraftState>()(
       },
       
       createDraft: async () => {
-        const state = get();
         try {
-          const draftData = {
-            game_mode: state.settings.mode,
-            side: state.settings.side,
-            role: state.settings.role,
-            elo: state.settings.elo,
-            patch: state.settings.patch,
-            phase: state.settings.phase,
-            current_turn: state.currentTurn,
-            bans_blue: state.bans.blue,
-            bans_red: state.bans.red,
-            picks_blue: state.picks.blue,
-            picks_red: state.picks.red
-          };
-          
-          // TODO: Implement actual API call
-          // TODO: Integrate with backend API
+          // TODO: Implement actual API call with draft data
+          // const state = get();
+          // const draftData = {
+          //   game_mode: state.settings.mode,
+          //   side: state.settings.side,
+          //   role: state.settings.role,
+          //   elo: state.settings.elo,
+          //   patch: state.settings.patch,
+          //   phase: state.settings.phase,
+          //   current_turn: state.currentTurn,
+          //   bans_blue: state.bans.blue,
+          //   bans_red: state.bans.red,
+          //   picks_blue: state.picks.blue,
+          //   picks_red: state.picks.red
+          // };
           // const draft = await draftService.create(draftData);
           // set({ draftId: draft.id });
           // return draft.id;

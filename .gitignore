@@ -313,6 +313,8 @@ cache/
 riot_cache/
 matches/
 tryndraft.log
+STATUS_*.md
+.claude/
 
 # IDE specific - if you use more than VSCode
 *.code-workspace
@@ -378,3 +380,5 @@ docker-compose.override.yml
 # OS
 .DS_Store
 Thumbs.db
+
+.claude

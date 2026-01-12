@@ -222,6 +222,16 @@ export const draftService = {
       console.error('Failed to get gameplan:', error);
       return null;
     }
+  },
+
+  getStatistics: async (draftId: string) => {
+    try {
+      const response = await api.get(`/drafts/${draftId}/statistics`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get draft statistics:', error);
+      return null;
+    }
   }
 };
 

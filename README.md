@@ -2,7 +2,11 @@
 
 > Smart drafting tool with neural network recommendations, LLM-powered continuous commentary, and real-time champion statistics.
 
-<img src="https://img.shields.io/badge/Status-Production_Ready-brightgreen" alt="Status"/> <img src="https://img.shields.io/badge/Python-3.12-blue" alt="Python"/> <img src="https://img.shields.io/badge/React-19-blue" alt="React"/> <img src="https://img.shields.io/badge/FastAPI-Latest-teal" alt="FastAPI"/>
+<img src="https://img.shields.io/badge/Status-Alpha_Development-yellow" alt="Status"/> <img src="https://img.shields.io/badge/Python-3.12-blue" alt="Python"/> <img src="https://img.shields.io/badge/React-19-blue" alt="React"/> <img src="https://img.shields.io/badge/FastAPI-Latest-teal" alt="FastAPI"/> <img src="https://img.shields.io/badge/TypeScript-5.6-blue" alt="TypeScript"/> <img src="https://img.shields.io/badge/TailwindCSS-3.4-06B6D4" alt="TailwindCSS"/>
+
+**Current Version:** 0.3.0-alpha
+**Last Updated:** 2026-01-11
+**See:** [CURRENT_STATUS.md](planning/CURRENT_STATUS.md) for detailed development status
 
 ---
 
@@ -393,7 +397,7 @@ TrynDraft isn't endorsed by Riot Games and doesn't reflect the views or opinions
 
 - **Issues**: [GitHub Issues](https://github.com/talkeridan17/TrynDraft/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/talkeridan17/TrynDraft/discussions)
-- **Email**: [your-email@example.com]
+- **Email**: [talkeridan@gmail.com]
 
 ---
 
