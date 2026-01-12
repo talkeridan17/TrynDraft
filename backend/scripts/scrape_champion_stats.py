@@ -4,7 +4,6 @@ Script to scrape champion statistics from Riot API and store in database.
 Uses the soloq_scraper module to collect match data and compute statistics.
 """
 import sys
-import os
 import asyncio
 import logging
 from pathlib import Path
