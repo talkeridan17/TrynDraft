@@ -56,7 +56,7 @@ function normalizeChampionId(championId: string): string {
     // Vel'Koz -> VelKoz -> Velkoz
     normalized = normalized
       .replace(/\s+/g, '')  // Remove spaces
-      .replace(/([a-z])([A-Z])/g, (match, lower, upper) => {
+      .replace(/([a-z])([A-Z])/g, (_match, lower, upper) => {
         // Lowercase the capital letter that comes after a lowercase letter
         return lower + upper.toLowerCase();
       });

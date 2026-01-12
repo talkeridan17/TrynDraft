@@ -15,7 +15,7 @@ export const RoleIcon: React.FC<RoleIconProps> = ({ role, size = 20, className =
   };
 
   const roleName = roleMap[role] || 'fill';
-  const iconUrl = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-champ-select/global/default/svg/position-${roleName}.svg`;
+  const iconUrl = `https://raw.communitydragon.org/pbe/plugins/rcp-fe-lol-champ-select/global/default/svg/position-${roleName}.svg`;
 
   return (
     <img
