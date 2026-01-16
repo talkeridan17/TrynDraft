@@ -378,13 +378,19 @@ export const useDraftStore = create<DraftState>()(
       },
       
       resetDraft: () => {
-        set({
-          settings: defaultSettings,
+        set((state) => ({
+          settings: {
+            ...defaultSettings,
+            // Preserve user's role and elo settings
+            role: state.settings.role,
+            elo: state.settings.elo,
+            patch: state.settings.patch,
+          },
           currentTurn: 0,
           bans: { blue: [], red: [] },
           picks: { blue: [...defaultPicks], red: [...defaultPicks] },
           draftId: null
-        });
+        }));
       }
     }),
     {

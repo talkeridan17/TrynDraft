@@ -23,15 +23,21 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Only redirect on 401 if it's NOT from champion-pool or if we're already on a protected page
+    // Only redirect on 401 for truly protected routes
     if (error.response?.status === 401) {
       const url = error.config?.url || '';
-      const isChampionPoolRequest = url.includes('/champion-pool');
+      // These requests are optional for guests - don't redirect on 401
+      const isOptionalAuthRequest =
+        url.includes('/champion-pool') ||
+        url.includes('/users/me') ||
+        url.includes('/preferences');
 
       // Don't redirect to login if:
-      // 1. It's a champion pool request (guest users can view draft without pool)
+      // 1. It's an optional auth request (guest users can view draft without these)
       // 2. We're already on the login page
-      if (!isChampionPoolRequest && window.location.pathname !== '/login') {
+      // 3. We're on the draft page (guests allowed)
+      const isOnDraftPage = window.location.pathname === '/draft' || window.location.pathname === '/';
+      if (!isOptionalAuthRequest && window.location.pathname !== '/login' && !isOnDraftPage) {
         localStorage.removeItem('access_token');
         window.location.href = '/login';
       }

@@ -499,7 +499,7 @@ export const DraftPage: React.FC = () => {
             </button>
           </div>
 
-          <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); loadUserPreferences(); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
+          <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
         </div>
 
         <Link to="/profile" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white">

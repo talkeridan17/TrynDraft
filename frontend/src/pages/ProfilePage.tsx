@@ -212,7 +212,7 @@ export const ProfilePage: React.FC = () => {
                   key={role}
                   onClick={() => handleSelectPreferredRole(role)}
                   title={role}
-                  className={`w-14 h-14 rounded-lg border-2 transition-all overflow-hidden flex items-center justify-center ${
+                  className={`p-3 rounded-lg border-2 transition-all overflow-hidden flex items-center justify-center ${
                     isSelected
                       ? isSaved
                         ? 'border-green-500 bg-green-500/20'
@@ -220,7 +220,7 @@ export const ProfilePage: React.FC = () => {
                       : 'border-gray-800 hover:border-gray-700'
                   }`}
                 >
-                  <div className="flex items-center justify-center" style={{ transform: 'scale(1.5)' }}>
+                  <div className="flex items-center justify-center" style={{ transform: 'scale(1.15)' }}>
                     <RoleIcon role={role as any} size={36} />
                   </div>
                 </button>
