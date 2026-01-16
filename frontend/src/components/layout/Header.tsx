@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sword, Settings, User, LogIn, LogOut } from 'lucide-react';
 import { authService } from '../../utils/api';
+import { getChampionImageUrl } from '../../utils/patch';
 
 export const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -18,6 +20,10 @@ export const Header: React.FC = () => {
           const user = await authService.getCurrentUser();
           if (user) {
             setUsername(user.username || 'User');
+            // Load profile picture from preferences
+            if (user.preferences?.profile_picture) {
+              setProfilePicture(user.preferences.profile_picture);
+            }
           }
         } catch (error) {
           // Token might be invalid
@@ -28,6 +34,18 @@ export const Header: React.FC = () => {
     };
     checkAuth();
   }, [location]);
+
+  // Listen for profile updates from ProfilePage
+  useEffect(() => {
+    const handleProfileUpdate = (event: CustomEvent<{ profilePicture: string }>) => {
+      setProfilePicture(event.detail.profilePicture);
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate as EventListener);
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate as EventListener);
+    };
+  }, []);
 
   const handleLogout = () => {
     authService.logout();
@@ -85,8 +103,18 @@ export const Header: React.FC = () => {
             {isAuthenticated ? (
               <>
                 <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg">
-                  <div className="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center">
-                    <User size={16} className="text-amber-500" />
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-500/50">
+                    {profilePicture ? (
+                      <img
+                        src={getChampionImageUrl(profilePicture)}
+                        alt={profilePicture}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-amber-500/20 flex items-center justify-center">
+                        <User size={16} className="text-amber-500" />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-white">{username}</p>

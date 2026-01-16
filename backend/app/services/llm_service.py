@@ -61,10 +61,10 @@ class LLMService:
     
     # ===== PART 1: DRAFT ANALYSIS =====
     
-    async def analyze_draft(self, draft_state: Dict) -> Dict:
-        """Generate analysis for current draft state."""
-        prompt = self._build_draft_prompt(draft_state)
-        
+    async def analyze_draft(self, draft_state: Dict, user_preferences: Optional[Dict] = None) -> Dict:
+        """Generate analysis for current draft state with user preferences."""
+        prompt = self._build_draft_prompt(draft_state, user_preferences)
+
         # Try HuggingFace API first
         if self.hf_token:
             try:
@@ -77,12 +77,12 @@ class LLMService:
                     }
             except Exception as e:
                 logger.error(f"HuggingFace error: {e}")
-        
+
         # Fallback to rules
-        return self._rule_based_analysis(draft_state)
-    
-    def _build_draft_prompt(self, draft_state: Dict) -> str:
-        """Build comprehensive prompt for continuous draft analysis."""
+        return self._rule_based_analysis(draft_state, user_preferences)
+
+    def _build_draft_prompt(self, draft_state: Dict, user_preferences: Optional[Dict] = None) -> str:
+        """Build comprehensive prompt for continuous draft analysis with user context."""
         blue_bans = draft_state.get('bans', {}).get('blue', [])
         red_bans = draft_state.get('bans', {}).get('red', [])
         blue_picks = self._extract_champs(draft_state.get('picks', {}).get('blue', []))
@@ -101,6 +101,26 @@ class LLMService:
             stage = "Late Draft (Final Picks)"
             focus = "Assess team strengths, weaknesses, and gameplan"
 
+        # Build user context section
+        user_context = ""
+        if user_preferences:
+            champion_pool = user_preferences.get("champion_pool", [])
+            preferred_roles = user_preferences.get("preferred_roles", [])
+            rank = user_preferences.get("rank", "PLATINUM")
+
+            user_context = f"""
+=== USER PROFILE ===
+Rank: {rank}
+Preferred Roles: {', '.join(preferred_roles) if preferred_roles else 'None set'}
+Champion Pool: {len(champion_pool)} champions
+"""
+            if champion_pool:
+                pool_list = []
+                for champ in champion_pool[:10]:  # Show max 10
+                    styles = ', '.join(champ.get('playstyles', [])) if champ.get('playstyles') else 'No styles'
+                    pool_list.append(f"{champ['champion']} ({champ['role']}, {styles})")
+                user_context += f"├─ Pool: {'; '.join(pool_list)}\n"
+
         return f"""You are a professional League of Legends draft analyst. Provide continuous commentary on this draft:
 
 === DRAFT STATE ===
@@ -114,7 +134,7 @@ Blue Team:
 Red Team:
 ├─ Bans: {', '.join(red_bans) if red_bans else 'None yet'}
 └─ Picks: {', '.join(red_picks) if red_picks else 'None yet'}
-
+{user_context}
 === ANALYSIS TASK ===
 {focus}
 
@@ -122,7 +142,7 @@ Provide:
 1. Which team has the advantage and why
 2. Key strengths of each composition
 3. Win conditions for both teams
-4. Strategic recommendations for next picks
+4. Strategic recommendations for next picks{' (PRIORITIZE champions from user pool if suitable)' if user_preferences and user_preferences.get('champion_pool') else ''}
 
 Keep response concise (3-4 sentences)."""
     
@@ -154,14 +174,21 @@ Keep response concise (3-4 sentences)."""
         
         return ""
     
-    def _rule_based_analysis(self, draft_state: Dict) -> Dict:
-        """Simple rule-based analysis."""
+    def _rule_based_analysis(self, draft_state: Dict, user_preferences: Optional[Dict] = None) -> Dict:
+        """Simple rule-based analysis with user context."""
         phase = draft_state.get('phase', 'BAN')
         rules = self.rules.get(phase, ["Analyzing draft..."])
-        
+
         import random
         analysis = random.choice(rules)
-        
+
+        # Add user-specific suggestion if champion pool exists
+        if user_preferences and user_preferences.get('champion_pool'):
+            pool = user_preferences['champion_pool']
+            if pool:
+                champ = random.choice(pool)
+                analysis += f" Consider picking {champ['champion']} from your pool for {champ['role']}."
+
         return {
             "analysis": analysis,
             "source": "rule-based",

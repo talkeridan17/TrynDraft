@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime, timedelta
 from typing import List
 
@@ -107,50 +108,82 @@ async def get_user_champion_pool(
     ).all()
     return champion_pool
 
-@router.post("/me/champion-pool")
+@router.post("/me/champion-pool", response_model=schemas.UserChampionPoolResponse)
 async def add_to_champion_pool(
     champion_data: schemas.UserChampionPoolCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Add champion to user's pool."""
-    # Check if champion already in pool
+    # Check if champion already in pool (unique constraint per user)
     existing = db.query(models.UserChampionPool).filter(
         models.UserChampionPool.user_id == current_user.id,
         models.UserChampionPool.champion_name == champion_data.champion_name
     ).first()
-    
+
     if existing:
-        # Update existing entry
-        for field, value in champion_data.dict(exclude_unset=True).items():
-            setattr(existing, field, value)
-        existing.updated_at = datetime.utcnow()
+        # Update playstyles for existing entry
+        existing.playstyles = champion_data.playstyles
+        db.commit()
+        db.refresh(existing)
+        return existing
     else:
         # Create new entry
         db_champion = models.UserChampionPool(
             user_id=current_user.id,
-            **champion_data.dict()
+            champion_name=champion_data.champion_name,
+            playstyles=champion_data.playstyles or []
         )
         db.add(db_champion)
-    
-    db.commit()
-    return {"message": "Champion pool updated"}
+        db.commit()
+        db.refresh(db_champion)
+        return db_champion
 
-@router.delete("/me/champion-pool/{champion_name}")
-async def remove_from_champion_pool(
-    champion_name: str,
+@router.put("/me/champion-pool/{champion_id}", response_model=schemas.UserChampionPoolResponse)
+async def update_champion_pool_entry(
+    champion_id: str,
+    update_data: schemas.UserChampionPoolUpdate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Remove champion from user's pool."""
+    """Update playstyles and proficiency for a champion in user's pool."""
     champion = db.query(models.UserChampionPool).filter(
-        models.UserChampionPool.user_id == current_user.id,
-        models.UserChampionPool.champion_name == champion_name
+        models.UserChampionPool.id == champion_id,
+        models.UserChampionPool.user_id == current_user.id
     ).first()
-    
+
     if not champion:
         raise HTTPException(status_code=404, detail="Champion not found in pool")
-    
+
+    if update_data.playstyles is not None:
+        champion.playstyles = update_data.playstyles
+
+    if update_data.proficiency is not None:
+        # Validate proficiency is between 0-5
+        if 0 <= update_data.proficiency <= 5:
+            champion.proficiency = update_data.proficiency
+        else:
+            raise HTTPException(status_code=400, detail="Proficiency must be between 0 and 5")
+
+    db.commit()
+    db.refresh(champion)
+    return champion
+
+@router.delete("/me/champion-pool/{champion_id}")
+async def remove_from_champion_pool(
+    champion_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Remove champion from user's pool by ID."""
+    champion = db.query(models.UserChampionPool).filter(
+        models.UserChampionPool.id == champion_id,
+        models.UserChampionPool.user_id == current_user.id
+    ).first()
+
+    if not champion:
+        raise HTTPException(status_code=404, detail="Champion not found in pool")
+
     db.delete(champion)
     db.commit()
     return {"message": "Champion removed from pool"}
@@ -168,14 +201,34 @@ async def get_user_drafts(
     ).order_by(models.Draft.created_at.desc()).offset(skip).limit(limit).all()
     return drafts
 
-@router.post("/me/preferences")
+@router.put("/me/preferences")
 async def update_preferences(
-    preferences: dict,
+    preferences: schemas.UserPreferencesUpdate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update user preferences."""
-    current_user.preferences = {**current_user.preferences, **preferences}
+    """Update user preferences (preferred roles, rank, and profile picture)."""
+    current_prefs = current_user.preferences or {}
+
+    # Update only provided fields
+    if preferences.preferred_roles is not None:
+        current_prefs["preferred_roles"] = preferences.preferred_roles
+    if preferences.rank is not None:
+        current_prefs["rank"] = preferences.rank
+    if preferences.profile_picture is not None:
+        current_prefs["profile_picture"] = preferences.profile_picture
+
+    current_user.preferences = current_prefs
+    # CRITICAL: Flag the JSON column as modified so SQLAlchemy detects the change
+    flag_modified(current_user, "preferences")
     current_user.updated_at = datetime.utcnow()
     db.commit()
-    return {"message": "Preferences updated"}
+    db.refresh(current_user)
+    return {"message": "Preferences updated", "preferences": current_user.preferences}
+
+@router.get("/me/preferences")
+async def get_preferences(
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get user preferences."""
+    return current_user.preferences or {}

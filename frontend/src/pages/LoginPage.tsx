@@ -33,7 +33,15 @@ export const LoginPage: React.FC = () => {
         navigate('/draft');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'An error occurred');
+      // Handle validation errors (422) which come as an array
+      const errorData = err.response?.data;
+      if (errorData?.detail && Array.isArray(errorData.detail)) {
+        // Extract validation error messages
+        const messages = errorData.detail.map((e: any) => e.msg || e.message).join('. ');
+        setError(messages);
+      } else {
+        setError(errorData?.detail || 'An error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -153,10 +161,14 @@ export const LoginPage: React.FC = () => {
                   value={formData.password}
                   onChange={handleChange}
                   required
+                  minLength={8}
                   className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
                   placeholder="••••••••"
                 />
               </div>
+              {!isLogin && (
+                <p className="text-xs text-gray-500 mt-1">Min 8 characters</p>
+              )}
             </div>
 
             {!isLogin && (

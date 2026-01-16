@@ -14,20 +14,8 @@ class UserCreate(UserBase):
 
     @validator('password')
     def password_strength(cls, v):
-        if len(v) < 12:
-            raise ValueError('Password must be at least 12 characters')
-
-        # Check for complexity requirements
-        has_upper = any(c.isupper() for c in v)
-        has_lower = any(c.islower() for c in v)
-        has_digit = any(c.isdigit() for c in v)
-        has_special = any(c in '!@#$%^&*(),.?":{}|<>' for c in v)
-
-        if not (has_upper and has_lower and has_digit and has_special):
-            raise ValueError(
-                'Password must contain at least one uppercase letter, '
-                'one lowercase letter, one digit, and one special character'
-            )
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
         return v
 
 class UserUpdate(BaseModel):
@@ -41,31 +29,42 @@ class UserResponse(UserBase):
     id: str
     is_active: bool
     is_premium: bool
+    preferences: Optional[dict] = {}
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 # Champion pool schemas
 class UserChampionPoolBase(BaseModel):
     champion_name: str
-    role: Optional[str] = None
-    proficiency: Optional[int] = 1
-    is_favorite: Optional[bool] = False
-    games_played: Optional[int] = 0
-    win_rate: Optional[int] = None
+    playstyles: Optional[List[str]] = []  # ["MAGE", "ASSASSIN", "BRUISER", etc.]
+    proficiency: Optional[int] = 0  # 0-5 star rating
 
 class UserChampionPoolCreate(UserChampionPoolBase):
     pass
 
-class UserChampionPoolResponse(UserChampionPoolBase):
+class UserChampionPoolUpdate(BaseModel):
+    playstyles: Optional[List[str]] = None
+    proficiency: Optional[int] = None
+
+class UserChampionPoolResponse(BaseModel):
     id: str
     user_id: str
+    champion_name: str
+    playstyles: Optional[List[str]] = []
+    proficiency: Optional[int] = 0
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
+# User preferences schema
+class UserPreferencesUpdate(BaseModel):
+    preferred_roles: Optional[List[str]] = None  # ["TOP", "MID", etc.]
+    rank: Optional[str] = None  # "IRON", "BRONZE", "SILVER", etc.
+    profile_picture: Optional[str] = None  # Champion name for profile picture
 
 # Token schemas
 class Token(BaseModel):

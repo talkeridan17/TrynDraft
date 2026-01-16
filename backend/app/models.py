@@ -60,17 +60,20 @@ class Draft(Base):
 
 class UserChampionPool(Base):
     __tablename__ = "user_champion_pool"
-    
+
     id = Column(String, primary_key=True, default=generate_uuid)
-    user_id = Column(String, ForeignKey("users.id"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     champion_name = Column(String, nullable=False)
-    role = Column(String)
-    proficiency = Column(Integer, default=1)  # 1-5 scale
-    is_favorite = Column(Boolean, default=False)
-    games_played = Column(Integer, default=0)
-    win_rate = Column(Integer)  # Percentage
-    
+    playstyles = Column(JSON, default=[])  # Optional: ["MAGE", "ASSASSIN", "BRUISER", etc.]
+    proficiency = Column(Integer, default=0)  # 0-5 star rating
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
     user = relationship("User", back_populates="champion_pool")
+
+    # Ensure unique champion per user (removed role from constraint)
+    __table_args__ = (
+        Index('ix_user_champion_pool_unique_v2', 'user_id', 'champion_name', unique=True),
+    )
 
 class Champion(Base):
     __tablename__ = "champions"

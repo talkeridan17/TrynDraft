@@ -23,9 +23,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Only redirect on 401 if it's NOT from champion-pool or if we're already on a protected page
     if (error.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      window.location.href = '/login';
+      const url = error.config?.url || '';
+      const isChampionPoolRequest = url.includes('/champion-pool');
+
+      // Don't redirect to login if:
+      // 1. It's a champion pool request (guest users can view draft without pool)
+      // 2. We're already on the login page
+      if (!isChampionPoolRequest && window.location.pathname !== '/login') {
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -284,18 +293,29 @@ export const authService = {
     return response.data;
   },
 
-  addToChampionPool: async (championData: { champion_name: string; role: string; proficiency?: number }) => {
+  addToChampionPool: async (championData: { champion_name: string; role?: string; playstyles?: string[] }) => {
     const response = await api.post('/users/me/champion-pool', championData);
     return response.data;
   },
 
-  removeFromChampionPool: async (championName: string) => {
-    const response = await api.delete(`/users/me/champion-pool/${championName}`);
+  updateChampionPool: async (championId: string, updateData: { playstyles?: string[]; proficiency?: number }) => {
+    const response = await api.put(`/users/me/champion-pool/${championId}`, updateData);
     return response.data;
   },
 
-  updateChampionProficiency: async (championName: string, proficiency: number) => {
-    const response = await api.put(`/users/me/champion-pool/${championName}`, { proficiency });
+  removeFromChampionPool: async (championId: string) => {
+    const response = await api.delete(`/users/me/champion-pool/${championId}`);
+    return response.data;
+  },
+
+  // User Preferences
+  getPreferences: async () => {
+    const response = await api.get('/users/me/preferences');
+    return response.data;
+  },
+
+  updatePreferences: async (preferences: { preferred_roles?: string[]; rank?: string; profile_picture?: string }) => {
+    const response = await api.put('/users/me/preferences', preferences);
     return response.data;
   }
 };
