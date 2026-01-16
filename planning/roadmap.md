@@ -7,7 +7,7 @@
 - Guest access only
 - Static color scheme
 
-## Phase 2: Enhanced Features (v1.5)
+## Phase 2: Enhanced Features (v1.5) HERE RIGHT NOW
 
 - All game modes support
 - Color schemes per mode

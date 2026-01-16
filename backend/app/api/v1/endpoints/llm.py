@@ -19,11 +19,29 @@ async def analyze_draft(
 ):
     """Generate LLM analysis for current draft state."""
     try:
-        analysis = await llm_service.generate_draft_analysis(
+        # Fetch user's champion pool and preferences
+        from app import models
+        champion_pool = db.query(models.UserChampionPool).filter(
+            models.UserChampionPool.user_id == current_user.id
+        ).all()
+
+        user_preferences = {
+            "champion_pool": [
+                {
+                    "champion": cp.champion_name,
+                    "role": cp.role,
+                    "playstyles": cp.playstyles or []
+                } for cp in champion_pool
+            ],
+            "preferred_roles": current_user.preferences.get("preferred_roles", []) if current_user.preferences else [],
+            "rank": current_user.preferences.get("rank", "PLATINUM") if current_user.preferences else "PLATINUM"
+        }
+
+        analysis = await llm_service.analyze_draft(
             request.draft_state,
-            request.top_recommendation
+            user_preferences
         )
-        
+
         return {
             "analysis": analysis.get("analysis", "Analysis not available"),
             "top_recommendation": request.top_recommendation,

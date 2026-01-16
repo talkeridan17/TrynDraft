@@ -4,10 +4,18 @@ import { useDraftStore } from '../store/useDraftStore';
 import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
 import { Search, X, Sword, Settings } from 'lucide-react';
 import { RoleIcon } from '../components/common/RoleIcon';
+import { authService } from '../utils/api';
 import type { RoleType } from '../store/useDraftStore';
 
 const ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
 const RANKS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
+
+interface ChampionPoolItem {
+  id: string;
+  champion_name: string;
+  role: string;
+  playstyles?: string[];
+}
 
 export const DraftPage: React.FC = () => {
   const {
@@ -34,10 +42,44 @@ export const DraftPage: React.FC = () => {
   const [hoveredSlot, setHoveredSlot] = useState<{side: 'BLUE' | 'RED', index: number, isBan: boolean} | null>(null);
   const [draggedChampion, setDraggedChampion] = useState<string | null>(null);
 
+  // Champion pool state
+  const [championPoolNames, setChampionPoolNames] = useState<Set<string>>(new Set());
+
   // Track if phase change was manual (to prevent auto-switch interference)
   const manualPhaseChangeRef = useRef(false);
 
   const currentPicker = getCurrentPicker();
+
+  // Define loadUserPreferences first so it can be used in useEffect and reset button
+  const loadUserPreferences = useCallback(async () => {
+    try {
+      const user = await authService.getCurrentUser();
+      if (user?.preferences) {
+        // Auto-populate rank from user preferences
+        if (user.preferences.rank) {
+          setSettings({ elo: user.preferences.rank });
+        }
+        // Auto-populate role from first preferred role
+        if (user.preferences.preferred_roles && user.preferences.preferred_roles.length > 0) {
+          setSettings({ role: user.preferences.preferred_roles[0] as RoleType });
+        }
+      }
+    } catch (error) {
+      // User might not be logged in, that's okay
+      console.log('Could not load user preferences');
+    }
+  }, [setSettings]);
+
+  const loadChampionPool = useCallback(async () => {
+    try {
+      const pool = await authService.getChampionPool();
+      // Create a Set of champion names for quick lookup
+      setChampionPoolNames(new Set(pool.map((c: ChampionPoolItem) => c.champion_name)));
+    } catch (error) {
+      console.error('Failed to load champion pool:', error);
+      // User might not be logged in, that's okay
+    }
+  }, []);
 
   useEffect(() => {
     if (allChampions.length === 0) {
@@ -48,7 +90,11 @@ export const DraftPage: React.FC = () => {
       setLatestPatch(version);
       setSettings({ patch: version });
     });
-  }, []);
+
+    // Load user's champion pool and preferences
+    loadChampionPool();
+    loadUserPreferences();
+  }, [loadChampionPool, loadUserPreferences]);
 
   // Auto-switch phases based on draft state
   useEffect(() => {
@@ -136,30 +182,50 @@ export const DraftPage: React.FC = () => {
     }
   }, [shouldAdvanceCursor, findNextUnfilledSlot]);
 
+  // Helper to check if draft is complete
+  const isDraftComplete = useCallback(() => {
+    const totalBans = bans.blue.filter(b => b).length + bans.red.filter(b => b).length;
+    const totalPicks = picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length;
+    return totalBans === 10 && totalPicks === 10;
+  }, [bans, picks]);
+
   // Keyboard handler for clearing slots and advancing cursor
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Enter key advances cursor
+      // Enter key advances cursor or completes draft
       if (e.key === 'Enter') {
         e.preventDefault();
-        findNextUnfilledSlot();
+        // If draft is complete, switch to COMPLETE phase
+        if (isDraftComplete()) {
+          manualPhaseChangeRef.current = true;
+          setDraftPhase('COMPLETE');
+          setCurrentTurn(-1);
+        } else {
+          findNextUnfilledSlot();
+        }
         return;
       }
 
-      // Backspace/Delete clears hovered slot
-      if ((e.key === 'Backspace' || e.key === 'Delete') && hoveredSlot) {
+      // Backspace/Delete clears hovered slot - but only if not in COMPLETE phase
+      if ((e.key === 'Backspace' || e.key === 'Delete') && hoveredSlot && draftPhase !== 'COMPLETE') {
         e.preventDefault();
         if (hoveredSlot.isBan) {
           // Clear ban
           const banList = hoveredSlot.side === 'BLUE' ? bans.blue : bans.red;
           if (banList[hoveredSlot.index]) {
             addBan('', hoveredSlot.side, hoveredSlot.index);
+            // Update phase to BAN since we're removing a ban
+            manualPhaseChangeRef.current = true;
+            setDraftPhase('BAN');
           }
         } else {
           // Clear pick
           const pickList = hoveredSlot.side === 'BLUE' ? picks.blue : picks.red;
           if (pickList[hoveredSlot.index]?.champion) {
             addPick('', pickList[hoveredSlot.index].role, hoveredSlot.side, hoveredSlot.index);
+            // Update phase to PICK since we're removing a pick
+            manualPhaseChangeRef.current = true;
+            setDraftPhase('PICK');
           }
         }
       }
@@ -167,7 +233,7 @@ export const DraftPage: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hoveredSlot, picks, bans, findNextUnfilledSlot, addBan, addPick]);
+  }, [hoveredSlot, picks, bans, findNextUnfilledSlot, addBan, addPick, draftPhase, isDraftComplete, setCurrentTurn]);
 
   // Remove banned and picked champions from available list
   const allBannedPicked = [...bans.blue, ...bans.red, ...picks.blue.map(p => p.champion).filter(Boolean), ...picks.red.map(p => p.champion).filter(Boolean)];
@@ -199,8 +265,8 @@ export const DraftPage: React.FC = () => {
   };
 
   const handleSlotClick = (side: 'BLUE' | 'RED', position: number, isBan: boolean) => {
-    // If draft is complete, switch back to the appropriate phase when clicking a slot
-    if (draftPhase === 'COMPLETE') {
+    // If draft is complete (all slots filled), always update phase based on slot type clicked
+    if (isDraftComplete()) {
       manualPhaseChangeRef.current = true;
       setDraftPhase(isBan ? 'BAN' : 'PICK');
     }
@@ -253,13 +319,17 @@ export const DraftPage: React.FC = () => {
     const sourceBan = banList[draggedIndex] || '';
     const targetBan = banList[targetIndex] || '';
 
-    // Swap bans
+    // Swap bans - don't change cursor position, just swap the champions
     addBan(sourceBan, side, targetIndex);
     addBan(targetBan, side, draggedIndex);
 
+    // Clear drag state immediately
     setDraggedIndex(null);
     setDraggedSide(null);
     setDraggedIsBan(false);
+    setDraggedChampion(null);
+    // Clear hovered slot to prevent stale state issues
+    setHoveredSlot(null);
   };
 
   // Handler for pick slot drops
@@ -305,8 +375,13 @@ export const DraftPage: React.FC = () => {
       addPick(targetChampion, sourceRole, side, draggedIndex);
     }
 
+    // Clear drag state immediately
     setDraggedIndex(null);
     setDraggedSide(null);
+    setDraggedIsBan(false);
+    setDraggedChampion(null);
+    // Clear hovered slot to prevent stale state issues
+    setHoveredSlot(null);
   };
 
   const handleDragEnd = () => {
@@ -314,6 +389,8 @@ export const DraftPage: React.FC = () => {
     setDraggedSide(null);
     setDraggedIsBan(false);
     setDraggedChampion(null);
+    // Clear hovered slot to prevent issues with stale state
+    setHoveredSlot(null);
   };
 
   // Handle dragging back to center (picker or LLM box) to clear slot
@@ -332,6 +409,9 @@ export const DraftPage: React.FC = () => {
           } else {
             setCurrentTurn(5 + draggedIndex); // Enemy's bans are turns 5-9
           }
+          // Update phase to BAN since we're now missing a ban
+          manualPhaseChangeRef.current = true;
+          setDraftPhase('BAN');
         }
       } else {
         // Clear pick
@@ -346,18 +426,22 @@ export const DraftPage: React.FC = () => {
           ];
           const turnIndex = pickOrder.findIndex(p => p.side === draggedSide && p.pos === draggedIndex);
           if (turnIndex !== -1) setCurrentTurn(10 + turnIndex);
+          // Update phase to PICK since we're now missing a pick
+          manualPhaseChangeRef.current = true;
+          setDraftPhase('PICK');
         }
       }
     }
     setDraggedIndex(null);
     setDraggedSide(null);
     setDraggedIsBan(false);
+    setDraggedChampion(null);
   };
 
   const phaseColorClass = draftPhase === 'BAN' ? 'border-red-500/30' : draftPhase === 'PICK' ? 'border-blue-500/30' : 'border-green-500/30';
 
   return (
-    <div className="h-screen w-screen bg-black flex flex-col overflow-hidden">
+    <div className="h-screen w-screen bg-black flex flex-col overflow-hidden select-none">
       {/* Top Header */}
       <header className="h-20 bg-black/90 backdrop-blur border-b border-gray-900 flex items-center justify-between px-8">
         <Link to="/draft" className="flex items-center gap-2">
@@ -415,7 +499,7 @@ export const DraftPage: React.FC = () => {
             </button>
           </div>
 
-          <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
+          <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); loadUserPreferences(); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
         </div>
 
         <Link to="/profile" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white">
@@ -586,20 +670,27 @@ export const DraftPage: React.FC = () => {
                 onDragOver={handleDragOver}
                 onDrop={handleDropOnCenter}>
                 <div className="grid grid-cols-8 gap-2 pr-1">
-                  {filteredChamps.map(champ => (
-                    <button
-                      key={champ}
-                      onClick={() => handleChampionSelect(champ)}
-                      draggable={true}
-                      onDragStart={() => setDraggedChampion(champ)}
-                      onDragEnd={handleDragEnd}
-                      className="aspect-square rounded overflow-hidden relative group hover:scale-105 hover:z-10 transition-transform border border-gray-900 hover:border-amber-500 cursor-grab active:cursor-grabbing">
-                      <img src={getChampionImageUrl(champ, latestPatch)} alt={champ} className="w-full h-full object-cover pointer-events-none" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-1 pointer-events-none">
-                        <span className="text-white font-bold text-[10px] uppercase tracking-wide">{champ}</span>
-                      </div>
-                    </button>
-                  ))}
+                  {filteredChamps.map(champ => {
+                    const isInPool = championPoolNames.has(champ);
+                    return (
+                      <button
+                        key={champ}
+                        onClick={() => handleChampionSelect(champ)}
+                        draggable={true}
+                        onDragStart={() => setDraggedChampion(champ)}
+                        onDragEnd={handleDragEnd}
+                        className={`aspect-square rounded overflow-hidden relative group hover:scale-105 hover:z-10 transition-transform cursor-grab active:cursor-grabbing ${
+                          isInPool
+                            ? 'border-2 border-cyan-400 shadow-lg shadow-cyan-400/50 ring-1 ring-cyan-400/30'
+                            : 'border border-gray-900 hover:border-amber-500'
+                        }`}>
+                        <img src={getChampionImageUrl(champ, latestPatch)} alt={champ} className="w-full h-full object-cover pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-1 pointer-events-none">
+                          <span className="text-white font-bold text-[10px] uppercase tracking-wide">{champ}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
