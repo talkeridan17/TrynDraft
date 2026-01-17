@@ -1,29 +1,40 @@
-# Development Roadmap
+# TrynDraft Development Roadmap
 
-## Phase 1: MVP (v1.0)
+## Phase 1: Core Draft Interface (COMPLETED)
+- [x] Draft UI with pick/ban slots
+- [x] Champion picker with search
+- [x] Phase-based system (BAN/PICK/COMPLETE)
+- [x] Drag-and-drop functionality
+- [x] Role and rank selection
 
-- Basic draft tracking for one game mode
-- Simple champion recommendations
-- Guest access only
-- Static color scheme
+## Phase 2: User Management (COMPLETED)
+- [x] User registration and login
+- [x] Profile page with settings
+- [x] Champion pool management
+- [x] Preferences (role, rank, profile picture)
+- [x] Guest mode
 
-## Phase 2: Enhanced Features (v1.5) HERE RIGHT NOW
+## Phase 3: AI Integration (IN PROGRESS)
+- [ ] LLM analysis refinement
+- [ ] Neural network recommendation engine
+- [ ] Champion statistics integration
+- [ ] Matchup data analysis
 
-- All game modes support
-- Color schemes per mode
-- User accounts and preferences
-- Basic team composition analysis
+## Phase 4: Data Collection
+- [ ] Riot API integration for match data
+- [ ] Champion win rates, pick rates, ban rates
+- [ ] Matchup statistics
+- [ ] Professional draft data
 
-## Phase 3: Advanced Features (v2.0)
+## Phase 5: Production Deployment
+- [ ] CI/CD pipeline
+- [ ] Cloud deployment (AWS/Railway)
+- [ ] Monitoring and logging
+- [ ] Performance optimization
+- [ ] Beta testing
 
-- Riot account integration
-- Live match data access
-- Opponent history lookup
-- Advanced statistics and metrics
-
-## Phase 4: Polish & Scale (v2.5+)
-
-- Beehive visual design implementation
-- Performance optimization
-- Mobile responsiveness
-- Community features
+## Phase 6: Advanced Features
+- [ ] Draft history
+- [ ] Draft sharing
+- [ ] Multi-user live drafts
+- [ ] Mobile responsive design

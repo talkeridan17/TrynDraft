@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDraftStore } from '../store/useDraftStore';
 import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
-import { Search, X, Sword, Settings } from 'lucide-react';
+import { Search, X, Settings } from 'lucide-react';
 import { RoleIcon } from '../components/common/RoleIcon';
 import { authService } from '../utils/api';
 import type { RoleType } from '../store/useDraftStore';
@@ -445,7 +445,7 @@ export const DraftPage: React.FC = () => {
       {/* Top Header */}
       <header className="h-20 bg-black/90 backdrop-blur border-b border-gray-900 flex items-center justify-between px-8">
         <Link to="/draft" className="flex items-center gap-2">
-          <Sword size={22} className="text-amber-500" />
+          <img src="/logo.svg" alt="TrynDraft" className="w-8 h-8" />
           <span className="text-white font-bold text-base">TrynDraft</span>
         </Link>
 

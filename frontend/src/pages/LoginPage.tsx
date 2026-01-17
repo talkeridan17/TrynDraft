@@ -1,7 +1,7 @@
 // frontend/src/pages/LoginPage.tsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sword, Mail, Lock, User, Gamepad2 } from 'lucide-react';
+import { Mail, Lock, User, Gamepad2 } from 'lucide-react';
 import { authService } from '../utils/api';
 
 export const LoginPage: React.FC = () => {
@@ -59,8 +59,8 @@ export const LoginPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-600 to-secondary-600 rounded-2xl mb-4">
-            <Sword size={32} className="text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-900 border border-gray-700 rounded-2xl mb-4">
+            <img src="/logo.svg" alt="TrynDraft" className="w-12 h-12" />
           </div>
           <h1 className="text-3xl font-bold text-white">TrynDraft</h1>
           <p className="text-gray-400 mt-2">Drafting Assistant for League of Legends</p>
