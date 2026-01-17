@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Sword blade -->
+  <path d="M32 4L36 8L36 40L32 44L28 40L28 8L32 4Z" fill="#F59E0B"/>
+  <path d="M32 4L36 8L36 40L32 44V4Z" fill="#D97706"/>
+
+  <!-- Blade highlight -->
+  <path d="M30 10L32 8L32 38L30 40V10Z" fill="#FCD34D"/>
+
+  <!-- Cross guard -->
+  <rect x="20" y="40" width="24" height="6" rx="1" fill="#6B7280"/>
+  <rect x="20" y="40" width="24" height="3" rx="1" fill="#9CA3AF"/>
+
+  <!-- Handle -->
+  <rect x="29" y="46" width="6" height="12" rx="1" fill="#78350F"/>
+  <rect x="29" y="46" width="3" height="12" rx="1" fill="#92400E"/>
+
+  <!-- Pommel -->
+  <circle cx="32" cy="60" r="4" fill="#F59E0B"/>
+  <circle cx="31" cy="59" r="2" fill="#FCD34D"/>
+</svg>

@@ -62,8 +62,8 @@ export const Header: React.FC = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/draft" className="flex items-center space-x-3 group">
-            <div className="p-2 bg-gray-900 border border-gray-800 rounded-lg group-hover:border-amber-500 transition-all">
-              <Sword size={20} className="text-amber-500" />
+            <div className="p-1 bg-gray-900 border border-gray-800 rounded-lg group-hover:border-amber-500 transition-all">
+              <img src="/logo.svg" alt="TrynDraft" className="w-8 h-8" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">TrynDraft</h1>
