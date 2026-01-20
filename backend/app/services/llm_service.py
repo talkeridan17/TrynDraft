@@ -11,6 +11,10 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from bs4 import BeautifulSoup
 import httpx
+from dotenv import load_dotenv
+
+# Ensure .env is loaded before reading environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +36,10 @@ class LLMService:
     """
     
     def __init__(self):
-        # HuggingFace for Mistral 7B
+        # HuggingFace - using OpenAI-compatible router endpoint
         self.hf_token = os.getenv("HF_TOKEN")  # Get from huggingface.co
-        self.hf_api = "https://api-inference.huggingface.co"
-        self.model_name = "mistralai/Mistral-7B-Instruct-v0.2"
+        self.hf_api = "https://router.huggingface.co/v1"  # New HF router (OpenAI-compatible)
+        self.model_name = "Qwen/Qwen2.5-72B-Instruct"  # Free, high-quality model
         
         # Fine-tuned model ID (set after fine-tuning)
         self.fine_tuned_model_id = os.getenv("FINE_TUNED_MODEL_ID")
@@ -73,7 +77,7 @@ class LLMService:
                     return {
                         "analysis": analysis,
                         "source": "huggingface",
-                        "model": "Mistral-7B"
+                        "model": "Qwen2.5-72B"
                     }
             except Exception as e:
                 logger.error(f"HuggingFace error: {e}")
@@ -82,96 +86,149 @@ class LLMService:
         return self._rule_based_analysis(draft_state, user_preferences)
 
     def _build_draft_prompt(self, draft_state: Dict, user_preferences: Optional[Dict] = None) -> str:
-        """Build comprehensive prompt for continuous draft analysis with user context."""
+        """Build user-centric prompt focusing on lane matchups and champion pool."""
         blue_bans = draft_state.get('bans', {}).get('blue', [])
         red_bans = draft_state.get('bans', {}).get('red', [])
-        blue_picks = self._extract_champs(draft_state.get('picks', {}).get('blue', []))
-        red_picks = self._extract_champs(draft_state.get('picks', {}).get('red', []))
+        blue_picks = self._extract_picks_with_roles(draft_state.get('picks', {}).get('blue', []))
+        red_picks = self._extract_picks_with_roles(draft_state.get('picks', {}).get('red', []))
         phase = draft_state.get('phase', 'BAN')
-        turn = draft_state.get('turn', 0)
+        side = draft_state.get('side', 'BLUE')
+        role = draft_state.get('role', 'MID')
+        is_user_turn = draft_state.get('is_user_turn', False)
 
-        # Build contextual prompt based on draft progress
-        if turn < 10:
-            stage = "Early Draft (Ban Phase)"
-            focus = "Analyze ban priorities and denied strategies"
-        elif turn < 16:
-            stage = "Mid Draft (Core Picks)"
-            focus = "Evaluate team compositions and win conditions"
+        # NN recommendations and user pool from analysis endpoint
+        nn_recommendations = draft_state.get('nn_recommendations', [])
+        user_pool = draft_state.get('user_pool', [])
+
+        # Determine user's team and enemy
+        user_team_picks = blue_picks if side == 'BLUE' else red_picks
+        enemy_team_picks = red_picks if side == 'BLUE' else blue_picks
+        all_bans = [b for b in (blue_bans + red_bans) if b]
+
+        # Find enemy laner for this role
+        enemy_laner = None
+        for pick in enemy_team_picks:
+            if pick.get('role', '').upper() == role.upper():
+                enemy_laner = pick.get('champion')
+                break
+
+        # Build user-centric prompt
+        if phase == 'BAN':
+            # Ban phase - only shown for user's specific ban turn
+            pool_text = ""
+            if user_pool:
+                pool_text = f"Your {role} champion pool: {', '.join(user_pool[:4])}"
+
+            lane_threats = nn_recommendations[:5] if nn_recommendations else []
+
+            return f"""You're advising a {role} player on what to BAN.
+
+{pool_text}
+Already banned: {', '.join(all_bans) if all_bans else 'None'}
+Top {role} lane threats: {', '.join(lane_threats[:3]) if lane_threats else 'Check meta'}
+
+IMPORTANT: Only suggest {role} lane champions to ban. Banning an assassin when you play jungle is pointless.
+
+Give ONE ban suggestion in 1-2 sentences.
+Focus on: What {role} champion would counter your pool or dominate lane?
+
+Format: "Ban [champion] - [reason focused on {role} lane]" """
+
         else:
-            stage = "Late Draft (Final Picks)"
-            focus = "Assess team strengths, weaknesses, and gameplan"
+            # Pick phase
+            team_champs = [p['champion'] for p in user_team_picks if p.get('champion')]
+            enemy_champs = [p['champion'] for p in enemy_team_picks if p.get('champion')]
 
-        # Build user context section
-        user_context = ""
-        if user_preferences:
-            champion_pool = user_preferences.get("champion_pool", [])
-            preferred_roles = user_preferences.get("preferred_roles", [])
-            rank = user_preferences.get("rank", "PLATINUM")
+            if is_user_turn:
+                # USER'S PICK - Detailed suggestion
+                pool_in_nn = [c for c in user_pool if c in nn_recommendations] if user_pool else []
 
-            user_context = f"""
-=== USER PROFILE ===
-Rank: {rank}
-Preferred Roles: {', '.join(preferred_roles) if preferred_roles else 'None set'}
-Champion Pool: {len(champion_pool)} champions
-"""
-            if champion_pool:
-                pool_list = []
-                for champ in champion_pool[:10]:  # Show max 10
-                    styles = ', '.join(champ.get('playstyles', [])) if champ.get('playstyles') else 'No styles'
-                    pool_list.append(f"{champ['champion']} ({champ['role']}, {styles})")
-                user_context += f"├─ Pool: {'; '.join(pool_list)}\n"
+                matchup_text = ""
+                if enemy_laner:
+                    matchup_text = f"Enemy {role}: {enemy_laner} - you need a counter or safe pick"
+                elif enemy_champs:
+                    matchup_text = f"Enemy team so far: {', '.join(enemy_champs)}"
+                else:
+                    matchup_text = "Enemy hasn't picked yet - consider blind-pick strength"
 
-        return f"""You are a professional League of Legends draft analyst. Provide continuous commentary on this draft:
+                recommendation_text = ""
+                if pool_in_nn:
+                    recommendation_text = f"Best from your pool: {', '.join(pool_in_nn[:3])}"
+                elif user_pool:
+                    recommendation_text = f"Your pool: {', '.join(user_pool[:3])}"
+                if nn_recommendations:
+                    recommendation_text += f"\nMeta picks for {role}: {', '.join(nn_recommendations[:3])}"
 
-=== DRAFT STATE ===
-Stage: {stage}
-Phase: {phase} | Turn: {turn}/20
+                team_text = f"Your team: {', '.join(team_champs)}" if team_champs else "First pick"
 
-Blue Team:
-├─ Bans: {', '.join(blue_bans) if blue_bans else 'None yet'}
-└─ Picks: {', '.join(blue_picks) if blue_picks else 'None yet'}
+                return f"""You're advising a {role} player on what to PICK.
 
-Red Team:
-├─ Bans: {', '.join(red_bans) if red_bans else 'None yet'}
-└─ Picks: {', '.join(red_picks) if red_picks else 'None yet'}
-{user_context}
-=== ANALYSIS TASK ===
-{focus}
+{team_text}
+{matchup_text}
+{recommendation_text}
 
-Provide:
-1. Which team has the advantage and why
-2. Key strengths of each composition
-3. Win conditions for both teams
-4. Strategic recommendations for next picks{' (PRIORITIZE champions from user pool if suitable)' if user_preferences and user_preferences.get('champion_pool') else ''}
+Give ONE pick suggestion in 1-2 sentences.
+Prioritize: 1) Counter enemy {role} if known, 2) Champion from their pool, 3) Team synergy
 
-Keep response concise (3-4 sentences)."""
+Format: "Pick [champion] - [reason focused on matchup/synergy]" """
+
+            else:
+                # TEAMMATE'S PICK - Brief assessment of what they should consider
+                last_pick = team_champs[-1] if team_champs else None
+
+                return f"""A teammate just picked or is picking. Give a BRIEF (1 sentence) assessment.
+
+Your team so far: {', '.join(team_champs) if team_champs else 'None yet'}
+Enemy team: {', '.join(enemy_champs) if enemy_champs else 'None yet'}
+
+Just note what the team still needs (tank? AP? engage?) or synergy potential. Be very brief."""
+
+    def _extract_picks_with_roles(self, picks) -> List[Dict]:
+        """Extract champion picks with their roles."""
+        result = []
+        for pick in picks:
+            if isinstance(pick, dict) and pick.get('champion'):
+                result.append({'champion': pick['champion'], 'role': pick.get('role', '')})
+            elif isinstance(pick, str) and pick:
+                result.append({'champion': pick, 'role': ''})
+        return result
     
     async def _query_huggingface(self, prompt: str) -> str:
-        """Query HuggingFace Inference API."""
+        """Query HuggingFace via OpenAI-compatible router endpoint."""
         headers = {
             "Authorization": f"Bearer {self.hf_token}",
             "Content-Type": "application/json"
         }
-        
+
+        # Use OpenAI-compatible chat completions format
         data = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": 100,
-                "temperature": 0.7
-            }
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": "You are a League of Legends draft analyst. Keep responses concise (2-4 sentences)."},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 200,
+            "temperature": 0.7
         }
-        
-        async with httpx.AsyncClient(timeout=10) as client:
+
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
-                f"{self.hf_api}/models/{self.model_name}",
+                f"{self.hf_api}/chat/completions",
                 headers=headers,
                 json=data
             )
-            
+
+            logger.info(f"HuggingFace response status: {response.status_code}")
+
             if response.status_code == 200:
                 result = response.json()
-                return result[0]['generated_text']
-        
+                # OpenAI format: choices[0].message.content
+                if "choices" in result and len(result["choices"]) > 0:
+                    return result["choices"][0]["message"]["content"]
+                return str(result)
+            else:
+                logger.warning(f"HuggingFace error: {response.status_code} - {response.text[:200]}")
+
         return ""
     
     def _rule_based_analysis(self, draft_state: Dict, user_preferences: Optional[Dict] = None) -> Dict:

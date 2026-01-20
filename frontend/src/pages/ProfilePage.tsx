@@ -70,6 +70,14 @@ export const ProfilePage: React.FC = () => {
   const loadUserData = async () => {
     try {
       setLoading(true);
+
+      // Check if we have a token first
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
       const userData = await authService.getCurrentUser();
       if (userData) {
         setUser(userData);
@@ -92,8 +100,14 @@ export const ProfilePage: React.FC = () => {
         } catch (error) {
           setChampionPool([]);
         }
+      } else {
+        // Token exists but user data couldn't be fetched - token is invalid
+        authService.logout();
+        navigate('/login');
       }
     } catch (error) {
+      // Clear invalid token and redirect
+      authService.logout();
       navigate('/login');
     } finally {
       setLoading(false);

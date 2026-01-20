@@ -1,0 +1,150 @@
+{
+  "patch": "16.1",
+  "scraped_at": "2026-01-20T21:04:43.630596+00:00",
+  "synergies": {
+    "jungle_mid": [
+      {
+        "champions": [
+          "Jayce",
+          "Katarina"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      }
+    ],
+    "jungle_adc": [
+      {
+        "champions": [
+          "Khazix",
+          "Aphelios"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Sivir"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      }
+    ],
+    "support_adc": [
+      {
+        "champions": [
+          "Thresh",
+          "Jinx"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "Lucian"
+        ],
+        "games": 8,
+        "wins": 2,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Aphelios"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Aphelios"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Seraphine",
+          "Jinx"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "Sivir"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Kaisa"
+        ],
+        "games": 5,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Aphelios"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Braum",
+          "Sivir"
+        ],
+        "games": 7,
+        "wins": 1,
+        "win_rate": 14.29
+      }
+    ],
+    "top_jungle": [],
+    "support_jungle": [
+      {
+        "champions": [
+          "Thresh",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Khazix"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Sona",
+          "Ekko"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      }
+    ]
+  }
+}

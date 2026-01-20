@@ -1,4 +1,4 @@
-# Core
+# Core Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
@@ -6,38 +6,50 @@ python-multipart==0.0.6
 # Database
 sqlalchemy==2.0.23
 alembic==1.12.1
-psycopg2-binary==2.9.9  # PostgreSQL support for production
+psycopg2-binary==2.9.9  # PostgreSQL for production
 asyncpg==0.29.0
 
 # Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
+bcrypt==4.1.2
 
-# HTTP Client
+# HTTP Clients
 httpx==0.25.1
 aiohttp==3.9.1
+requests==2.31.0  # For Riot API scraper
 
 # Web Scraping
 beautifulsoup4==4.12.2
 lxml==4.9.3
 
-# Environment
+# Environment & Configuration
 python-dotenv==1.0.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
 
-# LLM/HuggingFace
+# LLM / AI
 transformers==4.36.0
 torch==2.2.2
 sentencepiece==0.2.0
 
-# Data Processing
-pydantic==2.5.0
-pydantic-settings==2.1.0
+# Fine-tuning (optional - install separately for training)
+# pip install peft trl datasets accelerate bitsandbytes
+# For fastest training: pip install unsloth
+
+# Data Processing & ML
+numpy==1.26.2
+pandas==2.1.4  # For Riot API scraper data processing
+scikit-learn==1.3.2  # For NN training preprocessing
+
+# Scheduling (automated scraping)
+apscheduler==3.10.4
 
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
+pytest-cov==4.1.0
 
-# Development
+# Development & Linting
 black==23.11.0
-flake8==6.1.0
+ruff==0.1.6

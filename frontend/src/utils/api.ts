@@ -61,50 +61,31 @@ export const championService = {
       throw new Error('Invalid champion data format');
       
     } catch (error) {
-      console.error('Failed to fetch champions from API, falling back...', error);
-      
-      // Fallback 1: Try direct Data Dragon API with latest patch
+      console.error('Failed to fetch champions from API, trying Data Dragon directly...', error);
+
+      // Fallback: Try direct Data Dragon API with latest patch
       try {
         // First get latest version
         const versionResponse = await axios.get(
           'https://ddragon.leagueoflegends.com/api/versions.json',
-          { timeout: 5000 }
+          { timeout: 10000 }
         );
         const latestVersion = versionResponse.data[0];
 
         // Then fetch champion data
         const ddResponse = await axios.get(
           `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/data/en_US/champion.json`,
-          { timeout: 5000 }
+          { timeout: 10000 }
         );
 
         const championsData = ddResponse.data.data;
-        return Object.keys(championsData).map(id => championsData[id].name);
-        
+        const championNames = Object.keys(championsData).map(id => championsData[id].name);
+        console.log(`Loaded ${championNames.length} champions from Data Dragon`);
+        return championNames;
+
       } catch (ddError) {
-        console.error('Failed to fetch from Data Dragon too:', ddError);
-        
-        // Fallback 2: Return mock data (updated for patch 16.1.1)
-        return [
-          "Aatrox", "Ahri", "Akali", "Akshan", "Alistar", "Ambessa", "Amumu", "Anivia", "Annie", "Aphelios",
-          "Ashe", "Aurelion Sol", "Aurora", "Azir", "Bard", "Bel'Veth", "Blitzcrank", "Brand", "Braum", "Briar",
-          "Caitlyn", "Camille", "Cassiopeia", "Cho'Gath", "Corki", "Darius", "Diana", "Dr. Mundo", "Draven",
-          "Ekko", "Elise", "Evelynn", "Ezreal", "Fiddlesticks", "Fiora", "Fizz", "Galio", "Gangplank", "Garen",
-          "Gnar", "Gragas", "Graves", "Gwen", "Hecarim", "Heimerdinger", "Hwei", "Illaoi", "Irelia", "Ivern",
-          "Janna", "Jarvan IV", "Jax", "Jayce", "Jhin", "Jinx", "K'Sante", "Kai'Sa", "Kalista", "Karma",
-          "Karthus", "Kassadin", "Katarina", "Kayle", "Kayn", "Kennen", "Kha'Zix", "Kindred", "Kled",
-          "Kog'Maw", "LeBlanc", "Lee Sin", "Leona", "Lillia", "Lissandra", "Lucian", "Lulu", "Lux",
-          "Malphite", "Malzahar", "Maokai", "Master Yi", "Mel", "Milio", "Miss Fortune", "Mordekaiser",
-          "Morgana", "Naafiri", "Nami", "Nasus", "Nautilus", "Neeko", "Nidalee", "Nilah", "Nocturne",
-          "Nunu & Willump", "Olaf", "Orianna", "Ornn", "Pantheon", "Poppy", "Pyke", "Qiyana", "Quinn",
-          "Rakan", "Rammus", "Rek'Sai", "Rell", "Renata Glasc", "Renekton", "Rengar", "Riven", "Rumble",
-          "Ryze", "Samira", "Sejuani", "Senna", "Seraphine", "Sett", "Shaco", "Shen", "Shyvana", "Singed",
-          "Sion", "Sivir", "Skarner", "Smolder", "Sona", "Soraka", "Swain", "Sylas", "Syndra", "Tahm Kench",
-          "Taliyah", "Talon", "Taric", "Teemo", "Thresh", "Tristana", "Trundle", "Tryndamere", "Twisted Fate",
-          "Twitch", "Udyr", "Urgot", "Varus", "Vayne", "Veigar", "Vel'Koz", "Vex", "Vi", "Viego", "Viktor",
-          "Vladimir", "Volibear", "Warwick", "Wukong", "Xayah", "Xerath", "Xin Zhao", "Yasuo", "Yone",
-          "Yorick", "Yunara", "Yuumi", "Zaahen", "Zac", "Zed", "Zeri", "Ziggs", "Zilean", "Zoe", "Zyra"
-        ];
+        console.error('Failed to fetch from Data Dragon:', ddError);
+        throw new Error('Failed to fetch champion data. Check network connection and try refreshing the page.');
       }
     }
   },
@@ -246,6 +227,92 @@ export const draftService = {
     } catch (error) {
       console.error('Failed to get draft statistics:', error);
       return null;
+    }
+  }
+};
+
+// Recommendations service - NN + LLM powered suggestions
+export interface DraftState {
+  phase: 'BAN' | 'PICK' | 'COMPLETE';
+  turn: number;
+  side: 'BLUE' | 'RED';
+  role: string;
+  elo: string;
+  patch: string;
+  bans_blue: string[];
+  bans_red: string[];
+  picks_blue: Array<{ champion: string; role: string }>;
+  picks_red: Array<{ champion: string; role: string }>;
+  is_user_turn?: boolean; // Flag for detailed vs brief LLM response
+}
+
+export interface ScoredChampion {
+  id: string;
+  name: string;
+  key: string;
+  score: number;
+  available: boolean;
+  in_user_pool: boolean;
+  user_proficiency: number | null;
+  win_rate: number;
+  pick_rate: number;
+  roles: string[];
+}
+
+export interface AnalysisResult {
+  analysis: string;
+  stage: string;
+  turn: number;
+  phase: string;
+  advantage: string;
+  blue_power: number;
+  red_power: number;
+  source: string;
+  model: string;
+}
+
+export const recommendationService = {
+  // Get champions sorted by NN recommendation score
+  getSortedChampions: async (draftState: DraftState): Promise<{ champions: ScoredChampion[]; model_type: string }> => {
+    try {
+      const response = await api.post('/recommendations/sorted-champions', draftState);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get sorted champions:', error);
+      return { champions: [], model_type: 'error' };
+    }
+  },
+
+  // Get LLM analysis for current draft state
+  getAnalysis: async (draftState: DraftState): Promise<AnalysisResult | null> => {
+    try {
+      const response = await api.post('/recommendations/analysis', draftState);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get draft analysis:', error);
+      return null;
+    }
+  },
+
+  // Get full gameplan when draft is complete
+  getGameplan: async (draftState: DraftState): Promise<any> => {
+    try {
+      const response = await api.post('/recommendations/gameplan', draftState);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get gameplan:', error);
+      return null;
+    }
+  },
+
+  // Check which models are available
+  getAvailableModels: async (): Promise<{ models: Record<string, boolean>; has_any_model: boolean; recommendation_mode: string }> => {
+    try {
+      const response = await api.get('/recommendations/models');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get available models:', error);
+      return { models: {}, has_any_model: false, recommendation_mode: 'error' };
     }
   }
 };
