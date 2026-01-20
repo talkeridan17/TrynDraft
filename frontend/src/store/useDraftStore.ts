@@ -102,7 +102,7 @@ export const useDraftStore = create<DraftState>()(
       allChampions: [],
       loadingChampions: false,
       
-      bans: { blue: [], red: [] },
+      bans: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] },
       picks: { blue: [...defaultPicks], red: [...defaultPicks] },
       
       draftId: null,
@@ -164,8 +164,8 @@ export const useDraftStore = create<DraftState>()(
           settings: { ...state.settings, ...newSettings }
         })),
       
-      setCurrentTurn: (turn) => 
-        set({ currentTurn: Math.max(0, Math.min(turn, 19)) }),
+      setCurrentTurn: (turn) =>
+        set({ currentTurn: turn === -1 ? -1 : Math.max(0, Math.min(turn, 19)) }),
       
       nextTurn: () => 
         set((state) => ({ currentTurn: Math.min(state.currentTurn + 1, 19) })),
@@ -245,16 +245,33 @@ export const useDraftStore = create<DraftState>()(
       addBan: (champion, side, position = -1) => {
         const state = get();
         const sideKey = side.toLowerCase() as 'blue' | 'red';
-        const bans = state.bans[sideKey];
+        const currentBans = state.bans[sideKey];
 
-        // If position specified, place at that exact position (allow override)
-        if (position !== -1) {
+        // Check if this champion is already banned (by either team) - unless clearing with ''
+        if (champion && champion !== '') {
+          const allBans = [...state.bans.blue, ...state.bans.red];
+          if (allBans.includes(champion)) {
+            console.error(`${champion} is already banned`);
+            return false;
+          }
+          // Also check if already picked
+          const allPicks = [...state.picks.blue, ...state.picks.red].map(p => p.champion).filter(Boolean);
+          if (allPicks.includes(champion)) {
+            console.error(`${champion} is already picked`);
+            return false;
+          }
+        }
+
+        // If position specified, place at that exact position
+        if (position !== -1 && position < 5) {
           set((state) => {
-            const newBans = [...state.bans[sideKey]];
-            // Pad array if needed
-            while (newBans.length <= position) {
-              newBans.push('');
-            }
+            // Always ensure array has 5 slots
+            const newBans = ['', '', '', '', ''];
+            // Copy existing bans
+            state.bans[sideKey].forEach((ban, i) => {
+              if (i < 5) newBans[i] = ban;
+            });
+            // Set the new ban at position
             newBans[position] = champion;
 
             return {
@@ -268,37 +285,73 @@ export const useDraftStore = create<DraftState>()(
         }
 
         // Otherwise, find next empty slot
-        if (bans.length >= 5) {
+        const filledBans = currentBans.filter(b => b && b !== '').length;
+        if (filledBans >= 5) {
           console.error(`${side} team already has 5 bans`);
           return false;
         }
 
+        // Find first empty slot
         set((state) => {
-          const newBans = {
-            ...state.bans,
-            [sideKey]: [...state.bans[sideKey], champion]
-          };
+          const newBans = ['', '', '', '', ''];
+          state.bans[sideKey].forEach((ban, i) => {
+            if (i < 5) newBans[i] = ban;
+          });
+          // Find first empty and place there
+          for (let i = 0; i < 5; i++) {
+            if (!newBans[i] || newBans[i] === '') {
+              newBans[i] = champion;
+              break;
+            }
+          }
 
-          return { bans: newBans };
+          return {
+            bans: {
+              ...state.bans,
+              [sideKey]: newBans
+            }
+          };
         });
 
         return true;
       },
       
       removeBan: (champion, side) => {
-        set((state) => ({
-          bans: {
-            ...state.bans,
-            [side.toLowerCase()]: state.bans[side.toLowerCase() as 'blue' | 'red']
-              .filter(b => b !== champion)
-          }
-        }));
+        set((state) => {
+          const sideKey = side.toLowerCase() as 'blue' | 'red';
+          const newBans = ['', '', '', '', ''];
+          state.bans[sideKey].forEach((ban, i) => {
+            if (i < 5) {
+              newBans[i] = ban === champion ? '' : ban;
+            }
+          });
+          return {
+            bans: {
+              ...state.bans,
+              [sideKey]: newBans
+            }
+          };
+        });
       },
       
       addPick: (champion, role, side, position = -1) => {
         const state = get();
         const sideKey = side.toLowerCase() as 'blue' | 'red';
         const picks = state.picks[sideKey];
+
+        // Check if this champion is already picked or banned - unless clearing with ''
+        if (champion && champion !== '') {
+          const allPicks = [...state.picks.blue, ...state.picks.red].map(p => p.champion).filter(Boolean);
+          if (allPicks.includes(champion)) {
+            console.error(`${champion} is already picked`);
+            return false;
+          }
+          const allBans = [...state.bans.blue, ...state.bans.red].filter(Boolean);
+          if (allBans.includes(champion)) {
+            console.error(`${champion} is already banned`);
+            return false;
+          }
+        }
 
         // Find position to place pick
         let targetPosition = position;
@@ -312,7 +365,6 @@ export const useDraftStore = create<DraftState>()(
           }
         }
 
-        // Allow override - if position is specified, place there regardless
         // Update state
         set((state) => {
           const newPicks = [...state.picks[sideKey]];
@@ -325,7 +377,7 @@ export const useDraftStore = create<DraftState>()(
 
           return { picks: newPicksState };
         });
-        
+
         return true;
       },
       
@@ -387,7 +439,7 @@ export const useDraftStore = create<DraftState>()(
             patch: state.settings.patch,
           },
           currentTurn: 0,
-          bans: { blue: [], red: [] },
+          bans: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] },
           picks: { blue: [...defaultPicks], red: [...defaultPicks] },
           draftId: null
         }));
@@ -395,6 +447,7 @@ export const useDraftStore = create<DraftState>()(
     }),
     {
       name: 'tryndraft-draft-state',
+      version: 3, // Increment to force migration and clear corrupted state
       partialize: (state) => ({
         settings: state.settings,
         currentTurn: state.currentTurn,
@@ -403,6 +456,72 @@ export const useDraftStore = create<DraftState>()(
         draftId: state.draftId,
         // Don't persist allChampions - fetch fresh every time
       }),
+      // Migrate old state format to new format
+      migrate: (persistedState: any, version: number) => {
+        // Helper to fix bans arrays
+        const fixBansArray = (arr: any): string[] => {
+          const result = ['', '', '', '', ''];
+          if (Array.isArray(arr)) {
+            arr.forEach((ban, i) => {
+              if (i < 5 && typeof ban === 'string') {
+                result[i] = ban;
+              }
+            });
+          }
+          return result;
+        };
+
+        // Helper to fix picks arrays
+        const fixPicksArray = (arr: any): Array<{ champion: string; role: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' }> => {
+          const defaultRoles: Array<'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'> = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
+          const result = defaultRoles.map(role => ({ champion: '', role }));
+          if (Array.isArray(arr)) {
+            arr.forEach((pick, i) => {
+              if (i < 5 && pick && typeof pick === 'object') {
+                result[i] = {
+                  champion: typeof pick.champion === 'string' ? pick.champion : '',
+                  role: defaultRoles.includes(pick.role) ? pick.role : defaultRoles[i]
+                };
+              }
+            });
+          }
+          return result;
+        };
+
+        // Version 2 migration: fix bans arrays
+        if (version < 2) {
+          if (persistedState.bans) {
+            persistedState.bans = {
+              blue: fixBansArray(persistedState.bans.blue),
+              red: fixBansArray(persistedState.bans.red)
+            };
+          }
+
+          if (typeof persistedState.currentTurn !== 'number' || persistedState.currentTurn < 0) {
+            persistedState.currentTurn = 0;
+          }
+        }
+
+        // Version 3 migration: comprehensive state cleanup
+        if (version < 3) {
+          // Ensure bans are properly formatted
+          persistedState.bans = {
+            blue: fixBansArray(persistedState.bans?.blue),
+            red: fixBansArray(persistedState.bans?.red)
+          };
+
+          // Ensure picks are properly formatted
+          persistedState.picks = {
+            blue: fixPicksArray(persistedState.picks?.blue),
+            red: fixPicksArray(persistedState.picks?.red)
+          };
+
+          // Reset currentTurn to 0
+          persistedState.currentTurn = 0;
+        }
+
+        return persistedState;
+      },
     }
   )
 );

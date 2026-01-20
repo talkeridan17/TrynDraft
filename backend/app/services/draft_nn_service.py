@@ -1,6 +1,11 @@
 """
 Neural Network Service for Draft Recommendations
-Uses champion statistics, matchups, and synergies to predict optimal picks
+Uses champion statistics, matchups, and synergies to predict optimal picks.
+
+Supports rank-specific models:
+- Models are stored in models/{RANK}/draft_recommendation.pth
+- Falls back to combined model if rank-specific model not available
+- Falls back to rule-based scoring if no models available
 """
 import logging
 import pickle
@@ -9,6 +14,12 @@ from pathlib import Path
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Valid ranks in order of ELO
+RANK_ORDER = [
+    "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM",
+    "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"
+]
 
 # Try to import ML libraries (optional dependencies)
 try:
@@ -64,40 +75,146 @@ class DraftRecommendationNN(nn.Module):
 
 
 class DraftNNService:
-    """Service for neural network-based draft recommendations."""
+    """
+    Service for neural network-based draft recommendations.
+
+    Supports rank-specific models loaded dynamically based on the user's ELO.
+    Falls back to combined model if rank-specific not available.
+    """
 
     def __init__(self):
-        self.model = None
-        self.model_path = Path("models/draft_recommendation.pth")
-        self.scaler_path = Path("models/feature_scaler.pkl")
-        self.feature_scaler = None
+        self.models_dir = Path("models")
+        self.loaded_models: Dict[str, Tuple] = {}  # rank -> (model, scaler)
         self.is_trained = False
+        self._current_rank = None
 
         if TORCH_AVAILABLE:
-            self._load_model()
+            self._discover_models()
         else:
             logger.warning("PyTorch not available. Install with: pip install torch")
 
-    def _load_model(self):
-        """Load trained model from disk if available."""
-        if self.model_path.exists():
-            try:
-                self.model = DraftRecommendationNN()
-                self.model.load_state_dict(torch.load(self.model_path))
-                self.model.eval()
+    def _discover_models(self):
+        """Discover available trained models."""
+        if not self.models_dir.exists():
+            logger.info("No models directory found. Using rule-based recommendations.")
+            return
 
-                # Load feature scaler
-                if self.scaler_path.exists():
-                    with open(self.scaler_path, 'rb') as f:
-                        self.feature_scaler = pickle.load(f)
+        # Check for combined model
+        combined_path = self.models_dir / "combined" / "draft_recommendation.pth"
+        if combined_path.exists():
+            self.is_trained = True
+            logger.info("Found combined model")
 
+        # Check for rank-specific models
+        for rank in RANK_ORDER:
+            rank_path = self.models_dir / rank / "draft_recommendation.pth"
+            if rank_path.exists():
                 self.is_trained = True
-                logger.info("Loaded trained draft recommendation model")
+                logger.info(f"Found model for {rank}")
+
+        if not self.is_trained:
+            logger.info("No trained models found. Using rule-based recommendations.")
+
+    def _get_input_size_from_metadata(self, model_dir: Path) -> int:
+        """Read input size from model metadata."""
+        metadata_path = model_dir / "model_metadata.json"
+        if metadata_path.exists():
+            try:
+                import json
+                with open(metadata_path, 'r') as f:
+                    metadata = json.load(f)
+                    return metadata.get("input_size", 50)
+            except Exception:
+                pass
+        return 50  # Default
+
+    def _load_model_for_rank(self, rank: str) -> Tuple[Optional['DraftRecommendationNN'], Optional[object]]:
+        """
+        Load model for a specific rank.
+
+        Tries rank-specific model first, falls back to combined.
+
+        Args:
+            rank: The rank to load model for (e.g., "DIAMOND")
+
+        Returns:
+            Tuple of (model, scaler) or (None, None) if not available
+        """
+        rank = rank.upper() if rank else "PLATINUM"
+
+        # Check cache
+        if rank in self.loaded_models:
+            return self.loaded_models[rank]
+
+        model = None
+        scaler = None
+
+        # Try rank-specific model first
+        rank_model_dir = self.models_dir / rank
+        rank_model_path = rank_model_dir / "draft_recommendation.pth"
+        rank_scaler_path = rank_model_dir / "feature_scaler.pkl"
+
+        if rank_model_path.exists():
+            try:
+                input_size = self._get_input_size_from_metadata(rank_model_dir)
+                model = DraftRecommendationNN(input_size=input_size)
+                model.load_state_dict(torch.load(rank_model_path, weights_only=True))
+                model.eval()
+
+                if rank_scaler_path.exists():
+                    with open(rank_scaler_path, 'rb') as f:
+                        scaler = pickle.load(f)
+
+                logger.info(f"Loaded {rank} model (input_size={input_size})")
+                self.loaded_models[rank] = (model, scaler)
+                return model, scaler
+
             except Exception as e:
-                logger.error(f"Failed to load model: {e}")
-                self.model = None
-        else:
-            logger.info("No trained model found. Using rule-based recommendations.")
+                logger.warning(f"Failed to load {rank} model: {e}")
+
+        # Fall back to combined model
+        combined_model_dir = self.models_dir / "combined"
+        combined_model_path = combined_model_dir / "draft_recommendation.pth"
+        combined_scaler_path = combined_model_dir / "feature_scaler.pkl"
+
+        if combined_model_path.exists():
+            try:
+                if "combined" in self.loaded_models:
+                    combined = self.loaded_models["combined"]
+                    self.loaded_models[rank] = combined  # Cache for this rank too
+                    return combined
+
+                input_size = self._get_input_size_from_metadata(combined_model_dir)
+                model = DraftRecommendationNN(input_size=input_size)
+                model.load_state_dict(torch.load(combined_model_path, weights_only=True))
+                model.eval()
+
+                if combined_scaler_path.exists():
+                    with open(combined_scaler_path, 'rb') as f:
+                        scaler = pickle.load(f)
+
+                logger.info(f"Using combined model for {rank} (input_size={input_size})")
+                self.loaded_models["combined"] = (model, scaler)
+                self.loaded_models[rank] = (model, scaler)
+                return model, scaler
+
+            except Exception as e:
+                logger.warning(f"Failed to load combined model: {e}")
+
+        self.loaded_models[rank] = (None, None)
+        return None, None
+
+    def get_available_models(self) -> Dict[str, bool]:
+        """Get dict of which ranks have trained models."""
+        available = {}
+        for rank in RANK_ORDER:
+            rank_path = self.models_dir / rank / "draft_recommendation.pth"
+            available[rank] = rank_path.exists()
+
+        combined_path = self.models_dir / "combined" / "draft_recommendation.pth"
+        available["combined"] = combined_path.exists()
+
+        return available
 
     def extract_features(
         self,
@@ -108,17 +225,35 @@ class DraftNNService:
         """
         Extract feature vector for a champion given current draft state.
 
+        Feature order must match nn_trainer.py exactly (48 features):
+        1. attack, defense, magic, difficulty (4)
+        2. win_rate, pick_rate, ban_rate (3)
+        3. role_top, role_jungle, role_mid, role_adc, role_support (5 one-hot)
+        4. role_flexibility (1)
+        5. user_proficiency (1)
+        6. is_ban_phase, turn_progress (2)
+        7. matchup_1-5 (5)
+        8. synergy_1-4 (4)
+        9. team_has_tank/assassin/mage/marksman/support, fills_gap (6)
+        10. is_tank/fighter/assassin/mage/marksman/support, early/late_game (8)
+        11. tier_score, meta_relevance, skill_ceiling (3)
+        12. reserved 1-6 (6)
+        Total: 48
+
         Args:
             champion: Champion data including stats, win rates, etc.
             draft_state: Current draft state (bans, picks, phase, role)
             user_proficiency: User's proficiency with this champion (1-5)
 
         Returns:
-            Feature vector as numpy array
+            Feature vector as numpy array (48 features)
         """
         features = []
+        target_role = draft_state.get('role', 'MID')
+        champion_roles = champion.get('roles', [])
+        champion_tags = champion.get('tags', champion_roles)  # Fallback to roles
 
-        # 1. Champion base stats (normalized 0-1)
+        # 1. Champion base stats (4)
         features.extend([
             champion.get('attack', 5) / 10.0,
             champion.get('defense', 5) / 10.0,
@@ -126,81 +261,104 @@ class DraftNNService:
             champion.get('difficulty', 5) / 10.0,
         ])
 
-        # 2. Champion meta statistics
+        # 2. Meta stats (3)
+        win_rate_raw = champion.get('win_rate', 50)
+        win_rate = win_rate_raw / 100.0 if win_rate_raw <= 100 else win_rate_raw / 10000.0
+        pick_rate_raw = champion.get('pick_rate', 5)
+        pick_rate = pick_rate_raw / 100.0 if pick_rate_raw <= 100 else pick_rate_raw / 10000.0
+        ban_rate_raw = champion.get('ban_rate', 5)
+        ban_rate = ban_rate_raw / 100.0 if ban_rate_raw <= 100 else ban_rate_raw / 10000.0
+        features.extend([win_rate, pick_rate, ban_rate])
+
+        # 3. Role fit - one-hot encoding (5)
+        # Normalize role names
+        role_map = {'TOP': 'Top', 'JUNGLE': 'Jungle', 'MID': 'Mid', 'ADC': 'ADC', 'SUPPORT': 'Support'}
+        normalized_roles = [r.upper() for r in champion_roles]
         features.extend([
-            champion.get('win_rate', 50) / 100.0,
-            champion.get('pick_rate', 10) / 100.0,
-            champion.get('ban_rate', 5) / 100.0,
+            1.0 if 'TOP' in normalized_roles else 0.0,
+            1.0 if 'JUNGLE' in normalized_roles else 0.0,
+            1.0 if 'MID' in normalized_roles or 'MIDDLE' in normalized_roles else 0.0,
+            1.0 if 'ADC' in normalized_roles or 'BOTTOM' in normalized_roles else 0.0,
+            1.0 if 'SUPPORT' in normalized_roles or 'UTILITY' in normalized_roles else 0.0,
         ])
 
-        # 3. User proficiency (0 if not logged in)
-        features.append((user_proficiency or 0) / 5.0)
+        # 4. Role flexibility (1)
+        features.append(len(champion_roles) / 5.0)
 
-        # 4. Role fit (one-hot encoding for 5 roles)
-        target_role = draft_state.get('role', 'MID')
-        champion_roles = champion.get('roles', [])
-        role_fit = [
-            1.0 if target_role in champion_roles else 0.5,
-            len(champion_roles) / 5.0  # Role flexibility
-        ]
-        features.extend(role_fit)
+        # 5. User proficiency (1)
+        features.append((user_proficiency or 3) / 5.0)
 
-        # 5. Draft phase context
+        # 6. Draft phase context (2)
         phase = draft_state.get('phase', 'PICK')
         current_turn = draft_state.get('current_turn', 0)
         features.extend([
             1.0 if phase == 'BAN' else 0.0,
-            current_turn / 20.0  # Normalized turn number
+            current_turn / 20.0
         ])
 
-        # 6. Matchup considerations (vs enemy picks)
+        # 7. Matchup scores vs enemies (5)
         enemy_picks = draft_state.get('picks_red' if draft_state.get('side') == 'BLUE' else 'picks_blue', [])
         matchup_scores = []
-        for enemy_pick in enemy_picks[:5]:  # Max 5 enemies
-            enemy_champ = enemy_pick.get('champion', '')
-            # Look up matchup win rate from champion.counters
+        for enemy_pick in enemy_picks[:5]:
+            enemy_champ = enemy_pick.get('champion', '') if isinstance(enemy_pick, dict) else enemy_pick
             matchup_wr = self._get_matchup_win_rate(champion, enemy_champ, target_role)
             matchup_scores.append(matchup_wr / 100.0 if matchup_wr else 0.5)
-
-        # Pad to 5 enemies
         while len(matchup_scores) < 5:
             matchup_scores.append(0.5)
         features.extend(matchup_scores)
 
-        # 7. Synergy considerations (with ally picks)
+        # 8. Synergy scores with allies (4)
         ally_picks = draft_state.get('picks_blue' if draft_state.get('side') == 'BLUE' else 'picks_red', [])
         synergy_scores = []
-        for ally_pick in ally_picks[:4]:  # Max 4 allies (excluding current pick)
-            ally_champ = ally_pick.get('champion', '')
+        for ally_pick in ally_picks[:4]:
+            ally_champ = ally_pick.get('champion', '') if isinstance(ally_pick, dict) else ally_pick
             synergy_wr = self._get_synergy_win_rate(champion, ally_champ)
             synergy_scores.append(synergy_wr / 100.0 if synergy_wr else 0.5)
-
-        # Pad to 4 allies
         while len(synergy_scores) < 4:
             synergy_scores.append(0.5)
         features.extend(synergy_scores)
 
-        # 8. Team composition balance (damage types, tankiness)
+        # 9. Team composition balance (6)
         ally_tags = []
         for ally in ally_picks:
-            ally_tags.extend(ally.get('tags', []))
-
+            if isinstance(ally, dict):
+                ally_tags.extend(ally.get('tags', []))
         has_tank = 1.0 if 'Tank' in ally_tags else 0.0
         has_assassin = 1.0 if 'Assassin' in ally_tags else 0.0
         has_mage = 1.0 if 'Mage' in ally_tags else 0.0
         has_marksman = 1.0 if 'Marksman' in ally_tags else 0.0
         has_support = 1.0 if 'Support' in ally_tags else 0.0
-
-        champion_tags = champion.get('tags', [])
         fills_gap = 0.0
         if 'Tank' in champion_tags and not has_tank:
             fills_gap = 1.0
         elif 'Mage' in champion_tags and not has_mage:
             fills_gap = 0.8
-        elif 'Marksman' in champion_tags and not has_marksman:
-            fills_gap = 0.8
-
         features.extend([has_tank, has_assassin, has_mage, has_marksman, has_support, fills_gap])
+
+        # 10. Champion tags (8)
+        features.extend([
+            1.0 if 'Tank' in champion_tags else 0.0,
+            1.0 if 'Fighter' in champion_tags else 0.0,
+            1.0 if 'Assassin' in champion_tags else 0.0,
+            1.0 if 'Mage' in champion_tags else 0.0,
+            1.0 if 'Marksman' in champion_tags else 0.0,
+            1.0 if 'Support' in champion_tags else 0.0,
+            0.5,  # is_early_game placeholder
+            0.5,  # is_late_game placeholder
+        ])
+
+        # 11. Meta position (3)
+        features.extend([
+            win_rate,  # tier_score
+            0.5,       # meta_relevance placeholder
+            0.5,       # skill_ceiling placeholder
+        ])
+
+        # 12. Reserved/padding (6)
+        features.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        # Total should be 48
+        assert len(features) == 48, f"Feature count mismatch: {len(features)} != 48"
 
         return np.array(features, dtype=np.float32)
 
@@ -233,29 +391,41 @@ class DraftNNService:
         self,
         champion: Dict,
         draft_state: Dict,
-        user_proficiency: Optional[int] = None
+        user_proficiency: Optional[int] = None,
+        rank: str = None
     ) -> float:
         """
         Predict recommendation score for a champion.
+
+        Args:
+            champion: Champion data dict
+            draft_state: Current draft state
+            user_proficiency: User's proficiency with champion (1-5)
+            rank: User's rank for rank-specific model selection
 
         Returns:
             Score between 0 and 1 (higher = better recommendation)
         """
         if not TORCH_AVAILABLE or not self.is_trained:
-            # Fallback to rule-based scoring
+            return self._rule_based_score(champion, draft_state, user_proficiency)
+
+        # Get model for this rank
+        model, scaler = self._load_model_for_rank(rank or "PLATINUM")
+
+        if model is None:
             return self._rule_based_score(champion, draft_state, user_proficiency)
 
         # Extract features
         features = self.extract_features(champion, draft_state, user_proficiency)
 
         # Normalize features if scaler is available
-        if self.feature_scaler:
-            features = self.feature_scaler.transform(features.reshape(1, -1)).flatten()
+        if scaler:
+            features = scaler.transform(features.reshape(1, -1)).flatten()
 
-        # Convert to tensor
+        # Convert to tensor and predict
         with torch.no_grad():
             features_tensor = torch.FloatTensor(features).unsqueeze(0)
-            score = self.model(features_tensor).item()
+            score = model(features_tensor).item()
 
         return score
 
@@ -310,7 +480,8 @@ class DraftNNService:
         available_champions: List[Dict],
         draft_state: Dict,
         user_champion_pool: Optional[Dict[str, int]] = None,
-        top_k: int = 5
+        top_k: int = 5,
+        rank: str = None
     ) -> List[Tuple[Dict, float]]:
         """
         Get top K champion recommendations for current draft state.
@@ -320,6 +491,7 @@ class DraftNNService:
             draft_state: Current draft state
             user_champion_pool: Dict of {champion_name: proficiency}
             top_k: Number of recommendations to return
+            rank: User's rank for rank-specific model selection
 
         Returns:
             List of (champion, score) tuples, sorted by score descending
@@ -330,7 +502,7 @@ class DraftNNService:
             champion_name = champion.get('name')
             user_prof = user_champion_pool.get(champion_name) if user_champion_pool else None
 
-            score = self.predict_recommendation_score(champion, draft_state, user_prof)
+            score = self.predict_recommendation_score(champion, draft_state, user_prof, rank)
             recommendations.append((champion, score))
 
         # Sort by score descending

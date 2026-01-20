@@ -51,9 +51,21 @@ def create_user(username: str, password: str, email: str = None):
 
 
 if __name__ == "__main__":
-    # Create the user talkeridan
-    username = "talkeridan"
-    password = "TryndOneTrick17!"
+    import os
+    import argparse
 
-    print(f"Creating user '{username}'...")
-    create_user(username, password)
+    parser = argparse.ArgumentParser(description="Create a user in the database")
+    parser.add_argument("--username", "-u", help="Username", default=os.environ.get("CREATE_USER_USERNAME"))
+    parser.add_argument("--password", "-p", help="Password", default=os.environ.get("CREATE_USER_PASSWORD"))
+    parser.add_argument("--email", "-e", help="Email (optional)")
+
+    args = parser.parse_args()
+
+    if not args.username or not args.password:
+        print("Usage: python create_user.py -u USERNAME -p PASSWORD [-e EMAIL]")
+        print("Or set CREATE_USER_USERNAME and CREATE_USER_PASSWORD environment variables")
+        sys.exit(1)
+
+    print(f"Creating user '{args.username}'...")
+    success = create_user(args.username, args.password, args.email)
+    sys.exit(0 if success else 1)

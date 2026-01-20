@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDraftStore } from '../store/useDraftStore';
 import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
-import { Search, X, Settings } from 'lucide-react';
+import { Search, X, Settings, Loader2 } from 'lucide-react';
 import { RoleIcon } from '../components/common/RoleIcon';
-import { authService } from '../utils/api';
+import { authService, recommendationService, type ScoredChampion, type AnalysisResult, type DraftState } from '../utils/api';
 import type { RoleType } from '../store/useDraftStore';
 
 const ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
@@ -20,6 +20,7 @@ interface ChampionPoolItem {
 export const DraftPage: React.FC = () => {
   const {
     settings,
+    currentTurn,
     bans,
     picks,
     setSettings,
@@ -35,7 +36,6 @@ export const DraftPage: React.FC = () => {
   const [latestPatch, setLatestPatch] = useState('16.1.1');
   const [search, setSearch] = useState('');
   const [draftPhase, setDraftPhase] = useState<'BAN' | 'PICK' | 'COMPLETE'>('BAN');
-  const [shouldAdvanceCursor, setShouldAdvanceCursor] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [draggedSide, setDraggedSide] = useState<'BLUE' | 'RED' | null>(null);
   const [draggedIsBan, setDraggedIsBan] = useState(false);
@@ -44,6 +44,12 @@ export const DraftPage: React.FC = () => {
 
   // Champion pool state
   const [championPoolNames, setChampionPoolNames] = useState<Set<string>>(new Set());
+
+  // NN-sorted champions and LLM analysis
+  const [sortedChampions, setSortedChampions] = useState<ScoredChampion[]>([]);
+  const [llmAnalysis, setLlmAnalysis] = useState<AnalysisResult | null>(null);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+  const [modelType, setModelType] = useState<string>('loading');
 
   // Track if phase change was manual (to prevent auto-switch interference)
   const manualPhaseChangeRef = useRef(false);
@@ -81,11 +87,104 @@ export const DraftPage: React.FC = () => {
     }
   }, []);
 
+  // Build draft state object for API calls
+  const buildDraftState = useCallback((): DraftState => {
+    return {
+      phase: draftPhase,
+      turn: currentTurn,
+      side: settings.side,
+      role: settings.role,
+      elo: settings.elo,
+      patch: settings.patch,
+      bans_blue: bans.blue.filter(b => b),
+      bans_red: bans.red.filter(b => b),
+      picks_blue: picks.blue.filter(p => p.champion).map(p => ({ champion: p.champion, role: p.role })),
+      picks_red: picks.red.filter(p => p.champion).map(p => ({ champion: p.champion, role: p.role })),
+    };
+  }, [draftPhase, currentTurn, settings, bans, picks]);
+
+  // Fetch NN-sorted champions when draft state changes
+  const fetchSortedChampions = useCallback(async () => {
+    if (draftPhase === 'COMPLETE') return;
+
+    try {
+      const draftState = buildDraftState();
+      const result = await recommendationService.getSortedChampions(draftState);
+      if (result.champions.length > 0) {
+        setSortedChampions(result.champions);
+        setModelType(result.model_type);
+      }
+    } catch (error) {
+      console.error('Failed to fetch sorted champions:', error);
+    }
+  }, [buildDraftState, draftPhase]);
+
+  // Determine user's pick position based on role (0-4)
+  const getUserPickPosition = useCallback((): number => {
+    const roleOrder: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
+    return roleOrder.indexOf(settings.role);
+  }, [settings.role]);
+
+  // Check if current turn is user's specific turn (not just team's turn)
+  const isUsersTurn = useCallback((): boolean => {
+    if (!currentPicker) return false;
+    if (currentPicker.side !== settings.side) return false;
+
+    const userPosition = getUserPickPosition();
+
+    if (currentPicker.isBan) {
+      // User's ban is at their pick position (e.g., jungle = 2nd ban = position 1)
+      return currentPicker.position === userPosition;
+    } else {
+      // User's pick is at their role position
+      return currentPicker.position === userPosition;
+    }
+  }, [currentPicker, settings.side, getUserPickPosition]);
+
+  // Check if it's user's team's turn (for brief teammate pick updates)
+  const isUserTeamsTurn = useCallback((): boolean => {
+    if (!currentPicker) return false;
+    return currentPicker.side === settings.side && !currentPicker.isBan;
+  }, [currentPicker, settings.side]);
+
+  // Fetch LLM analysis
+  const fetchLLMAnalysis = useCallback(async () => {
+    // Trigger conditions:
+    // 1. Throughout entire ban phase - suggest bans to user
+    // 2. Any of user's team's pick turns (brief for teammates, detailed for user)
+    // 3. Draft complete
+    const userTurn = isUsersTurn();
+    const teamPickTurn = isUserTeamsTurn();
+
+    // During ban phase, always provide suggestions (user wants help with their bans)
+    // During pick phase, only on user's team's turns
+    if (draftPhase === 'PICK' && !teamPickTurn) return;
+
+    setIsLoadingAnalysis(true);
+    try {
+      const draftState = buildDraftState();
+      // Add flag for whether this is user's specific turn (for detailed vs brief response)
+      const result = await recommendationService.getAnalysis({
+        ...draftState,
+        is_user_turn: userTurn || draftPhase === 'BAN' // Always detailed during ban phase
+      });
+      if (result) {
+        setLlmAnalysis(result);
+      }
+    } catch (error) {
+      console.error('Failed to fetch LLM analysis:', error);
+    } finally {
+      setIsLoadingAnalysis(false);
+    }
+  }, [buildDraftState, isUsersTurn, isUserTeamsTurn, draftPhase]);
+
   useEffect(() => {
+    // Load champions if not already loaded
     if (allChampions.length === 0) {
       loadChampions();
     }
 
+    // Get latest patch version
     getLatestPatch().then(version => {
       setLatestPatch(version);
       setSettings({ patch: version });
@@ -94,7 +193,24 @@ export const DraftPage: React.FC = () => {
     // Load user's champion pool and preferences
     loadChampionPool();
     loadUserPreferences();
-  }, [loadChampionPool, loadUserPreferences]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch sorted champions when draft state changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchSortedChampions();
+    }, 500); // Debounce to avoid rapid API calls
+    return () => clearTimeout(timer);
+  }, [bans, picks, settings.role, settings.elo, draftPhase]);
+
+  // Fetch LLM analysis when turn changes (heavily debounced since it's slow)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchLLMAnalysis();
+    }, 800); // Longer debounce for LLM calls
+    return () => clearTimeout(timer);
+  }, [currentTurn, draftPhase]);
 
   // Auto-switch phases based on draft state
   useEffect(() => {
@@ -125,35 +241,34 @@ export const DraftPage: React.FC = () => {
     const userSide = settings.side;
     const enemySide = userSide === 'BLUE' ? 'RED' : 'BLUE';
 
-    // Count filled bans for user team
+    // Define the full draft sequence
+    // Turns 0-4: User's bans
+    // Turns 5-9: Enemy's bans
+    // Turns 10-19: Picks in snake order
+
+    // Get ban lists based on user's side
     const userBanList = userSide === 'BLUE' ? bans.blue : bans.red;
-    const userBansFilled = userBanList.filter(b => b && b !== '').length;
-
-    if (userBansFilled < 5) {
-      for (let i = 0; i < 5; i++) {
-        const banValue = userBanList[i];
-        if (!banValue || banValue === '') {
-          setCurrentTurn(i);
-          return;
-        }
-      }
-    }
-
-    // Count filled bans for enemy team
     const enemyBanList = enemySide === 'BLUE' ? bans.blue : bans.red;
-    const enemyBansFilled = enemyBanList.filter(b => b && b !== '').length;
 
-    if (enemyBansFilled < 5) {
-      for (let i = 0; i < 5; i++) {
-        const banValue = enemyBanList[i];
-        if (!banValue || banValue === '') {
-          setCurrentTurn(5 + i);
-          return;
-        }
+    // Check user's bans (turns 0-4)
+    for (let i = 0; i < 5; i++) {
+      const banValue = userBanList[i];
+      if (!banValue || banValue === '') {
+        setCurrentTurn(i);
+        return;
       }
     }
 
-    // Pick phase sequence (turns 10-19)
+    // Check enemy's bans (turns 5-9)
+    for (let i = 0; i < 5; i++) {
+      const banValue = enemyBanList[i];
+      if (!banValue || banValue === '') {
+        setCurrentTurn(5 + i);
+        return;
+      }
+    }
+
+    // Pick phase sequence (turns 10-19) - snake draft order
     const pickSequence = [
       { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 }, { side: 'RED', pos: 1 }, { side: 'BLUE', pos: 1 },
       { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 }, { side: 'RED', pos: 3 }, { side: 'BLUE', pos: 3 },
@@ -171,16 +286,10 @@ export const DraftPage: React.FC = () => {
       }
     }
 
+    // All slots filled
     setCurrentTurn(-1);
   }, [bans, picks, settings.side, setCurrentTurn]);
 
-  // Auto-advance cursor after champion selection
-  useEffect(() => {
-    if (shouldAdvanceCursor) {
-      findNextUnfilledSlot();
-      setShouldAdvanceCursor(false);
-    }
-  }, [shouldAdvanceCursor, findNextUnfilledSlot]);
 
   // Helper to check if draft is complete
   const isDraftComplete = useCallback(() => {
@@ -236,32 +345,133 @@ export const DraftPage: React.FC = () => {
   }, [hoveredSlot, picks, bans, findNextUnfilledSlot, addBan, addPick, draftPhase, isDraftComplete, setCurrentTurn]);
 
   // Remove banned and picked champions from available list
-  const allBannedPicked = [...bans.blue, ...bans.red, ...picks.blue.map(p => p.champion).filter(Boolean), ...picks.red.map(p => p.champion).filter(Boolean)];
+  const allBannedPicked = new Set([
+    ...bans.blue.filter(Boolean),
+    ...bans.red.filter(Boolean),
+    ...picks.blue.map(p => p.champion).filter(Boolean),
+    ...picks.red.map(p => p.champion).filter(Boolean)
+  ]);
 
-  const filteredChamps = allChampions
-    .filter(champ => {
-      const matchesSearch = champ.toLowerCase().includes(search.toLowerCase());
-      const isAvailable = !allBannedPicked.includes(champ);
-      return matchesSearch && isAvailable;
-    })
-    .sort((a, b) => a.localeCompare(b));
+  // Filter champions - use NN-sorted if available, otherwise alphabetical
+  // ALWAYS check against local allBannedPicked since API data may be stale
+  const filteredChamps = (() => {
+    const searchLower = search.toLowerCase().trim();
+
+    if (sortedChampions.length > 0) {
+      // Use NN-sorted champions but ALSO check local banned/picked state
+      return sortedChampions
+        .filter(champ => {
+          // Check BOTH API availability AND local state
+          if (!champ.available) return false;
+          if (allBannedPicked.has(champ.name)) return false; // Local state check
+          if (!searchLower) return true;
+          return champ.name.toLowerCase().includes(searchLower);
+        })
+        .map(champ => champ.name);
+    } else {
+      // Fallback to allChampions from store
+      return allChampions
+        .filter(champ => {
+          if (allBannedPicked.has(champ)) return false;
+          if (!searchLower) return true;
+          return champ.toLowerCase().includes(searchLower);
+        })
+        .sort((a, b) => a.localeCompare(b));
+    }
+  })();
 
   const handleChampionSelect = (champion: string) => {
-    if (!currentPicker) return;
+    // Get fresh picker state directly from store
+    const picker = getCurrentPicker();
+    if (!picker) return;
 
-    if (currentPicker.isBan) {
-      // Place ban in the EXACT slot that's currently selected
-      addBan(champion, currentPicker.side, currentPicker.position);
-    } else {
-      // Place pick in the EXACT slot that's currently selected
-      const currentPicks = currentPicker.side === 'BLUE' ? picks.blue : picks.red;
-      const currentRole = currentPicks[currentPicker.position]?.role || 'TOP';
-      addPick(champion, currentRole, currentPicker.side, currentPicker.position);
+    // Check if champion is already banned or picked
+    const currentBannedPicked = new Set([
+      ...bans.blue.filter(Boolean),
+      ...bans.red.filter(Boolean),
+      ...picks.blue.map(p => p.champion).filter(Boolean),
+      ...picks.red.map(p => p.champion).filter(Boolean)
+    ]);
+
+    if (currentBannedPicked.has(champion)) {
+      console.log(`${champion} already banned/picked, ignoring`);
+      return;
     }
 
-    // Trigger cursor advance on next render
-    setShouldAdvanceCursor(true);
+    let success = false;
+    if (picker.isBan) {
+      success = addBan(champion, picker.side, picker.position);
+    } else {
+      const currentPicks = picker.side === 'BLUE' ? picks.blue : picks.red;
+      const currentRole = currentPicks[picker.position]?.role || 'TOP';
+      success = addPick(champion, currentRole, picker.side, picker.position);
+    }
+
+    if (success) {
+      // IMMEDIATELY advance to next slot (don't wait for useEffect)
+      advanceToNextSlot(champion, picker);
+    }
     setSearch('');
+  };
+
+  // Immediately compute and set next turn after a selection
+  const advanceToNextSlot = (justSelectedChampion: string, justUsedPicker: { side: 'BLUE' | 'RED'; position: number; isBan: boolean }) => {
+    const userSide = settings.side;
+    const enemySide = userSide === 'BLUE' ? 'RED' : 'BLUE';
+
+    // Get current bans/picks but account for the one we just added
+    const userBanList = [...(userSide === 'BLUE' ? bans.blue : bans.red)];
+    const enemyBanList = [...(enemySide === 'BLUE' ? bans.blue : bans.red)];
+    const bluePickList = [...picks.blue];
+    const redPickList = [...picks.red];
+
+    // Mark the slot we just filled
+    if (justUsedPicker.isBan) {
+      if (justUsedPicker.side === userSide) {
+        userBanList[justUsedPicker.position] = justSelectedChampion;
+      } else {
+        enemyBanList[justUsedPicker.position] = justSelectedChampion;
+      }
+    } else {
+      if (justUsedPicker.side === 'BLUE') {
+        bluePickList[justUsedPicker.position] = { ...bluePickList[justUsedPicker.position], champion: justSelectedChampion };
+      } else {
+        redPickList[justUsedPicker.position] = { ...redPickList[justUsedPicker.position], champion: justSelectedChampion };
+      }
+    }
+
+    // Find next empty slot
+    for (let i = 0; i < 5; i++) {
+      if (!userBanList[i] || userBanList[i] === '') {
+        setCurrentTurn(i);
+        return;
+      }
+    }
+    for (let i = 0; i < 5; i++) {
+      if (!enemyBanList[i] || enemyBanList[i] === '') {
+        setCurrentTurn(5 + i);
+        return;
+      }
+    }
+
+    const pickSequence = [
+      { side: 'BLUE' as const, pos: 0 }, { side: 'RED' as const, pos: 0 },
+      { side: 'RED' as const, pos: 1 }, { side: 'BLUE' as const, pos: 1 },
+      { side: 'BLUE' as const, pos: 2 }, { side: 'RED' as const, pos: 2 },
+      { side: 'RED' as const, pos: 3 }, { side: 'BLUE' as const, pos: 3 },
+      { side: 'BLUE' as const, pos: 4 }, { side: 'RED' as const, pos: 4 },
+    ];
+
+    for (let i = 0; i < pickSequence.length; i++) {
+      const slot = pickSequence[i];
+      const pickList = slot.side === 'BLUE' ? bluePickList : redPickList;
+      if (!pickList[slot.pos]?.champion || pickList[slot.pos]?.champion === '') {
+        setCurrentTurn(10 + i);
+        return;
+      }
+    }
+
+    setCurrentTurn(-1);
   };
 
   const handleSlotClick = (side: 'BLUE' | 'RED', position: number, isBan: boolean) => {
@@ -304,9 +514,11 @@ export const DraftPage: React.FC = () => {
   const handleBanDrop = (side: 'BLUE' | 'RED', targetIndex: number) => {
     // If dragging a champion from selector
     if (draggedChampion) {
-      addBan(draggedChampion, side, targetIndex);
+      const success = addBan(draggedChampion, side, targetIndex);
+      if (success) {
+        advanceToNextSlot(draggedChampion, { side, position: targetIndex, isBan: true });
+      }
       setDraggedChampion(null);
-      setShouldAdvanceCursor(true);
       return;
     }
 
@@ -337,9 +549,11 @@ export const DraftPage: React.FC = () => {
     // If dragging a champion from selector
     if (draggedChampion) {
       const pickList = side === 'BLUE' ? picks.blue : picks.red;
-      addPick(draggedChampion, pickList[targetIndex].role, side, targetIndex);
+      const success = addPick(draggedChampion, pickList[targetIndex].role, side, targetIndex);
+      if (success) {
+        advanceToNextSlot(draggedChampion, { side, position: targetIndex, isBan: false });
+      }
       setDraggedChampion(null);
-      setShouldAdvanceCursor(true);
       return;
     }
 
@@ -701,16 +915,45 @@ export const DraftPage: React.FC = () => {
             className={`${draftPhase === 'COMPLETE' ? 'flex-1' : 'h-1/2'} bg-black/90 border-t-2 ${phaseColorClass} p-4 flex flex-col`}
             onDragOver={handleDragOver}
             onDrop={handleDropOnCenter}>
-            <div className="text-xs text-gray-600 uppercase tracking-wider font-bold mb-2">AI Analysis</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">AI Analysis</div>
+              <div className="flex items-center gap-2">
+                {isLoadingAnalysis && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
+                <span className="text-[10px] text-gray-700 font-mono">
+                  {modelType === 'neural_network' ? 'NN' : modelType === 'rule_based' ? 'Rules' : ''}
+                </span>
+              </div>
+            </div>
             <div className="flex-1 text-sm text-gray-400 overflow-y-auto">
-              {draftPhase === 'COMPLETE' ? (
-                <div className="text-center text-gray-500 mt-8">
-                  <p className="text-lg font-bold mb-2">Draft Complete!</p>
-                  <p className="text-sm">AI analysis will appear here...</p>
+              {isLoadingAnalysis && !llmAnalysis ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
+                </div>
+              ) : llmAnalysis ? (
+                <div className="space-y-2">
+                  {/* Analysis text */}
+                  <p className="text-gray-300 leading-relaxed">{llmAnalysis.analysis}</p>
+
+                  {/* Source indicator */}
+                  <div className="text-[10px] text-gray-700 pt-2 border-t border-gray-800">
+                    {llmAnalysis.source === 'huggingface' ? `${llmAnalysis.model}` : 'Rule-based'}
+                  </div>
                 </div>
               ) : (
-                <div>
-                  {draftPhase === 'BAN' ? `${bans.blue.length + bans.red.length}/10 bans` : `${picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length}/10 picks`}
+                <div className="text-gray-600">
+                  {draftPhase === 'COMPLETE' ? (
+                    <div className="text-center mt-8">
+                      <p className="text-lg font-bold mb-2 text-gray-500">Draft Complete!</p>
+                      <p className="text-sm">Generating analysis...</p>
+                    </div>
+                  ) : (
+                    <div>
+                      {draftPhase === 'BAN'
+                        ? `${bans.blue.filter(b => b).length + bans.red.filter(b => b).length}/10 bans`
+                        : `${picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length}/10 picks`}
+                      <p className="text-xs text-gray-700 mt-2">Suggestions will appear when it's your turn...</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
