@@ -197,18 +197,19 @@ export const DraftPage: React.FC = () => {
   }, []);
 
   // Fetch sorted champions when draft state changes (debounced)
+  // Only refetch when settings change, not on every ban/pick (we filter locally)
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchSortedChampions();
-    }, 500); // Debounce to avoid rapid API calls
+    }, 300); // Reduced debounce - local filtering handles immediate updates
     return () => clearTimeout(timer);
-  }, [bans, picks, settings.role, settings.elo, draftPhase]);
+  }, [settings.role, settings.elo, draftPhase]);
 
-  // Fetch LLM analysis when turn changes (heavily debounced since it's slow)
+  // Fetch LLM analysis when turn changes (debounced since it's slow)
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchLLMAnalysis();
-    }, 800); // Longer debounce for LLM calls
+    }, 500); // Reduced debounce
     return () => clearTimeout(timer);
   }, [currentTurn, draftPhase]);
 
@@ -416,14 +417,19 @@ export const DraftPage: React.FC = () => {
 
   // Immediately compute and set next turn after a selection
   const advanceToNextSlot = (justSelectedChampion: string, justUsedPicker: { side: 'BLUE' | 'RED'; position: number; isBan: boolean }) => {
+    // Get FRESH state from Zustand (not stale closure values)
+    const freshState = useDraftStore.getState();
+    const freshBans = freshState.bans;
+    const freshPicks = freshState.picks;
+
     const userSide = settings.side;
     const enemySide = userSide === 'BLUE' ? 'RED' : 'BLUE';
 
-    // Get current bans/picks but account for the one we just added
-    const userBanList = [...(userSide === 'BLUE' ? bans.blue : bans.red)];
-    const enemyBanList = [...(enemySide === 'BLUE' ? bans.blue : bans.red)];
-    const bluePickList = [...picks.blue];
-    const redPickList = [...picks.red];
+    // Get current bans/picks from FRESH state, then account for the one we just added
+    const userBanList = [...(userSide === 'BLUE' ? freshBans.blue : freshBans.red)];
+    const enemyBanList = [...(enemySide === 'BLUE' ? freshBans.blue : freshBans.red)];
+    const bluePickList = [...freshPicks.blue];
+    const redPickList = [...freshPicks.red];
 
     // Mark the slot we just filled
     if (justUsedPicker.isBan) {
@@ -716,7 +722,7 @@ export const DraftPage: React.FC = () => {
           <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
         </div>
 
-        <Link to="/profile" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white">
+        <Link to="/settings" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white">
           <Settings size={20} />
         </Link>
       </header>
