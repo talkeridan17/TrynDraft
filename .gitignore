@@ -231,8 +231,10 @@ yarn-error.log*
 .env.production.local
 !.env.example
 
-# Logs
-logs
+# Logs - keep folder structure but ignore log files
+logs/*.log
+logs/*.json
+!logs/.gitkeep
 *.log
 
 # Runtime data

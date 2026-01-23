@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sword, Settings, User, LogIn, LogOut } from 'lucide-react';
+import { Sword, Settings, User, LogIn, LogOut, UserCircle } from 'lucide-react';
 import { authService } from '../../utils/api';
 import { getChampionImageUrl } from '../../utils/patch';
 
@@ -85,10 +85,24 @@ export const Header: React.FC = () => {
               <span className="font-medium">Draft</span>
             </Link>
 
+            {/* Profile - redirects to login if not authenticated */}
             <Link
-              to="/profile"
+              to={isAuthenticated ? '/profile' : '/login'}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
                 isActive('/profile')
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  : 'text-gray-400 hover:bg-gray-900 hover:text-white border border-transparent'
+              }`}
+            >
+              <UserCircle size={18} />
+              <span className="font-medium">Profile</span>
+            </Link>
+
+            {/* Settings - accessible to everyone */}
+            <Link
+              to="/settings"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+                isActive('/settings')
                   ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                   : 'text-gray-400 hover:bg-gray-900 hover:text-white border border-transparent'
               }`}

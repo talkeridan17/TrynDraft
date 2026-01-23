@@ -50,12 +50,18 @@ class ProgressTracker:
         if self._initialized:
             return
 
-        self.logs_dir = Path("logs")
+        # Use root-level logs directory (not backend/logs)
+        # This makes logs easily accessible from project root
+        backend_dir = Path(__file__).parent.parent.parent  # backend/app/services -> backend
+        project_root = backend_dir.parent  # backend -> project root
+        self.logs_dir = project_root / "logs"
         self.logs_dir.mkdir(exist_ok=True)
         self.progress_file = self.logs_dir / "progress.json"
         self.log_file = self.logs_dir / "scraper.log"
+        self.stats_log_file = self.logs_dir / "stats_scraper.log"
+        self.text_log_file = self.logs_dir / "text_scraper.log"
 
-        # Configure file logger
+        # Configure file loggers
         self._setup_file_logger()
 
         # Load existing progress or create new
@@ -63,15 +69,33 @@ class ProgressTracker:
         self._initialized = True
 
     def _setup_file_logger(self):
-        """Set up file logging for scrapers."""
-        file_handler = logging.FileHandler(self.log_file)
-        file_handler.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
+        """Set up file logging for scrapers with separate log files."""
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-        # Add to root logger for scrapers
+        # General scraper log
+        general_handler = logging.FileHandler(self.log_file)
+        general_handler.setLevel(logging.INFO)
+        general_handler.setFormatter(formatter)
+
+        # Stats scraper log
+        stats_handler = logging.FileHandler(self.stats_log_file)
+        stats_handler.setLevel(logging.INFO)
+        stats_handler.setFormatter(formatter)
+
+        # Text scraper log
+        text_handler = logging.FileHandler(self.text_log_file)
+        text_handler.setLevel(logging.INFO)
+        text_handler.setFormatter(formatter)
+
+        # Add handlers to appropriate loggers
         scraper_logger = logging.getLogger('app.services')
-        scraper_logger.addHandler(file_handler)
+        scraper_logger.addHandler(general_handler)
+
+        stats_logger = logging.getLogger('app.services.stats_scraper')
+        stats_logger.addHandler(stats_handler)
+
+        text_logger = logging.getLogger('app.services.text_scraper')
+        text_logger.addHandler(text_handler)
 
     def _load_progress(self) -> Dict:
         """Load progress from file or return default structure."""
