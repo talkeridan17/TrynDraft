@@ -269,6 +269,7 @@ export interface AnalysisResult {
   red_power: number;
   source: string;
   model: string;
+  recommendations?: string[];  // Champion suggestions
 }
 
 export const recommendationService = {
