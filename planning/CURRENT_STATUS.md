@@ -1,6 +1,6 @@
 # TrynDraft - Current Development Status
 
-**Last Updated:** 2026-01-16
+**Last Updated:** 2026-01-26
 **Version:** 0.5.0-alpha
 
 ---
@@ -11,7 +11,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                         FRONTEND                            │
 │  React 19 + TypeScript + Vite + TailwindCSS + Zustand      │
-│  • Draft Interface    • Profile Page    • Champion Picker  │
+│  • Draft Interface    • Profile Page    • Settings Page    │
 └──────────────────────────┬──────────────────────────────────┘
                            │ REST API
 ┌──────────────────────────▼──────────────────────────────────┐
@@ -21,17 +21,17 @@
 │ SERVICES                                                    │
 │ ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │
 │ │  NN Service   │ │  LLM Service  │ │  Stats Scraper   │  │
-│ │  (PyTorch)    │ │  (Mistral 7B) │ │  (LoLalytics)    │  │
+│ │  (PyTorch)    │ │ (Qwen2.5-72B) │ │  (LoLalytics)    │  │
 │ └───────────────┘ └───────────────┘ └───────────────────┘  │
 │ ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐  │
-│ │  Text Scraper │ │  Scheduler    │ │  Draft Logic     │  │
-│ │  (MOBAFire)   │ │  (APScheduler)│ │  (Validation)    │  │
+│ │  Text Scraper │ │  Prompts Svc  │ │  Draft Logic     │  │
+│ │  (MOBAFire)   │ │ (Stage-aware) │ │  (Validation)    │  │
 │ └───────────────┘ └───────────────┘ └───────────────────┘  │
 ├─────────────────────────────────────────────────────────────┤
 │ STORAGE                                                     │
 │ ┌─────────────┐ ┌─────────────┐ ┌─────────────────────────┐│
-│ │ PostgreSQL  │ │    Redis    │ │  File Storage          ││
-│ │ (Database)  │ │   (Cache)   │ │  (Models, Scraped Data)││
+│ │ SQLite/PG   │ │    Redis    │ │  File Storage          ││
+│ │ (Database)  │ │   (Cache)   │ │  (Models, Logs)        ││
 │ └─────────────┘ └─────────────┘ └─────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -46,8 +46,9 @@
 - [x] Complete draft UI with Blue/Red team boards
 - [x] Phase-based system (BAN/PICK/COMPLETE) with color coding
 - [x] Manual draft cursor - click any slot to select it
-- [x] Drag-and-drop champions between slots
+- [x] Drag-and-drop champions between slots (with swap support)
 - [x] Champion picker with search filtering
+- [x] **NEW** Clickable champion recommendations in LLM panel
 - [x] Role icons from Community Dragon API
 - [x] Rank icons for ELO selection
 - [x] Live champion splash art in pick slots
@@ -55,7 +56,7 @@
 - [x] Reset button preserves user's role and rank settings
 - [x] No duplicate picks - filtering works correctly
 - [x] Draft phase auto-advancement with manual override
-- [x] Text selection disabled to prevent accidental selection during drag
+- [x] AbortController for cancelling stale LLM requests
 
 #### Authentication & User Management
 - [x] Login/Register pages connected to backend
@@ -64,17 +65,21 @@
 - [x] Header with auth status (profile picture, username, logout)
 - [x] Profile page with full functionality
 
-#### Profile/Settings Page
+#### Settings Page (NEW)
+- [x] Game mode selection (Ranked/Clash/Pro)
+- [x] Separate from Profile page
+- [x] Accessible to all users (logged in or guest)
+
+#### Profile Page
 - [x] Profile picture selection (champion splash art)
 - [x] Main role selection (single role)
 - [x] Rank selection
 - [x] Champion pool management (add/remove champions)
-- [x] Proficiency ratings for champions
+- [x] Proficiency ratings (1-5 stars) for champions
 - [x] Save preferences with visual feedback
 - [x] Preferences auto-load on draft page
-- [x] Profile picture updates immediately in header
 
-### Backend (FastAPI + PostgreSQL)
+### Backend (FastAPI + Python 3.12)
 
 #### API Endpoints
 - [x] User registration/login (`/api/v1/users/`)
@@ -82,32 +87,17 @@
 - [x] Champion pool management
 - [x] Champion data (`/api/v1/champions/`)
 - [x] Draft CRUD and actions (`/api/v1/drafts/`)
-- [x] **NEW** Recommendations API (`/api/v1/recommendations/`)
-- [x] **NEW** Admin API (`/api/v1/admin/`)
+- [x] Recommendations API (`/api/v1/recommendations/`)
+- [x] Admin API (`/api/v1/admin/`)
 
-#### Services (NEW)
-- [x] **Neural Network Service** - PyTorch-based recommendation model
-  - 50-feature extraction (stats, matchups, synergies, composition)
-  - Rule-based fallback when model not trained
-  - Model persistence (save/load)
+#### Services
+- [x] **Neural Network Service** - 50-feature PyTorch model
+- [x] **LLM Service** - HuggingFace Qwen2.5-72B integration
 - [x] **LLM Prompts Service** - Stage-aware prompt generation
-  - EARLY_BAN, FIRST_PICK, SECOND_BAN, FINAL_PICK, COMPLETE stages
-  - Analysis, recommendation, gameplan prompts
-  - User context integration
+- [x] **Rule-based Fallback** - Free dev mode (USE_HUGGINGFACE_API=false)
 - [x] **Stats Scraper** - Champion statistics collection
-  - Scrapes LoLalytics/U.GG for win rates, matchups, synergies
-  - Async implementation with rate limiting
-- [x] **Text Scraper** - LLM training data collection
-  - MOBAFire guides, Reddit discussions, Fandom wiki
-  - Quality scoring for training data
-- [x] **Scheduler Service** - Automated task execution
-  - Stats scraping (daily at 6 AM UTC)
-  - Text scraping (weekly on Sundays)
-  - Database cleanup (monthly)
-- [x] **NN Trainer** - Neural network training pipeline
-  - Generates training data from scraped stats
-  - PyTorch model with configurable architecture
-  - Validation and model saving
+- [x] **Text Scraper** - MOBAFire/LoLalytics guide scraping
+- [x] **Progress Tracker** - Unified logging for scrapers
 
 #### Database Models
 - [x] User (auth, preferences, profile)
@@ -116,167 +106,155 @@
 - [x] Draft (state, picks, bans, analysis)
 - [x] ScrapedContent (text data for LLM training)
 - [x] LLMInteraction (analysis history)
-- [x] DraftRecommendation (NN recommendations)
-
-#### Authentication & Security
-- [x] Password hashing (bcrypt)
-- [x] JWT tokens with expiration
-- [x] CORS configuration
-- [x] Protected endpoints
-
-### Infrastructure
-- [x] Docker + Docker Compose (PostgreSQL, Redis, Backend, Frontend)
-- [x] Alembic migrations
-- [x] **NEW** deploy.sh with dev/prod modes
-- [x] **NEW** Comprehensive requirements.txt
-- [x] Environment-based configuration
-- [x] .gitignore properly configured
-
-### Testing
-- [x] Test fixtures (conftest.py)
-- [x] Service tests (test_services.py)
-- [x] API endpoint tests (test_api.py)
 
 ---
 
-## Data Pipeline (Ready for Production)
+## LLM Integration Details
+
+### Current State
+- **Model**: Qwen2.5-72B via HuggingFace Inference API
+- **Status**: Disabled by default (USE_HUGGINGFACE_API=false)
+- **Fallback**: Rule-based analysis with role-specific advice
+
+### Prompt Types
+1. **Analysis Prompt** - Comp needs + strategic analysis + recommendations
+2. **Gameplan Prompt** - 4-section detailed strategy (COMPLETE phase)
+3. **Draft Start Prompt** - Meta overview and ban targets
+4. **Matchup Prompt** - 1v1 lane analysis
+5. **Counter-pick Prompt** - Counter suggestions
+6. **Synergy Prompt** - Team composition analysis
+
+### Token Limits
+- Regular analysis: 500 tokens
+- Complete gameplan: 1500 tokens
+
+---
+
+## Neural Network Architecture
+
+```
+Input (50 features)
+    │
+    ▼
+┌─────────────────────┐
+│ Linear(50, 128)     │
+│ BatchNorm + ReLU    │
+│ Dropout(0.3)        │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ Linear(128, 64)     │
+│ BatchNorm + ReLU    │
+│ Dropout(0.2)        │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ Linear(64, 32)      │
+│ ReLU                │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ Linear(32, 1)       │
+│ Sigmoid → Score     │
+└─────────────────────┘
+
+Features:
+- Base stats (attack, defense, magic, difficulty)
+- Meta stats (win rate, pick rate, ban rate)
+- User proficiency (1-5)
+- Matchup scores vs enemy picks
+- Synergy scores with ally picks
+- Role compatibility
+- Team composition balance
+```
+
+---
+
+## Data Pipeline
 
 ```
 1. SEED CHAMPIONS
    └─> python scripts/seed_champions.py
-   └─> Fetches from Data Dragon → Champion table
+   └─> Data Dragon → Champion table
 
-2. SCRAPE STATS (Automated daily or manual) - Riot API
-   └─> POST /api/v1/admin/scrape/stats?ranks=DIAMOND&regions=na1,euw1,kr
-   └─> Riot API → scraped_data/riot_stats/patch_X.X/{RANK}/champion_stats.json
-   └─> Runs in background thread due to rate limits (can take hours)
-   └─> Supports ALL ranks: IRON through CHALLENGER
+2. SCRAPE STATS (Manual)
+   └─> POST /api/v1/admin/scrape/stats
+   └─> LoLalytics/U.GG → Champion stats JSON
 
-3. LOAD STATS TO DATABASE
-   └─> POST /api/v1/admin/scrape/load?rank=DIAMOND
-   └─> JSON files → Champion table (win_rate, matchups, synergies)
+3. TRAIN NEURAL NETWORK
+   └─> POST /api/v1/admin/train
+   └─> Stats → models/draft_recommendation.pth
 
-4. TRAIN NEURAL NETWORK (Per-rank or combined)
-   └─> POST /api/v1/admin/train?rank=DIAMOND&epochs=50  (single rank)
-   └─> POST /api/v1/admin/train/all?epochs=50           (all ranks)
-   └─> Scraped data → models/{RANK}/draft_recommendation.pth
-   └─> Combined model → models/combined/draft_recommendation.pth
-
-5. SCRAPE TEXT (Automated weekly or manual)
+4. SCRAPE TEXT (For LLM fine-tuning)
    └─> POST /api/v1/admin/scrape/text
-   └─> MOBAFire/Reddit → ScrapedContent table
+   └─> MOBAFire → ScrapedContent table
 
-6. PRODUCTION USAGE
-   └─> /api/v1/recommendations/sorted-champions
-   └─> Returns champions sorted by rank-specific NN score
-   └─> Falls back to combined model if rank-specific not available
-   └─> Falls back to rule-based scoring if no models trained
+5. FINE-TUNE LLM (Planned)
+   └─> ScrapedContent → Fine-tuned model
 ```
 
-### Per-Rank Model Architecture
+---
 
-```
-models/
-├── IRON/
-│   ├── draft_recommendation.pth
-│   ├── feature_scaler.pkl
-│   └── model_metadata.json
-├── BRONZE/
-├── SILVER/
-├── GOLD/
-├── PLATINUM/
-├── EMERALD/
-├── DIAMOND/
-├── MASTER/
-├── GRANDMASTER/
-├── CHALLENGER/
-└── combined/
-    ├── draft_recommendation.pth
-    ├── feature_scaler.pkl
-    └── model_metadata.json
+## Recent Changes
 
-scraped_data/
-└── riot_stats/
-    └── patch_16.1/
-        ├── IRON/
-        │   ├── champion_stats.json
-        │   ├── synergies.json
-        │   └── scrape_tracker.json
-        ├── BRONZE/
-        ├── ...
-        └── CHALLENGER/
+### 2026-01-26
+- Added clickable champion recommendations in LLM panel
+- Added AbortController for LLM request cancellation
+- Disabled HuggingFace API by default (USE_HUGGINGFACE_API=false)
+- Improved rule-based analysis with role-specific advice
+- Updated all documentation (README, SECURITY, CONTRIBUTING)
+- Cleaned up empty directories in planning folder
+- Increased LLM token limits (500 regular, 1500 gameplan)
+
+### 2026-01-25
+- Added Settings page with game mode selection
+- Fixed champion swapping in draft slots
+- Fixed LLM response text size and structure
+- Added champion de-duplication in database
+- Created root-level logs folder for scrapers
+
+### 2026-01-17
+- Per-rank neural network models
+- Riot API integration for stats
+- Background thread execution for scraping
+
+---
+
+## Environment Configuration
+
+```bash
+# Backend .env
+DATABASE_URL=sqlite:///./tryndraft.db
+SECRET_KEY=your-secret-key
+RIOT_API_KEY=your-riot-key           # Optional
+HF_TOKEN=your-huggingface-token      # Optional
+USE_HUGGINGFACE_API=false            # Set true for production
+
+# Frontend .env
+VITE_API_URL=http://localhost:8000
 ```
 
 ---
 
 ## Remaining Work
 
-### Immediate (Before Production)
-- [ ] Test backend services with real data
-- [ ] Verify scraping works in production environment
-- [ ] Train initial neural network model
-- [ ] Test LLM integration with HuggingFace
+### Immediate (Phase 3 Completion)
+- [ ] Complete data scraping pipeline
+- [ ] Train NN with real champion stats
+- [ ] Fine-tune LLM on LoL content (post-scraping)
+- [ ] Integrate matchup data into recommendations
 
-### Future Enhancements
-- [ ] Settings page separate from Profile
-- [ ] Game mode selection (Ranked, ARAM, etc.)
-- [ ] Draft history (save and review past drafts)
-- [ ] Draft sharing (share draft URL)
+### Future
 - [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Rate limiting middleware
+- [ ] Production deployment (AWS/Railway)
+- [ ] Draft history and sharing
+- [ ] Multi-user live drafts (WebSocket)
+- [ ] Mobile responsive design
 
 ---
 
-## Technology Summary
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 19, TypeScript, Vite, TailwindCSS, Zustand |
-| Backend | FastAPI, Python 3.12, SQLAlchemy 2.0, Pydantic 2 |
-| AI/ML | PyTorch, HuggingFace (Mistral 7B), scikit-learn |
-| Database | PostgreSQL 15, Redis 7 |
-| Scraping | aiohttp, BeautifulSoup4, APScheduler |
-| Deployment | Docker, Docker Compose |
-| Testing | pytest, pytest-asyncio |
-
----
-
-## Recent Changes
-
-### 2026-01-17 (Per-Rank Data Pipeline)
-- Rewrote stats_scraper.py to use official Riot API instead of third-party scrapers
-- Added support for ALL ranks (IRON through CHALLENGER)
-- Data stored per-rank: scraped_data/riot_stats/patch_X.X/{RANK}/
-- Updated nn_trainer.py to train per-rank models
-- Updated draft_nn_service.py to load rank-specific models dynamically
-- Updated recommendations endpoint to use rank-specific models
-- Added training endpoints to admin API: POST /train, POST /train/all
-- Added GET /models endpoint to check available trained models
-- Background thread execution for long-running scrapes (rate limiting)
-- Falls back to combined model → rule-based scoring gracefully
-
-### 2026-01-16 (Backend Overhaul)
-- Created comprehensive stats_scraper.py for LoLalytics/U.GG
-- Created scheduler.py for automated scraping tasks
-- Created nn_trainer.py for neural network training pipeline
-- Created llm_prompts.py with stage-aware prompts
-- Created recommendations.py API endpoint
-- Created admin.py for manual task triggers
-- Updated requirements.txt with all dependencies
-- Updated deploy.sh with dev/prod modes
-- Removed hardcoded credentials from scripts
-- Deleted duplicate scrape_text_data.py
-- Created comprehensive test suite
-
-### 2026-01-16 (Frontend)
-- Created custom TrynDraft logo
-- Fixed guest login redirect
-- Fixed reset button behavior
-- Single role selection on profile
-- Immediate profile picture updates
-- Disabled text selection on draft page
-
----
-
-**Project Status:** Ready for Production Testing
+**Project Status:** Active Development
 **License:** MIT

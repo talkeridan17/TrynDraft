@@ -321,14 +321,17 @@ async def get_draft_analysis(
         for champ in all_champions_data if champ.name not in unavailable
     ]
 
+    # Sort by win_rate and pick_rate to prioritize strong meta picks
+    champions_for_nn.sort(key=lambda x: (x['win_rate'] or 50) + (x['pick_rate'] or 5) * 0.3, reverse=True)
+
     draft_state_for_nn = {
         'phase': phase, 'current_turn': turn, 'side': side, 'role': role,
         'bans_blue': bans_blue, 'bans_red': bans_red,
         'picks_blue': picks_blue, 'picks_red': picks_red
     }
 
-    # Score and get top 5 picks from NN
-    for champ in champions_for_nn[:50]:  # Limit to top 50 for performance
+    # Score top 80 meta picks through NN for performance
+    for champ in champions_for_nn[:80]:
         score = nn_service.predict_recommendation_score(champ, draft_state_for_nn, None, elo)
         top_nn_picks.append((champ['name'], score))
     top_nn_picks.sort(key=lambda x: x[1], reverse=True)
@@ -376,6 +379,19 @@ async def get_draft_analysis(
     else:
         advantage = f"Red team ahead (+{abs(diff):.1f}%)"
 
+    # Build recommendations list - mix user pool and NN picks
+    recommendations = []
+    # First add 1-2 from user's pool if available and not banned/picked
+    if user_pool_names:
+        pool_picks = [c for c in user_pool_names if c not in unavailable][:2]
+        recommendations.extend(pool_picks)
+    # Then add NN picks that aren't already in recommendations
+    for nn_pick in top_5_nn:
+        if nn_pick not in recommendations and nn_pick not in unavailable:
+            recommendations.append(nn_pick)
+        if len(recommendations) >= 4:
+            break
+
     return {
         'analysis': analysis_result.get('analysis', 'Analyzing draft...'),
         'stage': stage,
@@ -385,7 +401,8 @@ async def get_draft_analysis(
         'blue_power': round(blue_power, 1),
         'red_power': round(red_power, 1),
         'source': analysis_result.get('source', 'unknown'),
-        'model': analysis_result.get('model', 'unknown')
+        'model': analysis_result.get('model', 'unknown'),
+        'recommendations': recommendations  # Champion suggestions
     }
 
 

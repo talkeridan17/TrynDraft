@@ -248,13 +248,19 @@ export const useDraftStore = create<DraftState>()(
         const currentBans = state.bans[sideKey];
 
         // Check if this champion is already banned (by either team) - unless clearing with ''
+        // Allow if it's already in the SAME side's bans (swap operation)
         if (champion && champion !== '') {
-          const allBans = [...state.bans.blue, ...state.bans.red];
-          if (allBans.includes(champion)) {
-            console.error(`${champion} is already banned`);
+          const otherSideKey = sideKey === 'blue' ? 'red' : 'blue';
+          const otherSideBans = state.bans[otherSideKey];
+
+          // If champion is in other side's bans, reject
+          if (otherSideBans.includes(champion)) {
+            console.error(`${champion} is already banned by the other team`);
             return false;
           }
-          // Also check if already picked
+          // If champion is in same side's bans, it's a swap - allow it (positions will be overwritten)
+
+          // Check if already picked
           const allPicks = [...state.picks.blue, ...state.picks.red].map(p => p.champion).filter(Boolean);
           if (allPicks.includes(champion)) {
             console.error(`${champion} is already picked`);
@@ -340,12 +346,18 @@ export const useDraftStore = create<DraftState>()(
         const picks = state.picks[sideKey];
 
         // Check if this champion is already picked or banned - unless clearing with ''
+        // Allow if it's already in the SAME side's picks (swap operation)
         if (champion && champion !== '') {
-          const allPicks = [...state.picks.blue, ...state.picks.red].map(p => p.champion).filter(Boolean);
-          if (allPicks.includes(champion)) {
-            console.error(`${champion} is already picked`);
+          const otherSideKey = sideKey === 'blue' ? 'red' : 'blue';
+          const otherSidePicks = state.picks[otherSideKey].map(p => p.champion).filter(Boolean);
+
+          // If champion is in other side's picks, reject
+          if (otherSidePicks.includes(champion)) {
+            console.error(`${champion} is already picked by the other team`);
             return false;
           }
+          // If champion is in same side's picks, it's a swap - allow it
+
           const allBans = [...state.bans.blue, ...state.bans.red].filter(Boolean);
           if (allBans.includes(champion)) {
             console.error(`${champion} is already banned`);
