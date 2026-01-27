@@ -460,5 +460,5 @@ async def get_draft_analysis(draft_hash: str):
 
 For questions or issues, refer to the main README.md or open a GitHub issue.
 
-**Last Updated**: 2026-01-09
-**Version**: 1.0
+**Last Updated**: 2026-01-26
+**Version**: 1.1

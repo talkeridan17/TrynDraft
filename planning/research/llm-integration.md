@@ -129,47 +129,63 @@ Keep each section to 3-4 bullet points.
 
 ## 2. LLM Selection & Comparison
 
-### Option 1: HuggingFace Inference API (Current)
+### Option 1: HuggingFace Inference API (Current Implementation)
 
-**Model:** Mistral-7B-Instruct-v0.2
-**Cost:** Free tier (rate limited) or $0.001 per 1k tokens
+**Model:** Qwen2.5-72B-Instruct (via Nebius provider)
+**Cost:** Pay-per-use (~$0.001 per request)
 **Latency:** 2-4 seconds per request
-**Max Context:** 8192 tokens
+**Max Context:** 32k tokens
+
+**Development Mode:** `USE_HUGGINGFACE_API=false` (default)
+- Prevents accidental charges during development
+- Uses rule-based fallback with role-specific advice
+- Shows "[DEV MODE]" prefix in responses
 
 **Pros:**
-- Free tier available for development
+- High-quality 72B parameter model
 - Easy integration (API call)
-- Good quality for general tasks
+- No infrastructure management
+- Can switch models via provider
 
 **Cons:**
-- Rate limiting on free tier (1-2 req/sec)
+- Pay-per-use can add up
 - Not specialized for League of Legends
-- No fine-tuning control
+- Rate limiting applies
 
 **Implementation:**
 ```python
-import aiohttp
+import httpx
+import os
 
 HF_TOKEN = os.getenv('HF_TOKEN')
-API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+API_URL = "https://router.huggingface.co/nebius/v1/chat/completions"
 
-async def generate_llm_response(prompt: str) -> str:
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+# Check if LLM is enabled (disabled by default to prevent charges)
+USE_HF_API = os.getenv("USE_HUGGINGFACE_API", "false").lower() == "true"
 
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 300,
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "return_full_text": False
-        }
+async def generate_llm_response(prompt: str, is_complete: bool = False) -> str:
+    if not USE_HF_API:
+        return generate_rule_based_response(prompt)  # Free fallback
+
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json"
     }
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(API_URL, headers=headers, json=payload) as resp:
-            result = await resp.json()
-            return result[0]['generated_text']
+    max_tokens = 1500 if is_complete else 500  # Longer for gameplan
+
+    payload = {
+        "model": "Qwen/Qwen2.5-72B-Instruct",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.7,
+        "stream": False
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(API_URL, headers=headers, json=payload)
+        result = response.json()
+        return result['choices'][0]['message']['content']
 ```
 
 ### Option 2: OpenAI GPT-4 Turbo
@@ -299,9 +315,20 @@ async def generate_llama_response(prompt: str) -> str:
 
 ### Recommended Strategy
 
-**Phase 1 (MVP):** HuggingFace Mistral (free tier)
-**Phase 2 (Production):** Claude 3 Haiku (cost-effective, high quality)
-**Phase 3 (Scale):** Self-hosted Llama 3 8B (fine-tuned on LoL data)
+**Phase 1 (Current - Development):** Rule-based fallback (free)
+- USE_HUGGINGFACE_API=false prevents charges
+- Role-specific advice built into rule engine
+
+**Phase 2 (Alpha/Beta):** HuggingFace Qwen2.5-72B
+- Enable with USE_HUGGINGFACE_API=true
+- Monitor costs carefully (set billing alerts)
+
+**Phase 3 (Production):** Claude 3 Haiku (cost-effective, high quality)
+- Best balance of cost/quality for sustained use
+
+**Phase 4 (Scale):** Self-hosted Llama 3 8B (fine-tuned on LoL data)
+- Fixed infrastructure cost, unlimited requests
+- Custom fine-tuned on scraped LoL content
 
 ---
 
@@ -849,6 +876,7 @@ async for chunk in llm.stream_response(prompt):
 
 ---
 
-**Last Updated:** 2026-01-11
-**Status:** Active Development (using HuggingFace Mistral)
-**Next Step:** Migrate to Claude 3 Haiku for production
+**Last Updated:** 2026-01-26
+**Status:** Active Development (HuggingFace Qwen2.5-72B available, rule-based fallback active)
+**Current Config:** USE_HUGGINGFACE_API=false (prevents dev charges)
+**Next Step:** Complete data scraping, then fine-tune for production

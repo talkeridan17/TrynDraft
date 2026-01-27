@@ -32,13 +32,14 @@ class LLMPromptsService:
     3. Specific analysis types (recommendations, analysis, gameplan)
     """
 
-    # Draft stage definitions
+    # Draft stage definitions (matching actual turn order)
+    # Turns 0-4: User bans, Turns 5-9: Enemy bans, Turns 10-19: Picks
     STAGES = {
-        'EARLY_BAN': (0, 5),      # Turns 0-5: First ban phase
-        'FIRST_PICK': (6, 9),     # Turns 6-9: First pick phase
-        'SECOND_BAN': (10, 13),   # Turns 10-13: Second ban phase
-        'FINAL_PICK': (14, 19),   # Turns 14-19: Final pick phase
-        'COMPLETE': (20, 20)      # Turn 20: Draft complete
+        'USER_BAN': (0, 4),       # Turns 0-4: User's ban phase
+        'ENEMY_BAN': (5, 9),      # Turns 5-9: Enemy's ban phase
+        'EARLY_PICK': (10, 13),   # Turns 10-13: First round of picks
+        'LATE_PICK': (14, 19),    # Turns 14-19: Second round of picks
+        'COMPLETE': (20, 99)      # Turn 20+: Draft complete
     }
 
     def get_stage(self, turn: int) -> str:
@@ -74,12 +75,15 @@ class LLMPromptsService:
 
 {analysis_focus}
 
-Provide your analysis in 3-4 concise sentences. Focus on:
-1. Current state assessment (who has the advantage)
-2. Key strategic implications
-3. What to watch for in upcoming picks/bans
+RESPONSE FORMAT (follow this structure exactly):
 
-Keep your response focused and actionable."""
+FIRST: Write 2-3 sentences about what the current composition needs or what is strong in the meta right now. Discuss team composition gaps, power picks that are still available, or strategic priorities for this stage of the draft.
+
+THEN: Write 3-4 sentences with specific analysis of the draft state. Cover who has the advantage, what strategies are developing, and what to watch for in upcoming picks/bans.
+
+FINALLY: Name 3-4 specific champion recommendations with brief reasons why each fits the situation.
+
+Be detailed, specific, and actionable. Write at least 6-8 sentences total."""
 
         return prompt
 
@@ -132,32 +136,47 @@ Be specific and strategic."""
         """
         state_desc = self._build_state_description(context)
 
-        prompt = f"""You are an expert League of Legends analyst. The draft is complete. Provide a comprehensive gameplan for the {context.side} team.
+        prompt = f"""You are an expert League of Legends analyst and coach. The draft is complete. Provide an extremely comprehensive gameplan that the player can use to win.
 
 {state_desc}
 
-Provide analysis covering:
+Write FOUR detailed sections (this should be a long, thorough analysis):
 
-## Team Composition Analysis
-- Strengths of {context.side} team
-- Weaknesses and vulnerabilities
-- Win conditions
+=== SECTION 1: TEAM COMPOSITION ANALYSIS ===
+Analyze both team compositions in detail:
+- Identify the win condition for each team (teamfight, split push, pick comp, poke, etc.)
+- Compare scaling - who wins early, mid, and late game?
+- Identify key power spikes for both teams (2-item spikes, level 6, etc.)
+- Which team has the draft advantage and by how much?
+- What does the enemy team want to do and how can you stop it?
 
-## Laning Phase
-- Expected lane matchups and outcomes
-- Jungle pathing considerations
-- Early game priorities
+=== SECTION 2: LANING PHASE STRATEGY ({context.role}) ===
+Provide specific laning advice for the user:
+- How does your matchup play out? Are you stronger or weaker early?
+- What abilities should you play around? What are the key trading patterns?
+- Should you play aggressive, passive, or look for all-ins?
+- What is your wave management strategy?
+- When should you recall? What are your power spike timings?
+- Jungle tracking - when are you vulnerable to ganks?
 
-## Mid-Game Strategy
-- Power spikes to play around
-- Objective priorities
-- Teamfight vs splitpush orientation
+=== SECTION 3: MID GAME OBJECTIVES & ROTATIONS ===
+Cover the mid game strategy:
+- What objectives should your team prioritize (dragons, herald, towers)?
+- When should you group vs. side lane?
+- If you're ahead, how do you snowball? If behind, how do you come back?
+- Where should you ward? What vision control is important?
+- Roaming opportunities and timings
 
-## Late Game
-- Scaling outlook
-- How to close out the game
+=== SECTION 4: TEAMFIGHTING & LATE GAME ===
+Explain how to play teamfights and close out the game:
+- What is your role in teamfights? (front-to-back, dive, peel, etc.)
+- Who are your priority targets? Who should you avoid?
+- What abilities/ultimates should you save? What combos are available?
+- Positioning - where should you stand before and during fights?
+- How does your team execute its win condition?
+- Late game macro - Baron plays, Elder, soul point, ending the game
 
-Keep each section to 2-3 sentences. Be specific to these champions."""
+Be extremely detailed and specific to these exact champions. Every sentence should be actionable advice the player can use immediately. This is a complete guide to winning this game."""
 
         return prompt
 
@@ -232,12 +251,15 @@ Keep response focused and actionable (5-6 sentences)."""
 
 The user is playing {context.side} side as {context.role}.
 
-Provide a brief overview (2-3 sentences) covering:
-1. General draft strategy for {context.side} side
-2. Key priorities for {context.role} in this meta
-3. What to consider during the ban phase
+RESPONSE FORMAT (4-5 sentences):
 
-Be concise and practical."""
+FIRST: Explain what's strong in the current meta for {context.role}. Mention 2-3 champion archetypes or playstyles that are performing well (e.g., "Engage tanks are dominating top lane" or "Scaling mages are strong mid").
+
+THEN: Give specific draft strategy for {context.side} side. What's the advantage or disadvantage of this side? First pick vs counter-pick considerations.
+
+FINALLY: Recommend 3-4 strong ban targets that would protect the {context.role} player or deny enemy strategies. Name specific champions and briefly explain why they should be banned.
+
+Be detailed and actionable. The player should know exactly what to focus on."""
 
         return prompt
 
@@ -306,35 +328,38 @@ Red Team:
     def _get_analysis_focus(self, stage: str, context: DraftContext) -> str:
         """Get stage-specific analysis focus."""
         focuses = {
-            'EARLY_BAN': f"""=== ANALYSIS FOCUS: Early Ban Phase ===
+            'USER_BAN': f"""=== ANALYSIS FOCUS: Your Ban Phase ===
 Focus on:
-- Which champions should be banned to deny enemy strategies
-- What bans protect the {context.role} lane
-- Meta-relevant bans for {context.elo} rank""",
+- Which champions to ban to deny enemy strategies
+- Bans that protect the {context.role} position
+- Meta-relevant bans for {context.elo} rank
+- What the enemy might be planning""",
 
-            'FIRST_PICK': f"""=== ANALYSIS FOCUS: First Pick Phase ===
+            'ENEMY_BAN': f"""=== ANALYSIS FOCUS: Enemy Ban Phase ===
+Focus on:
+- What the enemy bans reveal about their strategy
+- Adjusting your picks based on remaining champion pool
+- Opportunities created by enemy bans""",
+
+            'EARLY_PICK': f"""=== ANALYSIS FOCUS: Early Pick Phase ===
 Focus on:
 - Flex picks that can go multiple roles
 - Strong blind picks for {context.role}
-- Setting up team composition direction""",
+- Setting up team composition direction
+- Denying enemy priority picks""",
 
-            'SECOND_BAN': f"""=== ANALYSIS FOCUS: Second Ban Phase ===
-Focus on:
-- Targeted bans against enemy composition
-- Protecting remaining picks
-- Denying counters to your team""",
-
-            'FINAL_PICK': f"""=== ANALYSIS FOCUS: Final Picks ===
+            'LATE_PICK': f"""=== ANALYSIS FOCUS: Late Pick Phase ===
 Focus on:
 - Counter-picking opportunities
 - Completing team composition
-- Role-specific matchup considerations""",
+- Role-specific matchup considerations
+- Final synergy checks""",
 
             'COMPLETE': f"""=== ANALYSIS FOCUS: Draft Complete ===
 Focus on:
 - Overall composition comparison
 - Win conditions for each team
-- Game plan recommendations"""
+- Detailed game plan for {context.role}"""
         }
 
         return focuses.get(stage, focuses['COMPLETE'])

@@ -54,6 +54,11 @@ export const DraftPage: React.FC = () => {
   // Track if phase change was manual (to prevent auto-switch interference)
   const manualPhaseChangeRef = useRef(false);
 
+  // AbortController for cancelling pending LLM requests
+  const llmAbortRef = useRef<AbortController | null>(null);
+  // Track the turn we last requested analysis for
+  const lastAnalysisTurnRef = useRef<number>(-1);
+
   const currentPicker = getCurrentPicker();
 
   // Define loadUserPreferences first so it can be used in useEffect and reset button
@@ -147,8 +152,10 @@ export const DraftPage: React.FC = () => {
     return currentPicker.side === settings.side && !currentPicker.isBan;
   }, [currentPicker, settings.side]);
 
-  // Fetch LLM analysis
-  const fetchLLMAnalysis = useCallback(async () => {
+  // Fetch LLM analysis with abort support
+  const fetchLLMAnalysis = useCallback(async (forceTurn?: number) => {
+    const turnToFetch = forceTurn ?? currentTurn;
+
     // Trigger conditions:
     // 1. Throughout entire ban phase - suggest bans to user
     // 2. Any of user's team's pick turns (brief for teammates, detailed for user)
@@ -158,7 +165,18 @@ export const DraftPage: React.FC = () => {
 
     // During ban phase, always provide suggestions (user wants help with their bans)
     // During pick phase, only on user's team's turns
+    // Always fetch for COMPLETE phase
     if (draftPhase === 'PICK' && !teamPickTurn) return;
+
+    // Cancel any pending request
+    if (llmAbortRef.current) {
+      llmAbortRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    const abortController = new AbortController();
+    llmAbortRef.current = abortController;
+    lastAnalysisTurnRef.current = turnToFetch;
 
     setIsLoadingAnalysis(true);
     try {
@@ -168,15 +186,25 @@ export const DraftPage: React.FC = () => {
         ...draftState,
         is_user_turn: userTurn || draftPhase === 'BAN' // Always detailed during ban phase
       });
-      if (result) {
-        setLlmAnalysis(result);
+
+      // Only update if this request wasn't cancelled and turn hasn't changed
+      if (!abortController.signal.aborted && lastAnalysisTurnRef.current === turnToFetch) {
+        if (result) {
+          setLlmAnalysis(result);
+        }
       }
     } catch (error) {
-      console.error('Failed to fetch LLM analysis:', error);
+      // Ignore abort errors
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Failed to fetch LLM analysis:', error);
+      }
     } finally {
-      setIsLoadingAnalysis(false);
+      // Only clear loading if this is still the active request
+      if (!abortController.signal.aborted) {
+        setIsLoadingAnalysis(false);
+      }
     }
-  }, [buildDraftState, isUsersTurn, isUserTeamsTurn, draftPhase]);
+  }, [buildDraftState, isUsersTurn, isUserTeamsTurn, draftPhase, currentTurn]);
 
   useEffect(() => {
     // Load champions if not already loaded
@@ -930,15 +958,51 @@ export const DraftPage: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="flex-1 text-sm text-gray-400 overflow-y-auto">
+            <div className="flex-1 text-base text-gray-400 overflow-y-auto">
               {isLoadingAnalysis && !llmAnalysis ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
                 </div>
               ) : llmAnalysis ? (
-                <div className="space-y-2">
-                  {/* Analysis text */}
-                  <p className="text-gray-300 leading-relaxed">{llmAnalysis.analysis}</p>
+                <div className="space-y-4">
+                  {/* Analysis text - larger and more readable */}
+                  <p className="text-gray-100 leading-relaxed text-[17px] whitespace-pre-line">{llmAnalysis.analysis}</p>
+
+                  {/* Champion suggestions section - clickable to select */}
+                  {llmAnalysis.recommendations && llmAnalysis.recommendations.length > 0 && draftPhase !== 'COMPLETE' && (
+                    <div className="pt-4 border-t border-gray-700">
+                      <div className="text-sm text-amber-500 uppercase tracking-wider mb-3 font-bold">
+                        {draftPhase === 'BAN' ? 'Recommended Bans' : 'Recommended Picks'}
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {llmAnalysis.recommendations.slice(0, 5).map((champ: string, idx: number) => {
+                          // Check if champion is already banned/picked
+                          const isUnavailable = [
+                            ...bans.blue.filter(Boolean),
+                            ...bans.red.filter(Boolean),
+                            ...picks.blue.map(p => p.champion).filter(Boolean),
+                            ...picks.red.map(p => p.champion).filter(Boolean)
+                          ].includes(champ);
+
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => !isUnavailable && handleChampionSelect(champ)}
+                              disabled={isUnavailable}
+                              className={`flex items-center gap-2 rounded-lg px-3 py-2 border transition-all ${
+                                isUnavailable
+                                  ? 'bg-gray-900/50 border-gray-800 opacity-50 cursor-not-allowed'
+                                  : 'bg-gray-800/90 border-gray-700 hover:border-amber-500 hover:bg-gray-700/90 cursor-pointer'
+                              }`}
+                            >
+                              <img src={getChampionImageUrl(champ, latestPatch)} alt={champ} className="w-8 h-8 rounded" />
+                              <span className="text-base text-gray-200 font-medium">{champ}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Source indicator */}
                   <div className="text-[10px] text-gray-700 pt-2 border-t border-gray-800">
@@ -950,14 +1014,14 @@ export const DraftPage: React.FC = () => {
                   {draftPhase === 'COMPLETE' ? (
                     <div className="text-center mt-8">
                       <p className="text-lg font-bold mb-2 text-gray-500">Draft Complete!</p>
-                      <p className="text-sm">Generating analysis...</p>
+                      <p className="text-sm">Generating final analysis...</p>
                     </div>
                   ) : (
                     <div>
                       {draftPhase === 'BAN'
                         ? `${bans.blue.filter(b => b).length + bans.red.filter(b => b).length}/10 bans`
                         : `${picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length}/10 picks`}
-                      <p className="text-xs text-gray-700 mt-2">Suggestions will appear when it's your turn...</p>
+                      <p className="text-xs text-gray-700 mt-2">AI suggestions loading...</p>
                     </div>
                   )}
                 </div>
