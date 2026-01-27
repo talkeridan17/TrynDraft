@@ -39,8 +39,15 @@ class LLMService:
         # HuggingFace - using OpenAI-compatible router endpoint
         self.hf_token = os.getenv("HF_TOKEN")  # Get from huggingface.co
         self.hf_api = "https://router.huggingface.co/v1"  # New HF router (OpenAI-compatible)
-        self.model_name = "Qwen/Qwen2.5-72B-Instruct"  # Free, high-quality model
-        
+        self.model_name = "Qwen/Qwen2.5-72B-Instruct"  # High-quality model
+
+        # DEVELOPMENT MODE: Set to False to avoid HuggingFace API charges
+        # Set USE_HUGGINGFACE_API=true in .env when ready for production
+        self.use_hf_api = os.getenv("USE_HUGGINGFACE_API", "false").lower() == "true"
+
+        if not self.use_hf_api:
+            logger.info("HuggingFace API disabled (USE_HUGGINGFACE_API=false). Using rule-based analysis.")
+
         # Fine-tuned model ID (set after fine-tuning)
         self.fine_tuned_model_id = os.getenv("FINE_TUNED_MODEL_ID")
         
@@ -67,12 +74,15 @@ class LLMService:
     
     async def analyze_draft(self, draft_state: Dict, user_preferences: Optional[Dict] = None) -> Dict:
         """Generate analysis for current draft state with user preferences."""
+        phase = draft_state.get('phase', 'BAN')
+        is_complete = phase == 'COMPLETE'
+
         prompt = self._build_draft_prompt(draft_state, user_preferences)
 
-        # Try HuggingFace API first
-        if self.hf_token:
+        # Try HuggingFace API first (only if enabled to avoid charges during dev)
+        if self.use_hf_api and self.hf_token:
             try:
-                analysis = await self._query_huggingface(prompt)
+                analysis = await self._query_huggingface(prompt, is_complete=is_complete)
                 if analysis and not analysis.startswith("Error"):
                     return {
                         "analysis": analysis,
@@ -193,21 +203,29 @@ Just note what the team still needs (tank? AP? engage?) or synergy potential. Be
                 result.append({'champion': pick, 'role': ''})
         return result
     
-    async def _query_huggingface(self, prompt: str) -> str:
+    async def _query_huggingface(self, prompt: str, is_complete: bool = False) -> str:
         """Query HuggingFace via OpenAI-compatible router endpoint."""
         headers = {
             "Authorization": f"Bearer {self.hf_token}",
             "Content-Type": "application/json"
         }
 
+        # Adjust system message and max_tokens based on context
+        if is_complete:
+            system_content = "You are an expert League of Legends analyst and coach. Provide detailed, comprehensive analysis with specific strategies. Write thorough responses covering all requested sections."
+            max_tokens = 1500  # Much longer for gameplan
+        else:
+            system_content = "You are a League of Legends draft analyst. Provide helpful analysis in 4-6 sentences. Be specific with champion recommendations."
+            max_tokens = 500  # Reasonable for mid-draft analysis
+
         # Use OpenAI-compatible chat completions format
         data = {
             "model": self.model_name,
             "messages": [
-                {"role": "system", "content": "You are a League of Legends draft analyst. Keep responses concise (2-4 sentences)."},
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 200,
+            "max_tokens": max_tokens,
             "temperature": 0.7
         }
 
@@ -232,24 +250,64 @@ Just note what the team still needs (tank? AP? engage?) or synergy potential. Be
         return ""
     
     def _rule_based_analysis(self, draft_state: Dict, user_preferences: Optional[Dict] = None) -> Dict:
-        """Simple rule-based analysis with user context."""
+        """Enhanced rule-based analysis for development mode."""
         phase = draft_state.get('phase', 'BAN')
-        rules = self.rules.get(phase, ["Analyzing draft..."])
+        role = draft_state.get('role', 'MID')
+        side = draft_state.get('side', 'BLUE')
+        turn = draft_state.get('turn', 0)
 
-        import random
-        analysis = random.choice(rules)
+        # Get NN recommendations passed from analysis endpoint
+        nn_recs = draft_state.get('nn_recommendations', [])
+        user_pool = draft_state.get('user_pool', [])
 
-        # Add user-specific suggestion if champion pool exists
-        if user_preferences and user_preferences.get('champion_pool'):
-            pool = user_preferences['champion_pool']
-            if pool:
-                champ = random.choice(pool)
-                analysis += f" Consider picking {champ['champion']} from your pool for {champ['role']}."
+        # Role-specific meta advice (placeholder until real data)
+        role_advice = {
+            'TOP': "Strong top laners right now include tanks with good teamfight presence and split-push duelists. Consider champions with CC for engage or sustain for lane dominance.",
+            'JUNGLE': "Jungle meta favors early-game gankers and objective control. Look for champions with strong level 3 power spikes and dragon/baron secure.",
+            'MID': "Mid lane rewards roaming assassins and control mages. Wave clear and map pressure are key - pick based on your team's win condition.",
+            'ADC': "ADC picks should consider team composition peel and engage. Scaling hypercarries work with protect comps, while early-game ADCs pair with aggressive supports.",
+            'SUPPORT': "Support picks should complement your ADC and provide what the team needs - engage, peel, or sustain. Vision control champions are always valuable."
+        }
+
+        if phase == 'BAN':
+            # Ban phase analysis
+            analysis = f"[DEV MODE] {role_advice.get(role, 'Analyzing...')}\n\n"
+            analysis += f"As {role} on {side} side, focus your bans on champions that counter your role or are strong in the current meta. "
+            if nn_recs:
+                analysis += f"Top meta picks to consider banning: {', '.join(nn_recs[:3])}."
+            if user_pool:
+                analysis += f" Protect your pool ({', '.join(user_pool[:2])}) by banning their counters."
+
+        elif phase == 'PICK':
+            # Pick phase analysis
+            analysis = f"[DEV MODE] {role_advice.get(role, 'Analyzing...')}\n\n"
+            if nn_recs:
+                analysis += f"Strong picks for {role}: {', '.join(nn_recs[:4])}. "
+            if user_pool:
+                pool_in_meta = [c for c in user_pool if c in nn_recs] if nn_recs else user_pool[:2]
+                if pool_in_meta:
+                    analysis += f"From your pool, {', '.join(pool_in_meta[:2])} are good choices."
+                else:
+                    analysis += f"Your pool ({', '.join(user_pool[:2])}) - pick what you're comfortable with."
+
+        elif phase == 'COMPLETE':
+            # Draft complete - detailed gameplan
+            analysis = f"[DEV MODE - Full LLM analysis disabled to save costs]\n\n"
+            analysis += f"=== DRAFT COMPLETE ===\n"
+            analysis += f"Playing {role} on {side} side.\n\n"
+            analysis += f"GENERAL STRATEGY:\n"
+            analysis += f"• Early game: Focus on lane fundamentals and track the enemy jungler\n"
+            analysis += f"• Mid game: Group for objectives when your team has priority\n"
+            analysis += f"• Late game: Play around your win condition and don't get caught\n\n"
+            analysis += f"Enable USE_HUGGINGFACE_API=true in .env for detailed AI analysis."
+
+        else:
+            analysis = "[DEV MODE] Analyzing draft state..."
 
         return {
             "analysis": analysis,
             "source": "rule-based",
-            "model": "fallback"
+            "model": "development-fallback"
         }
     
     # ===== PART 2: DATA SCRAPING FOR FINE-TUNING =====
