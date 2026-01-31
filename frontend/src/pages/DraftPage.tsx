@@ -33,7 +33,7 @@ export const DraftPage: React.FC = () => {
     loadChampions,
   } = useDraftStore();
 
-  const [latestPatch, setLatestPatch] = useState('16.1.1');
+  const [latestPatch, setLatestPatch] = useState('16.2.1');
   const [search, setSearch] = useState('');
   const [draftPhase, setDraftPhase] = useState<'BAN' | 'PICK' | 'COMPLETE'>('BAN');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -383,12 +383,23 @@ export const DraftPage: React.FC = () => {
 
   // Filter champions - use NN-sorted if available, otherwise alphabetical
   // ALWAYS check against local allBannedPicked since API data may be stale
+  // Also de-duplicate by normalized name to prevent display bugs
   const filteredChamps = (() => {
     const searchLower = search.toLowerCase().trim();
+    const seenNames = new Set<string>();
+
+    const dedup = (names: string[]) => {
+      return names.filter(name => {
+        const normalized = name.toLowerCase();
+        if (seenNames.has(normalized)) return false;
+        seenNames.add(normalized);
+        return true;
+      });
+    };
 
     if (sortedChampions.length > 0) {
       // Use NN-sorted champions but ALSO check local banned/picked state
-      return sortedChampions
+      const filtered = sortedChampions
         .filter(champ => {
           // Check BOTH API availability AND local state
           if (!champ.available) return false;
@@ -397,15 +408,17 @@ export const DraftPage: React.FC = () => {
           return champ.name.toLowerCase().includes(searchLower);
         })
         .map(champ => champ.name);
+      return dedup(filtered);
     } else {
       // Fallback to allChampions from store
-      return allChampions
+      const filtered = allChampions
         .filter(champ => {
           if (allBannedPicked.has(champ)) return false;
           if (!searchLower) return true;
           return champ.toLowerCase().includes(searchLower);
         })
         .sort((a, b) => a.localeCompare(b));
+      return dedup(filtered);
     }
   })();
 
@@ -918,11 +931,11 @@ export const DraftPage: React.FC = () => {
                 onDragOver={handleDragOver}
                 onDrop={handleDropOnCenter}>
                 <div className="grid grid-cols-8 gap-2 pr-1">
-                  {filteredChamps.map(champ => {
+                  {filteredChamps.map((champ, idx) => {
                     const isInPool = championPoolNames.has(champ);
                     return (
                       <button
-                        key={champ}
+                        key={`${champ}-${idx}`}
                         onClick={() => handleChampionSelect(champ)}
                         draggable={true}
                         onDragStart={() => setDraggedChampion(champ)}

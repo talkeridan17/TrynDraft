@@ -139,14 +139,20 @@ async def get_sorted_champions(
         logger.error("No champion data found in database")
         raise HTTPException(status_code=500, detail="No champion data in database. Run champion sync first.")
 
-    # De-duplicate champions by name (keep most recent/best data)
+    # De-duplicate champions by normalized name (handle case/whitespace differences)
+    # This prevents "Dr. Mundo" and "DrMundo" from appearing as separate entries
     seen_names = set()
     unique_champions = []
     for champ in all_champions_data:
-        if champ.name and champ.name not in seen_names:
-            seen_names.add(champ.name)
-            unique_champions.append(champ)
+        if champ.name:
+            # Normalize name for comparison (lowercase, strip whitespace)
+            normalized_name = champ.name.strip().lower()
+            if normalized_name not in seen_names:
+                seen_names.add(normalized_name)
+                unique_champions.append(champ)
     all_champions_data = unique_champions
+
+    logger.debug(f"De-duplicated to {len(all_champions_data)} unique champions")
 
     # Determine unavailable champions (banned + picked)
     unavailable = set(bans_blue + bans_red)

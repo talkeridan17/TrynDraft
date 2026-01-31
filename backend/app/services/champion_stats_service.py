@@ -45,16 +45,22 @@ class ChampionStatsService:
             matchup_data: Matchup win rates vs other champions
             synergy_data: Synergy win rates with other champions
         """
-        # Find or create champion
+        # Find champion by name (ignore patch to prevent duplicates)
+        # We want ONE entry per champion, updated with latest stats
         champion = self.db.query(Champion).filter(
-            and_(
-                Champion.name == champion_name,
-                Champion.patch == patch
-            )
+            Champion.name == champion_name
         ).first()
 
         if not champion:
-            # Create new champion entry for this patch
+            # Try by normalized key
+            normalized_key = champion_name.lower().replace(" ", "").replace("'", "")
+            champion = self.db.query(Champion).filter(
+                Champion.key == normalized_key
+            ).first()
+
+        if not champion:
+            # Create new champion entry (should rarely happen if seeded properly)
+            logger.info(f"Creating new champion entry: {champion_name}")
             champion = Champion(
                 id=champion_name.lower().replace(" ", "").replace("'", ""),
                 name=champion_name,
@@ -62,6 +68,9 @@ class ChampionStatsService:
                 patch=patch
             )
             self.db.add(champion)
+        else:
+            # Update existing champion with new patch
+            champion.patch = patch
 
         # Update statistics
         if win_rate is not None:
