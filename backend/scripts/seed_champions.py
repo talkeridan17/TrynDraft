@@ -42,17 +42,33 @@ async def fetch_champion_data(version: str) -> dict:
         return data["data"]
 
 
+def get_patch_from_version(version: str) -> str:
+    """Extract patch number from full version (e.g., '16.2.1' -> '16.2')."""
+    parts = version.split('.')
+    if len(parts) >= 2:
+        return f"{parts[0]}.{parts[1]}"
+    return version
+
+
 def seed_champions(db: Session, champions_data: dict, version: str):
     """Seed the champions table with data from Data Dragon."""
 
-    print(f"\nSeeding {len(champions_data)} champions...")
+    # Extract patch from version
+    patch = get_patch_from_version(version)
+    print(f"\nSeeding {len(champions_data)} champions for patch {patch}...")
 
     added = 0
     updated = 0
 
     for champion_id, champion_info in champions_data.items():
-        # Check if champion already exists
+        champion_name = champion_info["name"]
+
+        # Check if champion already exists - try by ID first, then by name
         existing = db.query(Champion).filter(Champion.id == champion_id).first()
+
+        if not existing:
+            # Try finding by name (handles ID mismatches like DrMundo vs drmundo_16.1)
+            existing = db.query(Champion).filter(Champion.name == champion_name).first()
 
         # Parse tags (roles)
         tags = champion_info.get("tags", [])
@@ -80,10 +96,11 @@ def seed_champions(db: Session, champions_data: dict, version: str):
             existing.attack = int(champion_info["info"]["attack"])
             existing.defense = int(champion_info["info"]["defense"])
             existing.magic = int(champion_info["info"]["magic"])
+            existing.patch = patch  # Update patch version
             existing.updated_at = datetime.now(timezone.utc)
             updated += 1
         else:
-            # Create new champion
+            # Create new champion (happens when Riot releases a new champion)
             new_champion = Champion(
                 id=champion_id,
                 name=champion_info["name"],
@@ -94,10 +111,12 @@ def seed_champions(db: Session, champions_data: dict, version: str):
                 attack=int(champion_info["info"]["attack"]),
                 defense=int(champion_info["info"]["defense"]),
                 magic=int(champion_info["info"]["magic"]),
+                patch=patch,  # Set patch version
                 updated_at=datetime.now(timezone.utc)
             )
             db.add(new_champion)
             added += 1
+            print(f"   🆕 New champion: {champion_info['name']}")
 
     db.commit()
 
@@ -105,6 +124,7 @@ def seed_champions(db: Session, champions_data: dict, version: str):
     print(f"   - Added: {added} champions")
     print(f"   - Updated: {updated} champions")
     print(f"   - Total: {added + updated} champions")
+    print(f"   - Patch: {patch}")
 
 
 async def main():

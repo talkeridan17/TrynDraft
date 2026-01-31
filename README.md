@@ -94,7 +94,25 @@ TrynDraft is an intelligent drafting assistant for League of Legends that combin
 
 ---
 
-## Developer Setup (New Contributors)
+## Quick Start (Recommended)
+
+```bash
+# Clone and setup everything with one command
+git clone https://github.com/talkeridan17/TrynDraft.git
+cd TrynDraft
+./scripts/setup-dev.sh
+
+# Start both servers
+./scripts/start-dev.sh
+```
+
+That's it! Open http://localhost:5173 in your browser.
+
+---
+
+## Developer Setup (Manual)
+
+If you prefer to set things up manually, or if the script doesn't work on your system:
 
 ### Prerequisites
 - Python 3.12+
@@ -141,8 +159,9 @@ CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
 DEBUG=True
 EOF
 
-# Initialize database
+# Initialize database and seed champion data
 python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine)"
+python scripts/seed_champions.py
 
 # Start backend server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
