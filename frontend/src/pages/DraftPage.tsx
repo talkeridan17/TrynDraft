@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDraftStore } from '../store/useDraftStore';
 import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
-import { Search, X, Settings, Loader2 } from 'lucide-react';
+import { Search, X, Settings, Loader2, User } from 'lucide-react';
 import { RoleIcon } from '../components/common/RoleIcon';
 import { authService, recommendationService, type ScoredChampion, type AnalysisResult, type DraftState } from '../utils/api';
 import type { RoleType } from '../store/useDraftStore';
@@ -763,9 +763,14 @@ export const DraftPage: React.FC = () => {
           <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
         </div>
 
-        <Link to="/settings" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white">
-          <Settings size={20} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/profile" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white" title="Profile">
+            <User size={20} />
+          </Link>
+          <Link to="/settings" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white" title="Settings">
+            <Settings size={20} />
+          </Link>
+        </div>
       </header>
 
       {/* Main Content */}
