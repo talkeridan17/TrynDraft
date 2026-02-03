@@ -3,14 +3,14 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files (using frontend/ prefix to work from repo root)
+COPY frontend/package*.json ./
 
 # Install ALL dependencies (including dev dependencies needed for build)
 RUN npm ci
 
 # Copy source code
-COPY . .
+COPY frontend/ .
 
 # Build the application
 RUN npm run build
@@ -24,8 +24,8 @@ FROM nginx:alpine
 # Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx configuration (from repo root)
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Note: Environment variables for Vite should be set at BUILD time via --build-arg
 # or configured in the nginx config for runtime. Do NOT copy .env to the image.
