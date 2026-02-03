@@ -11,29 +11,52 @@ export const Header: React.FC = () => {
   const [username, setUsername] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        setIsAuthenticated(true);
-        try {
-          const user = await authService.getCurrentUser();
-          if (user) {
-            setUsername(user.username || 'User');
-            // Load profile picture from preferences
-            if (user.preferences?.profile_picture) {
-              setProfilePicture(user.preferences.profile_picture);
-            }
+  // Check auth function - reusable
+  const checkAuth = async () => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        const user = await authService.getCurrentUser();
+        if (user) {
+          setIsAuthenticated(true);
+          setUsername(user.username || 'User');
+          // Load profile picture from preferences
+          if (user.preferences?.profile_picture) {
+            setProfilePicture(user.preferences.profile_picture);
           }
-        } catch (error) {
-          // Token might be invalid
+        } else {
+          // API returned no user - token invalid
           setIsAuthenticated(false);
           localStorage.removeItem('access_token');
         }
+      } catch (error) {
+        // Token might be invalid or expired
+        setIsAuthenticated(false);
+        localStorage.removeItem('access_token');
       }
-    };
+    } else {
+      setIsAuthenticated(false);
+    }
+  };
+
+  // Check auth on route change
+  useEffect(() => {
     checkAuth();
   }, [location]);
+
+  // Check auth when tab becomes visible (user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAuth();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Listen for profile updates from ProfilePage
   useEffect(() => {

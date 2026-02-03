@@ -1,0 +1,149 @@
+name: Scrape Stats & Train NN
+
+on:
+  # Run every 6 hours
+  schedule:
+    - cron: '0 */6 * * *'
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      full_scrape:
+        description: 'Run full scrape (all ranks)'
+        required: false
+        default: 'false'
+        type: boolean
+      retrain:
+        description: 'Force retrain all models'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+
+jobs:
+  scrape-high-elo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Create logs directories
+        run: |
+          mkdir -p logs/stats logs/text logs/training
+
+      - name: Check for new patch
+        id: check_patch
+        run: |
+          cd backend
+          CURRENT_PATCH=$(python -c "
+          from app.services.stats_loader import StatsLoader
+          loader = StatsLoader()
+          patches = loader.get_available_patches()
+          print(patches[0] if patches else 'none')
+          " 2>/dev/null || echo "none")
+          echo "current_patch=$CURRENT_PATCH" >> $GITHUB_OUTPUT
+          echo "Current patch data: $CURRENT_PATCH"
+
+      - name: Run high-elo scraper
+        if: env.RIOT_API_KEY != ''
+        run: |
+          cd backend
+          python scripts/run_scrapers.py high-elo --ranks MASTER GRANDMASTER CHALLENGER
+        continue-on-error: true
+
+      - name: Run full scrape (if requested)
+        if: github.event.inputs.full_scrape == 'true' && env.RIOT_API_KEY != ''
+        run: |
+          cd backend
+          python scripts/run_scrapers.py all-ranks
+        continue-on-error: true
+
+      - name: Commit scraped data
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add backend/scraped_data/ logs/progress.json || true
+          git diff --staged --quiet || git commit -m "chore: update scraped data $(date +%Y-%m-%d-%H%M)"
+          git push || true
+
+  train-models:
+    runs-on: ubuntu-latest
+    needs: scrape-high-elo
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Pull latest changes from scrape job
+          ref: ${{ github.ref }}
+
+      - name: Pull latest changes
+        run: git pull origin ${{ github.ref_name }} || true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Check if retrain needed
+        id: check_retrain
+        run: |
+          cd backend
+          python scripts/train_nn.py --status
+          # Check if models need retraining (new patch or forced)
+          NEEDS_RETRAIN=${{ github.event.inputs.retrain == 'true' && 'true' || 'false' }}
+          echo "needs_retrain=$NEEDS_RETRAIN" >> $GITHUB_OUTPUT
+
+      - name: Retrain models on new patch
+        run: |
+          cd backend
+          python scripts/train_nn.py --retrain-on-patch --epochs 30
+        continue-on-error: true
+
+      - name: Commit trained models
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add backend/models/ logs/progress.json || true
+          git diff --staged --quiet || git commit -m "chore: update NN models $(date +%Y-%m-%d-%H%M)"
+          git push || true
+
+  notify-status:
+    runs-on: ubuntu-latest
+    needs: [scrape-high-elo, train-models]
+    if: always()
+
+    steps:
+      - name: Report status
+        run: |
+          echo "Scrape job: ${{ needs.scrape-high-elo.result }}"
+          echo "Train job: ${{ needs.train-models.result }}"
+
+          if [ "${{ needs.scrape-high-elo.result }}" == "failure" ] || [ "${{ needs.train-models.result }}" == "failure" ]; then
+            echo "::warning::One or more jobs failed. Check logs for details."
+          else
+            echo "::notice::All jobs completed successfully!"
+          fi

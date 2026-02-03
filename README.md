@@ -239,6 +239,86 @@ npm run lint         # Run ESLint
 
 ---
 
+## Data Scraping
+
+TrynDraft uses automated scraping to collect champion statistics and training data for AI models.
+
+### Quick Start
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# Test the scraper setup
+python scripts/test_scrapers.py
+
+# Quick test (Challenger rank, ~5 minutes)
+python scripts/run_scrapers.py stats --mode quick
+
+# Load scraped data into database
+python scripts/run_scrapers.py load
+
+# Check status
+python scripts/run_scrapers.py status
+```
+
+### Scraping Types
+
+**1. Stats Scraping** (Riot API)
+- Collects real match data per rank
+- Win rates, matchups, synergies
+- Requires `RIOT_API_KEY` from [developer.riotgames.com](https://developer.riotgames.com/)
+
+```bash
+# Scrape specific rank (recommended: GOLD)
+python scripts/run_scrapers.py stats --rank GOLD
+
+# Scrape multiple ranks
+python scripts/run_scrapers.py stats --rank GOLD PLATINUM DIAMOND
+
+# High elo scrape (Challenger, GM, Master, Diamond)
+python scripts/run_scrapers.py stats --mode high_elo
+
+# Full scrape (all ranks, 8-12 hours)
+python scripts/run_scrapers.py stats --mode full
+```
+
+**2. Text Scraping** (LLM Training)
+- Scrapes MOBAFire guides and Reddit discussions
+- No API key required
+
+```bash
+# Test mode (5 champions)
+python scripts/run_scrapers.py text --test
+
+# Full scrape (50 champions)
+python scripts/run_scrapers.py text
+```
+
+### Automated Scraping
+
+Setup daily/weekly automated scraping:
+
+```bash
+# Install cron jobs
+./scripts/setup_scraping_automation.sh
+
+# Remove automation
+./scripts/remove_scraping_automation.sh
+```
+
+Auto-schedule:
+- Daily 3 AM: Scrape GOLD rank
+- Weekly Monday: Scrape high elo
+- Weekly Sunday: Scrape LLM training data
+- Daily 5 AM: Load data into database
+
+### Documentation
+
+For complete scraping guide, see [docs/SCRAPING.md](docs/SCRAPING.md)
+
+---
+
 ## Environment Variables Reference
 
 ### Backend (.env)
