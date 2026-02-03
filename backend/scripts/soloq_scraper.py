@@ -11,9 +11,16 @@ import sys
 import json
 from datetime import datetime
 from collections import defaultdict, deque
+from pathlib import Path
 import pandas as pd
 import requests
 from typing import Dict, List, Optional, Tuple, Set
+
+# Determine project root for logging
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent  # backend/scripts -> backend -> project root
+LOGS_DIR = PROJECT_ROOT / "logs" / "stats"
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ========================
 # Configuration
@@ -924,7 +931,7 @@ def setup_logging():
     logging.addLevelName(25, "SUCCESS")
     setattr(logger, 'success', lambda msg, *args: logger._log(25, msg, args))
     
-    file = logging.FileHandler("scraper.log")
+    file = logging.FileHandler(LOGS_DIR / "scraper.log")
     file.setLevel(logging.DEBUG)
     file.setFormatter(formatter)
     

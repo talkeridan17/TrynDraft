@@ -68,7 +68,7 @@ const defaultSettings: DraftSettings = {
   side: 'BLUE',
   role: 'TOP',
   elo: 'PLATINUM',
-  patch: '16.1.1',
+  patch: '16.2.1',
   phase: 'BAN',
 };
 

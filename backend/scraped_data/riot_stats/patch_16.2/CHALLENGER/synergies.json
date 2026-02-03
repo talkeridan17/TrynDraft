@@ -1,0 +1,7378 @@
+{
+  "patch": "16.2",
+  "scraped_at": "2026-02-02T09:12:58.283548+00:00",
+  "synergies": {
+    "jungle_mid": [
+      {
+        "champions": [
+          "Jayce",
+          "Taliyah"
+        ],
+        "games": 15,
+        "wins": 9,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Akali"
+        ],
+        "games": 22,
+        "wins": 12,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Rengar",
+          "Ryze"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Zoe"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Orianna"
+        ],
+        "games": 11,
+        "wins": 8,
+        "win_rate": 72.73
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Sylas"
+        ],
+        "games": 11,
+        "wins": 9,
+        "win_rate": 81.82
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Zoe"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Zoe"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Akali"
+        ],
+        "games": 10,
+        "wins": 3,
+        "win_rate": 30.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Zoe"
+        ],
+        "games": 13,
+        "wins": 8,
+        "win_rate": 61.54
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Orianna"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Cassiopeia"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Ryze"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Ryze"
+        ],
+        "games": 22,
+        "wins": 10,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Vi",
+          "Zoe"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Zoe"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Orianna"
+        ],
+        "games": 16,
+        "wins": 11,
+        "win_rate": 68.75
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Akali"
+        ],
+        "games": 10,
+        "wins": 8,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Orianna"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Ryze"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Taliyah"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Orianna"
+        ],
+        "games": 17,
+        "wins": 8,
+        "win_rate": 47.06
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Aurora"
+        ],
+        "games": 5,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Galio"
+        ],
+        "games": 17,
+        "wins": 8,
+        "win_rate": 47.06
+      },
+      {
+        "champions": [
+          "Viego",
+          "Leblanc"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Vladimir"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nocturne",
+          "Orianna"
+        ],
+        "games": 13,
+        "wins": 5,
+        "win_rate": 38.46
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Sion"
+        ],
+        "games": 8,
+        "wins": 7,
+        "win_rate": 87.5
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Galio"
+        ],
+        "games": 12,
+        "wins": 10,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Taliyah"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Katarina"
+        ],
+        "games": 8,
+        "wins": 2,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Akali"
+        ],
+        "games": 12,
+        "wins": 5,
+        "win_rate": 41.67
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Galio"
+        ],
+        "games": 17,
+        "wins": 10,
+        "win_rate": 58.82
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Kassadin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Akali"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Azir"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Taliyah"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Aurora"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Ryze"
+        ],
+        "games": 33,
+        "wins": 17,
+        "win_rate": 51.52
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Galio"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Akali"
+        ],
+        "games": 15,
+        "wins": 8,
+        "win_rate": 53.33
+      },
+      {
+        "champions": [
+          "Rengar",
+          "Orianna"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Viego",
+          "Katarina"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Zac",
+          "Ryze"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Syndra"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Viego",
+          "Akali"
+        ],
+        "games": 12,
+        "wins": 6,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Orianna"
+        ],
+        "games": 12,
+        "wins": 9,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Vi",
+          "Ryze"
+        ],
+        "games": 28,
+        "wins": 11,
+        "win_rate": 39.29
+      },
+      {
+        "champions": [
+          "Nocturne",
+          "Akali"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Zoe"
+        ],
+        "games": 11,
+        "wins": 4,
+        "win_rate": 36.36
+      },
+      {
+        "champions": [
+          "Ekko",
+          "Zed"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Syndra"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Ryze"
+        ],
+        "games": 19,
+        "wins": 14,
+        "win_rate": 73.68
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Yone"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Syndra"
+        ],
+        "games": 11,
+        "wins": 8,
+        "win_rate": 72.73
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Qiyana"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Ryze"
+        ],
+        "games": 25,
+        "wins": 14,
+        "win_rate": 56.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Akshan"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Orianna"
+        ],
+        "games": 16,
+        "wins": 9,
+        "win_rate": 56.25
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Azir"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Orianna"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Ahri"
+        ],
+        "games": 13,
+        "wins": 8,
+        "win_rate": 61.54
+      },
+      {
+        "champions": [
+          "Vi",
+          "Ahri"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Sion"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Galio"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Akali"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Aurora"
+        ],
+        "games": 8,
+        "wins": 2,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Yone"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Anivia"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "RekSai",
+          "Ryze"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Taliyah"
+        ],
+        "games": 16,
+        "wins": 7,
+        "win_rate": 43.75
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Zed"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Yasuo"
+        ],
+        "games": 23,
+        "wins": 11,
+        "win_rate": 47.83
+      },
+      {
+        "champions": [
+          "Talon",
+          "Galio"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Sylas"
+        ],
+        "games": 12,
+        "wins": 5,
+        "win_rate": 41.67
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Ahri"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Ryze"
+        ],
+        "games": 7,
+        "wins": 6,
+        "win_rate": 85.71
+      },
+      {
+        "champions": [
+          "Viego",
+          "Ryze"
+        ],
+        "games": 27,
+        "wins": 18,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Syndra"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Rengar",
+          "Ivern"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Zed"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Ekko"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Taliyah"
+        ],
+        "games": 9,
+        "wins": 6,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Viego",
+          "Galio"
+        ],
+        "games": 12,
+        "wins": 5,
+        "win_rate": 41.67
+      },
+      {
+        "champions": [
+          "Viego",
+          "Syndra"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Naafiri",
+          "Orianna"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Ryze"
+        ],
+        "games": 26,
+        "wins": 11,
+        "win_rate": 42.31
+      },
+      {
+        "champions": [
+          "Diana",
+          "Orianna"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Ryze"
+        ],
+        "games": 34,
+        "wins": 20,
+        "win_rate": 58.82
+      },
+      {
+        "champions": [
+          "Viego",
+          "Anivia"
+        ],
+        "games": 17,
+        "wins": 12,
+        "win_rate": 70.59
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Ahri"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Anivia"
+        ],
+        "games": 17,
+        "wins": 11,
+        "win_rate": 64.71
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Zoe"
+        ],
+        "games": 7,
+        "wins": 6,
+        "win_rate": 85.71
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Kassadin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Pantheon",
+          "Taliyah"
+        ],
+        "games": 7,
+        "wins": 1,
+        "win_rate": 14.29
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Ekko"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Azir"
+        ],
+        "games": 10,
+        "wins": 5,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Syndra"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Ekko"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Orianna"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Zed"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Akali"
+        ],
+        "games": 11,
+        "wins": 4,
+        "win_rate": 36.36
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Ekko"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Yasuo"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Leblanc"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Ekko"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Akali"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Anivia"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Ryze"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Yasuo"
+        ],
+        "games": 6,
+        "wins": 6,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Sylas"
+        ],
+        "games": 13,
+        "wins": 4,
+        "win_rate": 30.77
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Syndra"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Talon",
+          "Ryze"
+        ],
+        "games": 6,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Kassadin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "TwistedFate"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ekko",
+          "Yasuo"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Anivia"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Vi",
+          "Akali"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Hecarim",
+          "Ryze"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "RekSai",
+          "Zoe"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Syndra"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Ekko"
+        ],
+        "games": 8,
+        "wins": 1,
+        "win_rate": 12.5
+      },
+      {
+        "champions": [
+          "Jayce",
+          "TwistedFate"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Leblanc"
+        ],
+        "games": 9,
+        "wins": 7,
+        "win_rate": 77.78
+      },
+      {
+        "champions": [
+          "Diana",
+          "Ryze"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Galio"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Viktor"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Ahri"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Orianna"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Vex"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Galio"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Vi",
+          "Sylas"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Qiyana"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Sylas"
+        ],
+        "games": 10,
+        "wins": 5,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Yone"
+        ],
+        "games": 12,
+        "wins": 10,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Taliyah"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Vi",
+          "Taliyah"
+        ],
+        "games": 13,
+        "wins": 5,
+        "win_rate": 38.46
+      },
+      {
+        "champions": [
+          "Viego",
+          "Aurora"
+        ],
+        "games": 15,
+        "wins": 6,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Leblanc"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Azir"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Ahri"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Sylas"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Vi",
+          "Anivia"
+        ],
+        "games": 5,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Vi",
+          "Galio"
+        ],
+        "games": 9,
+        "wins": 1,
+        "win_rate": 11.11
+      },
+      {
+        "champions": [
+          "Vi",
+          "Aurora"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Yone"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Aurora"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "TwistedFate"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      }
+    ],
+    "jungle_adc": [
+      {
+        "champions": [
+          "LeeSin",
+          "Kaisa"
+        ],
+        "games": 13,
+        "wins": 6,
+        "win_rate": 46.15
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Ezreal"
+        ],
+        "games": 43,
+        "wins": 22,
+        "win_rate": 51.16
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Caitlyn"
+        ],
+        "games": 13,
+        "wins": 6,
+        "win_rate": 46.15
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Aphelios"
+        ],
+        "games": 32,
+        "wins": 19,
+        "win_rate": 59.38
+      },
+      {
+        "champions": [
+          "RekSai",
+          "Kaisa"
+        ],
+        "games": 8,
+        "wins": 2,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Ziggs"
+        ],
+        "games": 8,
+        "wins": 7,
+        "win_rate": 87.5
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Yunara"
+        ],
+        "games": 26,
+        "wins": 13,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Corki"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Varus"
+        ],
+        "games": 18,
+        "wins": 11,
+        "win_rate": 61.11
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Aphelios"
+        ],
+        "games": 19,
+        "wins": 10,
+        "win_rate": 52.63
+      },
+      {
+        "champions": [
+          "Vi",
+          "Jhin"
+        ],
+        "games": 9,
+        "wins": 2,
+        "win_rate": 22.22
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Lucian"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Aphelios"
+        ],
+        "games": 17,
+        "wins": 7,
+        "win_rate": 41.18
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Varus"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Ekko",
+          "Yunara"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Corki"
+        ],
+        "games": 17,
+        "wins": 7,
+        "win_rate": 41.18
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Yunara"
+        ],
+        "games": 33,
+        "wins": 22,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Corki"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Vi",
+          "MissFortune"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Malphite",
+          "Ezreal"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Yunara"
+        ],
+        "games": 40,
+        "wins": 22,
+        "win_rate": 55.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Lucian"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Caitlyn"
+        ],
+        "games": 12,
+        "wins": 6,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Varus"
+        ],
+        "games": 21,
+        "wins": 8,
+        "win_rate": 38.1
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Varus"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Aphelios"
+        ],
+        "games": 15,
+        "wins": 7,
+        "win_rate": 46.67
+      },
+      {
+        "champions": [
+          "Nunu",
+          "Yunara"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Kaisa"
+        ],
+        "games": 15,
+        "wins": 10,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Zed",
+          "Kaisa"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Lucian"
+        ],
+        "games": 11,
+        "wins": 8,
+        "win_rate": 72.73
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Sivir"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Varus"
+        ],
+        "games": 25,
+        "wins": 15,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Corki"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Viego",
+          "Sivir"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Lucian"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Varus"
+        ],
+        "games": 14,
+        "wins": 8,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Jhin"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Jinx"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Aphelios"
+        ],
+        "games": 25,
+        "wins": 11,
+        "win_rate": 44.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Kaisa"
+        ],
+        "games": 13,
+        "wins": 6,
+        "win_rate": 46.15
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "MissFortune"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Yunara"
+        ],
+        "games": 34,
+        "wins": 18,
+        "win_rate": 52.94
+      },
+      {
+        "champions": [
+          "Gwen",
+          "Jhin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Caitlyn"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Aphelios"
+        ],
+        "games": 18,
+        "wins": 8,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Varus"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Ezreal"
+        ],
+        "games": 16,
+        "wins": 12,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Vi",
+          "Caitlyn"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Ziggs"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Jhin"
+        ],
+        "games": 10,
+        "wins": 3,
+        "win_rate": 30.0
+      },
+      {
+        "champions": [
+          "Vi",
+          "Varus"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Jinx"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Yunara"
+        ],
+        "games": 32,
+        "wins": 13,
+        "win_rate": 40.62
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Ezreal"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Zac",
+          "Corki"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Zed",
+          "Yunara"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Jhin"
+        ],
+        "games": 21,
+        "wins": 10,
+        "win_rate": 47.62
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Aphelios"
+        ],
+        "games": 17,
+        "wins": 8,
+        "win_rate": 47.06
+      },
+      {
+        "champions": [
+          "Vi",
+          "Corki"
+        ],
+        "games": 16,
+        "wins": 8,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Sivir"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Yunara"
+        ],
+        "games": 8,
+        "wins": 6,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Yasuo"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Viego",
+          "Jhin"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "MissFortune"
+        ],
+        "games": 10,
+        "wins": 8,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Ekko",
+          "Caitlyn"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Varus"
+        ],
+        "games": 12,
+        "wins": 9,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Yunara"
+        ],
+        "games": 19,
+        "wins": 8,
+        "win_rate": 42.11
+      },
+      {
+        "champions": [
+          "Diana",
+          "Yunara"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Ezreal"
+        ],
+        "games": 15,
+        "wins": 7,
+        "win_rate": 46.67
+      },
+      {
+        "champions": [
+          "Ekko",
+          "Aphelios"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Varus"
+        ],
+        "games": 30,
+        "wins": 18,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "RekSai",
+          "Yunara"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Vi",
+          "Kaisa"
+        ],
+        "games": 13,
+        "wins": 4,
+        "win_rate": 30.77
+      },
+      {
+        "champions": [
+          "Rengar",
+          "Ezreal"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Ezreal"
+        ],
+        "games": 9,
+        "wins": 7,
+        "win_rate": 77.78
+      },
+      {
+        "champions": [
+          "Talon",
+          "Aphelios"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Kaisa"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Ezreal"
+        ],
+        "games": 17,
+        "wins": 9,
+        "win_rate": 52.94
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Lucian"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Zeri"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Jhin"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Viego",
+          "Lucian"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Aphelios"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Varus"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Yasuo"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Sivir"
+        ],
+        "games": 5,
+        "wins": 5,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Kaisa"
+        ],
+        "games": 12,
+        "wins": 5,
+        "win_rate": 41.67
+      },
+      {
+        "champions": [
+          "Viego",
+          "Ezreal"
+        ],
+        "games": 20,
+        "wins": 7,
+        "win_rate": 35.0
+      },
+      {
+        "champions": [
+          "MonkeyKing",
+          "Kaisa"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ekko",
+          "Corki"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Yunara"
+        ],
+        "games": 10,
+        "wins": 9,
+        "win_rate": 90.0
+      },
+      {
+        "champions": [
+          "Rengar",
+          "Caitlyn"
+        ],
+        "games": 5,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Vi",
+          "Yunara"
+        ],
+        "games": 23,
+        "wins": 10,
+        "win_rate": 43.48
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Caitlyn"
+        ],
+        "games": 10,
+        "wins": 5,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Caitlyn"
+        ],
+        "games": 9,
+        "wins": 7,
+        "win_rate": 77.78
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Yunara"
+        ],
+        "games": 20,
+        "wins": 8,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Ezreal"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Kaisa"
+        ],
+        "games": 8,
+        "wins": 6,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Jhin"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Naafiri",
+          "Kaisa"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Kaisa"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Yunara"
+        ],
+        "games": 13,
+        "wins": 10,
+        "win_rate": 76.92
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Sivir"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Corki"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Yasuo"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Ezreal"
+        ],
+        "games": 10,
+        "wins": 2,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Kaisa"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Naafiri",
+          "Aphelios"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Jhin"
+        ],
+        "games": 10,
+        "wins": 2,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Caitlyn"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Khazix",
+          "Ezreal"
+        ],
+        "games": 16,
+        "wins": 10,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Jhin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Kaisa"
+        ],
+        "games": 30,
+        "wins": 16,
+        "win_rate": 53.33
+      },
+      {
+        "champions": [
+          "Viego",
+          "Caitlyn"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Jhin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Gwen",
+          "Yunara"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Varus"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Diana",
+          "Corki"
+        ],
+        "games": 12,
+        "wins": 4,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "MonkeyKing",
+          "Aphelios"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Ezreal"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Kaisa"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Corki"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Kaisa"
+        ],
+        "games": 9,
+        "wins": 7,
+        "win_rate": 77.78
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Aphelios"
+        ],
+        "games": 9,
+        "wins": 2,
+        "win_rate": 22.22
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Ezreal"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Draven"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Lucian"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Ekko",
+          "Ezreal"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Velkoz"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Varus"
+        ],
+        "games": 11,
+        "wins": 4,
+        "win_rate": 36.36
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Xayah"
+        ],
+        "games": 5,
+        "wins": 5,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Caitlyn"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Hecarim",
+          "Varus"
+        ],
+        "games": 8,
+        "wins": 6,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Hecarim",
+          "Sivir"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Corki"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "DrMundo",
+          "Aphelios"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Viego",
+          "Aphelios"
+        ],
+        "games": 27,
+        "wins": 9,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Diana",
+          "Aphelios"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Evelynn",
+          "Varus"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Draven"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Jhin"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "JarvanIV",
+          "Ziggs"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Talon",
+          "Caitlyn"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Sivir"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Diana",
+          "Jhin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rengar",
+          "Karthus"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Taliyah",
+          "Aphelios"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Viego",
+          "Ashe"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Jhin"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Talon",
+          "Jhin"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Nocturne",
+          "Yunara"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Qiyana",
+          "Corki"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Diana",
+          "Jinx"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Sivir"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Vi",
+          "Ezreal"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "RekSai",
+          "Zilean"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Sylas",
+          "Varus"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "XinZhao",
+          "Yunara"
+        ],
+        "games": 12,
+        "wins": 4,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Vi",
+          "Aphelios"
+        ],
+        "games": 17,
+        "wins": 4,
+        "win_rate": 23.53
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Varus"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Ezreal"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Viego",
+          "MissFortune"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Pantheon",
+          "Yunara"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Rengar",
+          "Yunara"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "Corki"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "MissFortune"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Ashe"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Hecarim",
+          "Kaisa"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Cassiopeia"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Viego",
+          "Ziggs"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "LeeSin",
+          "MissFortune"
+        ],
+        "games": 8,
+        "wins": 6,
+        "win_rate": 75.0
+      }
+    ],
+    "support_adc": [
+      {
+        "champions": [
+          "Thresh",
+          "Aphelios"
+        ],
+        "games": 98,
+        "wins": 54,
+        "win_rate": 55.1
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Sivir"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Leona",
+          "Kaisa"
+        ],
+        "games": 13,
+        "wins": 5,
+        "win_rate": 38.46
+      },
+      {
+        "champions": [
+          "Karma",
+          "Ezreal"
+        ],
+        "games": 48,
+        "wins": 24,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Ezreal"
+        ],
+        "games": 41,
+        "wins": 22,
+        "win_rate": 53.66
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Aphelios"
+        ],
+        "games": 19,
+        "wins": 5,
+        "win_rate": 26.32
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Caitlyn"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Yunara"
+        ],
+        "games": 30,
+        "wins": 18,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Aphelios"
+        ],
+        "games": 11,
+        "wins": 7,
+        "win_rate": 63.64
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Kaisa"
+        ],
+        "games": 16,
+        "wins": 6,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Seraphine",
+          "Ashe"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Yunara"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Nami",
+          "Corki"
+        ],
+        "games": 50,
+        "wins": 23,
+        "win_rate": 46.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Varus"
+        ],
+        "games": 21,
+        "wins": 12,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Sona",
+          "Jhin"
+        ],
+        "games": 12,
+        "wins": 4,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Nami",
+          "Lucian"
+        ],
+        "games": 32,
+        "wins": 12,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Leona",
+          "Varus"
+        ],
+        "games": 15,
+        "wins": 7,
+        "win_rate": 46.67
+      },
+      {
+        "champions": [
+          "Bard",
+          "Sivir"
+        ],
+        "games": 16,
+        "wins": 11,
+        "win_rate": 68.75
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Kaisa"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Yunara"
+        ],
+        "games": 55,
+        "wins": 25,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Corki"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Janna",
+          "Yunara"
+        ],
+        "games": 15,
+        "wins": 11,
+        "win_rate": 73.33
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Aphelios"
+        ],
+        "games": 33,
+        "wins": 14,
+        "win_rate": 42.42
+      },
+      {
+        "champions": [
+          "Rakan",
+          "MissFortune"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Yunara"
+        ],
+        "games": 14,
+        "wins": 6,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Braum",
+          "Jinx"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Caitlyn"
+        ],
+        "games": 17,
+        "wins": 10,
+        "win_rate": 58.82
+      },
+      {
+        "champions": [
+          "Janna",
+          "Corki"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Bard",
+          "Aphelios"
+        ],
+        "games": 13,
+        "wins": 6,
+        "win_rate": 46.15
+      },
+      {
+        "champions": [
+          "Braum",
+          "Yunara"
+        ],
+        "games": 27,
+        "wins": 11,
+        "win_rate": 40.74
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Aphelios"
+        ],
+        "games": 22,
+        "wins": 10,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Corki"
+        ],
+        "games": 12,
+        "wins": 6,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Elise",
+          "Varus"
+        ],
+        "games": 14,
+        "wins": 6,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Bard",
+          "Jhin"
+        ],
+        "games": 25,
+        "wins": 15,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Jinx"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Varus"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Kaisa"
+        ],
+        "games": 40,
+        "wins": 20,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Veigar"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Yunara"
+        ],
+        "games": 28,
+        "wins": 16,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Ezreal"
+        ],
+        "games": 16,
+        "wins": 10,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Karma",
+          "Corki"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Zoe",
+          "Lux"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Leona",
+          "Yunara"
+        ],
+        "games": 13,
+        "wins": 8,
+        "win_rate": 61.54
+      },
+      {
+        "champions": [
+          "Leona",
+          "Aphelios"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Yuumi",
+          "Zeri"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Braum",
+          "Lucian"
+        ],
+        "games": 17,
+        "wins": 9,
+        "win_rate": 52.94
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Yunara"
+        ],
+        "games": 37,
+        "wins": 18,
+        "win_rate": 48.65
+      },
+      {
+        "champions": [
+          "Leblanc",
+          "Varus"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Jhin"
+        ],
+        "games": 11,
+        "wins": 7,
+        "win_rate": 63.64
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Twitch"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Ziggs"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Taric",
+          "Twitch"
+        ],
+        "games": 13,
+        "wins": 6,
+        "win_rate": 46.15
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Mel"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Braum",
+          "Corki"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Nidalee",
+          "Yunara"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Corki"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Senna",
+          "Karthus"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Elise",
+          "Caitlyn"
+        ],
+        "games": 19,
+        "wins": 11,
+        "win_rate": 57.89
+      },
+      {
+        "champions": [
+          "Elise",
+          "Kaisa"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Sona",
+          "Yunara"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Kaisa"
+        ],
+        "games": 40,
+        "wins": 19,
+        "win_rate": 47.5
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Aphelios"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Bard",
+          "Varus"
+        ],
+        "games": 28,
+        "wins": 11,
+        "win_rate": 39.29
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Jinx"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Kaisa"
+        ],
+        "games": 11,
+        "wins": 9,
+        "win_rate": 81.82
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Ezreal"
+        ],
+        "games": 27,
+        "wins": 13,
+        "win_rate": 48.15
+      },
+      {
+        "champions": [
+          "Nami",
+          "Yunara"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Sona",
+          "Ezreal"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Braum",
+          "Aphelios"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Jhin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Leona",
+          "Ezreal"
+        ],
+        "games": 12,
+        "wins": 6,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Jhin"
+        ],
+        "games": 11,
+        "wins": 9,
+        "win_rate": 81.82
+      },
+      {
+        "champions": [
+          "Bard",
+          "Caitlyn"
+        ],
+        "games": 20,
+        "wins": 10,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Kaisa"
+        ],
+        "games": 14,
+        "wins": 8,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Lucian"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Leona",
+          "Caitlyn"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Jhin"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Alistar",
+          "MissFortune"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Varus"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Braum",
+          "Ashe"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Jinx"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Braum",
+          "Ezreal"
+        ],
+        "games": 12,
+        "wins": 4,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Ezreal"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Zeri"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Bard",
+          "Corki"
+        ],
+        "games": 18,
+        "wins": 9,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Corki"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Caitlyn"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Yunara"
+        ],
+        "games": 15,
+        "wins": 7,
+        "win_rate": 46.67
+      },
+      {
+        "champions": [
+          "Braum",
+          "Kaisa"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Yunara"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Lux",
+          "Caitlyn"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Maokai",
+          "Varus"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Corki"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Velkoz",
+          "Ezreal"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Braum",
+          "Varus"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Jhin"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Jhin"
+        ],
+        "games": 11,
+        "wins": 3,
+        "win_rate": 27.27
+      },
+      {
+        "champions": [
+          "Rell",
+          "Kaisa"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Tristana"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Corki"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Ezreal"
+        ],
+        "games": 8,
+        "wins": 6,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Janna",
+          "Ezreal"
+        ],
+        "games": 6,
+        "wins": 6,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Sivir"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Caitlyn"
+        ],
+        "games": 16,
+        "wins": 7,
+        "win_rate": 43.75
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Kaisa"
+        ],
+        "games": 15,
+        "wins": 5,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Varus"
+        ],
+        "games": 24,
+        "wins": 10,
+        "win_rate": 41.67
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Ezreal"
+        ],
+        "games": 13,
+        "wins": 8,
+        "win_rate": 61.54
+      },
+      {
+        "champions": [
+          "Janna",
+          "Jhin"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Kaisa"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Caitlyn"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Draven"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Yunara"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Ashe"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Velkoz"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Aphelios"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Elise",
+          "Corki"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Varus"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Taric",
+          "Yunara"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Leona",
+          "Jhin"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Elise",
+          "Jhin"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Bard",
+          "Ashe"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Varus"
+        ],
+        "games": 23,
+        "wins": 15,
+        "win_rate": 65.22
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Jinx"
+        ],
+        "games": 14,
+        "wins": 5,
+        "win_rate": 35.71
+      },
+      {
+        "champions": [
+          "Taric",
+          "Kalista"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Velkoz"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Varus"
+        ],
+        "games": 11,
+        "wins": 3,
+        "win_rate": 27.27
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Ezreal"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Xayah"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Karma",
+          "Jhin"
+        ],
+        "games": 11,
+        "wins": 2,
+        "win_rate": 18.18
+      },
+      {
+        "champions": [
+          "Bard",
+          "Ziggs"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Neeko",
+          "MissFortune"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Taric",
+          "Aphelios"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Varus"
+        ],
+        "games": 20,
+        "wins": 14,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Elise",
+          "Yunara"
+        ],
+        "games": 8,
+        "wins": 6,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Leona",
+          "Swain"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Yunara"
+        ],
+        "games": 12,
+        "wins": 3,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Varus"
+        ],
+        "games": 12,
+        "wins": 9,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Aphelios"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Pantheon",
+          "Jhin"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Tristana"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Aphelios"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Elise",
+          "Xayah"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Tristana"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Karthus"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Aphelios"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Yunara"
+        ],
+        "games": 29,
+        "wins": 17,
+        "win_rate": 58.62
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Yunara"
+        ],
+        "games": 17,
+        "wins": 11,
+        "win_rate": 64.71
+      },
+      {
+        "champions": [
+          "Bard",
+          "MissFortune"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Yuumi",
+          "Aphelios"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Braum",
+          "Caitlyn"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Taric",
+          "Corki"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Zeri"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Cassiopeia"
+        ],
+        "games": 10,
+        "wins": 2,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Sivir"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Taric",
+          "Ezreal"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "MissFortune"
+        ],
+        "games": 6,
+        "wins": 6,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Jhin"
+        ],
+        "games": 5,
+        "wins": 5,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Pantheon",
+          "Ezreal"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Leona",
+          "MissFortune"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Pantheon",
+          "Kaisa"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Leblanc",
+          "Ezreal"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Pyke",
+          "MissFortune"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      }
+    ],
+    "top_jungle": [
+      {
+        "champions": [
+          "Rumble",
+          "Jayce"
+        ],
+        "games": 32,
+        "wins": 18,
+        "win_rate": 56.25
+      },
+      {
+        "champions": [
+          "Jax",
+          "Qiyana"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Gnar",
+          "XinZhao"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Ambessa"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Kennen",
+          "LeeSin"
+        ],
+        "games": 7,
+        "wins": 7,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Khazix"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Sion",
+          "Khazix"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Jayce"
+        ],
+        "games": 23,
+        "wins": 14,
+        "win_rate": 60.87
+      },
+      {
+        "champions": [
+          "Renekton",
+          "Ekko"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Jax",
+          "Jayce"
+        ],
+        "games": 11,
+        "wins": 9,
+        "win_rate": 81.82
+      },
+      {
+        "champions": [
+          "Gangplank",
+          "LeeSin"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Khazix"
+        ],
+        "games": 19,
+        "wins": 11,
+        "win_rate": 57.89
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Vi"
+        ],
+        "games": 17,
+        "wins": 6,
+        "win_rate": 35.29
+      },
+      {
+        "champions": [
+          "Gwen",
+          "Ambessa"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Urgot",
+          "Zed"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Qiyana"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Gnar",
+          "JarvanIV"
+        ],
+        "games": 10,
+        "wins": 5,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Varus",
+          "Viego"
+        ],
+        "games": 9,
+        "wins": 7,
+        "win_rate": 77.78
+      },
+      {
+        "champions": [
+          "Vayne",
+          "JarvanIV"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Kennen",
+          "Viego"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "JarvanIV"
+        ],
+        "games": 28,
+        "wins": 16,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Varus",
+          "Jayce"
+        ],
+        "games": 15,
+        "wins": 8,
+        "win_rate": 53.33
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Nunu"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Akali",
+          "Ambessa"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Gwen",
+          "Qiyana"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Yorick",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Sion",
+          "Jayce"
+        ],
+        "games": 19,
+        "wins": 9,
+        "win_rate": 47.37
+      },
+      {
+        "champions": [
+          "Gnar",
+          "Vi"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Varus",
+          "JarvanIV"
+        ],
+        "games": 14,
+        "wins": 8,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Renekton",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Gnar",
+          "Qiyana"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Aurora",
+          "XinZhao"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Aurora",
+          "Vi"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Riven",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Renekton",
+          "Jayce"
+        ],
+        "games": 12,
+        "wins": 6,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Vi"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "KSante",
+          "LeeSin"
+        ],
+        "games": 8,
+        "wins": 1,
+        "win_rate": 12.5
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Rengar"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Renekton",
+          "Viego"
+        ],
+        "games": 11,
+        "wins": 3,
+        "win_rate": 27.27
+      },
+      {
+        "champions": [
+          "Yorick",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Zed"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Volibear",
+          "Viego"
+        ],
+        "games": 5,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Ambessa"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Varus",
+          "Vi"
+        ],
+        "games": 7,
+        "wins": 1,
+        "win_rate": 14.29
+      },
+      {
+        "champions": [
+          "Kennen",
+          "JarvanIV"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Kennen",
+          "Jayce"
+        ],
+        "games": 17,
+        "wins": 9,
+        "win_rate": 52.94
+      },
+      {
+        "champions": [
+          "Cassiopeia",
+          "Viego"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Kennen",
+          "Ambessa"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Olaf",
+          "Qiyana"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Sion",
+          "Qiyana"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Aurora",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Jayce",
+          "Vi"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Ryze",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Kennen",
+          "Belveth"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "LeeSin"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Ekko"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Jax",
+          "Viego"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Aurora",
+          "Ambessa"
+        ],
+        "games": 6,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Irelia",
+          "Taliyah"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Renekton",
+          "Ambessa"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Varus",
+          "Diana"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "JarvanIV"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Fiora",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Gwen",
+          "LeeSin"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Olaf",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Varus",
+          "Ambessa"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Irelia",
+          "Jayce"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Renekton",
+          "Nidalee"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Varus",
+          "LeeSin"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Irelia",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Cassiopeia",
+          "Jayce"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Gragas",
+          "Viego"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Sion",
+          "Taliyah"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Sion",
+          "Zac"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Ornn",
+          "Viego"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Cassiopeia",
+          "Khazix"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Khazix"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Darius",
+          "Taliyah"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Taliyah"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Gwen",
+          "Jayce"
+        ],
+        "games": 13,
+        "wins": 7,
+        "win_rate": 53.85
+      },
+      {
+        "champions": [
+          "Jax",
+          "Ambessa"
+        ],
+        "games": 9,
+        "wins": 6,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "LeeSin"
+        ],
+        "games": 9,
+        "wins": 6,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Fiora",
+          "Ambessa"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Aatrox"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "JarvanIV"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Yone",
+          "Viego"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Kennen",
+          "Qiyana"
+        ],
+        "games": 11,
+        "wins": 7,
+        "win_rate": 63.64
+      },
+      {
+        "champions": [
+          "Ryze",
+          "Viego"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "KSante",
+          "Viego"
+        ],
+        "games": 17,
+        "wins": 7,
+        "win_rate": 41.18
+      },
+      {
+        "champions": [
+          "Urgot",
+          "FiddleSticks"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Gwen",
+          "Viego"
+        ],
+        "games": 6,
+        "wins": 6,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "LeeSin"
+        ],
+        "games": 20,
+        "wins": 13,
+        "win_rate": 65.0
+      },
+      {
+        "champions": [
+          "Gnar",
+          "Pantheon"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Jayce"
+        ],
+        "games": 16,
+        "wins": 12,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Viego"
+        ],
+        "games": 12,
+        "wins": 9,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "KSante",
+          "Khazix"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Pantheon"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Viego"
+        ],
+        "games": 13,
+        "wins": 5,
+        "win_rate": 38.46
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Aatrox"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "XinZhao"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Darius",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Ambessa"
+        ],
+        "games": 12,
+        "wins": 6,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Jax",
+          "DrMundo"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Jax",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "XinZhao"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Qiyana"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Yasuo",
+          "Viego"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "KSante",
+          "Ambessa"
+        ],
+        "games": 14,
+        "wins": 6,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Jayce",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Sion",
+          "JarvanIV"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Gangplank",
+          "Vi"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Diana"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Aurora",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Sion",
+          "Viego"
+        ],
+        "games": 15,
+        "wins": 8,
+        "win_rate": 53.33
+      },
+      {
+        "champions": [
+          "Riven",
+          "Aatrox"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Hecarim"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Varus",
+          "Qiyana"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Sion",
+          "LeeSin"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "KSante",
+          "Jayce"
+        ],
+        "games": 16,
+        "wins": 8,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Renekton",
+          "Vi"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Aatrox",
+          "Qiyana"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Vayne",
+          "Diana"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Renekton",
+          "JarvanIV"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "DrMundo"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "KSante",
+          "JarvanIV"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Viego"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Fiora",
+          "Viego"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Akali",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Anivia",
+          "Khazix"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Gnar",
+          "Jayce"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Vi"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Jax",
+          "Rengar"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Jax",
+          "Diana"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Rumble",
+          "Talon"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Ambessa",
+          "Qiyana"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Trundle",
+          "Volibear"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Sion",
+          "Vi"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "RekSai",
+          "Viego"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Gwen",
+          "Vi"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Kennen",
+          "Vi"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Aurora",
+          "LeeSin"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Rumble",
+          "RekSai"
+        ],
+        "games": 5,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "KSante",
+          "Taliyah"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Renekton",
+          "Taliyah"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Gnar",
+          "LeeSin"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Anivia",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Yasuo",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Zaahen",
+          "Aatrox"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Gnar",
+          "Khazix"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Aurora",
+          "Viego"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Gwen",
+          "JarvanIV"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Jayce",
+          "LeeSin"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      }
+    ],
+    "support_jungle": [
+      {
+        "champions": [
+          "Leona",
+          "LeeSin"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Karma",
+          "Jayce"
+        ],
+        "games": 19,
+        "wins": 8,
+        "win_rate": 42.11
+      },
+      {
+        "champions": [
+          "Bard",
+          "Jayce"
+        ],
+        "games": 25,
+        "wins": 13,
+        "win_rate": 52.0
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Jayce"
+        ],
+        "games": 14,
+        "wins": 10,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Karma",
+          "Rengar"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "JarvanIV"
+        ],
+        "games": 17,
+        "wins": 9,
+        "win_rate": 52.94
+      },
+      {
+        "champions": [
+          "Rell",
+          "Qiyana"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "Ambessa"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "LeeSin"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "Khazix"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Khazix"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Khazix"
+        ],
+        "games": 16,
+        "wins": 7,
+        "win_rate": 43.75
+      },
+      {
+        "champions": [
+          "Bard",
+          "DrMundo"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Ekko"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Khazix"
+        ],
+        "games": 9,
+        "wins": 6,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Jayce"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Nidalee"
+        ],
+        "games": 15,
+        "wins": 7,
+        "win_rate": 46.67
+      },
+      {
+        "champions": [
+          "Janna",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Nunu"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Leona",
+          "Khazix"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Vi"
+        ],
+        "games": 11,
+        "wins": 3,
+        "win_rate": 27.27
+      },
+      {
+        "champions": [
+          "Thresh",
+          "LeeSin"
+        ],
+        "games": 16,
+        "wins": 8,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Ambessa"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Lulu",
+          "XinZhao"
+        ],
+        "games": 7,
+        "wins": 1,
+        "win_rate": 14.29
+      },
+      {
+        "champions": [
+          "Nami",
+          "Nunu"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Braum",
+          "Qiyana"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Braum",
+          "Aatrox"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Leona",
+          "Ambessa"
+        ],
+        "games": 8,
+        "wins": 4,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Pyke",
+          "JarvanIV"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Karma",
+          "Ekko"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Nami",
+          "Jayce"
+        ],
+        "games": 11,
+        "wins": 4,
+        "win_rate": 36.36
+      },
+      {
+        "champions": [
+          "Bard",
+          "Khazix"
+        ],
+        "games": 18,
+        "wins": 5,
+        "win_rate": 27.78
+      },
+      {
+        "champions": [
+          "Rell",
+          "Nidalee"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Senna",
+          "JarvanIV"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Leona",
+          "Jayce"
+        ],
+        "games": 15,
+        "wins": 5,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Sona",
+          "JarvanIV"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Senna",
+          "Viego"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Talon"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Nami",
+          "JarvanIV"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Jayce"
+        ],
+        "games": 24,
+        "wins": 15,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Bard",
+          "Ambessa"
+        ],
+        "games": 15,
+        "wins": 9,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "Qiyana"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Lulu",
+          "LeeSin"
+        ],
+        "games": 11,
+        "wins": 7,
+        "win_rate": 63.64
+      },
+      {
+        "champions": [
+          "Braum",
+          "JarvanIV"
+        ],
+        "games": 9,
+        "wins": 7,
+        "win_rate": 77.78
+      },
+      {
+        "champions": [
+          "Nami",
+          "Talon"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "JarvanIV"
+        ],
+        "games": 9,
+        "wins": 6,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Sona",
+          "LeeSin"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Jayce"
+        ],
+        "games": 29,
+        "wins": 14,
+        "win_rate": 48.28
+      },
+      {
+        "champions": [
+          "Bard",
+          "LeeSin"
+        ],
+        "games": 20,
+        "wins": 10,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "LeeSin"
+        ],
+        "games": 11,
+        "wins": 5,
+        "win_rate": 45.45
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Ambessa"
+        ],
+        "games": 18,
+        "wins": 9,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "JarvanIV"
+        ],
+        "games": 12,
+        "wins": 5,
+        "win_rate": 41.67
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "LeeSin"
+        ],
+        "games": 15,
+        "wins": 6,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Qiyana"
+        ],
+        "games": 8,
+        "wins": 2,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Qiyana"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Qiyana"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Vi"
+        ],
+        "games": 10,
+        "wins": 3,
+        "win_rate": 30.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Ambessa"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Sona",
+          "Aatrox"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Viego"
+        ],
+        "games": 24,
+        "wins": 11,
+        "win_rate": 45.83
+      },
+      {
+        "champions": [
+          "Nami",
+          "Zac"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Viego"
+        ],
+        "games": 13,
+        "wins": 8,
+        "win_rate": 61.54
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Vi"
+        ],
+        "games": 6,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Taric",
+          "Jayce"
+        ],
+        "games": 10,
+        "wins": 9,
+        "win_rate": 90.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Jayce"
+        ],
+        "games": 17,
+        "wins": 6,
+        "win_rate": 35.29
+      },
+      {
+        "champions": [
+          "Elise",
+          "Jayce"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "Viego"
+        ],
+        "games": 9,
+        "wins": 2,
+        "win_rate": 22.22
+      },
+      {
+        "champions": [
+          "Alistar",
+          "XinZhao"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Bard",
+          "Ekko"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Ambessa"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Taliyah"
+        ],
+        "games": 21,
+        "wins": 12,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Karma",
+          "Ambessa"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Qiyana"
+        ],
+        "games": 16,
+        "wins": 11,
+        "win_rate": 68.75
+      },
+      {
+        "champions": [
+          "Lulu",
+          "RekSai"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Bard",
+          "JarvanIV"
+        ],
+        "games": 14,
+        "wins": 6,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Bard",
+          "Qiyana"
+        ],
+        "games": 13,
+        "wins": 8,
+        "win_rate": 61.54
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "DrMundo"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Shaco"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Leona",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Diana"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Ambessa"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Braum",
+          "Jayce"
+        ],
+        "games": 16,
+        "wins": 9,
+        "win_rate": 56.25
+      },
+      {
+        "champions": [
+          "Bard",
+          "Nunu"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Ambessa"
+        ],
+        "games": 9,
+        "wins": 6,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Vi"
+        ],
+        "games": 9,
+        "wins": 2,
+        "win_rate": 22.22
+      },
+      {
+        "champions": [
+          "Taric",
+          "LeeSin"
+        ],
+        "games": 14,
+        "wins": 10,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Zed"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Diana"
+        ],
+        "games": 6,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Ambessa"
+        ],
+        "games": 10,
+        "wins": 4,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Nidalee"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Jayce"
+        ],
+        "games": 15,
+        "wins": 8,
+        "win_rate": 53.33
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Viego"
+        ],
+        "games": 7,
+        "wins": 1,
+        "win_rate": 14.29
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Viego"
+        ],
+        "games": 21,
+        "wins": 4,
+        "win_rate": 19.05
+      },
+      {
+        "champions": [
+          "Nami",
+          "Taliyah"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Rengar"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Rengar"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Viego"
+        ],
+        "games": 9,
+        "wins": 7,
+        "win_rate": 77.78
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Vi"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Khazix"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Jayce"
+        ],
+        "games": 11,
+        "wins": 9,
+        "win_rate": 81.82
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Viego"
+        ],
+        "games": 28,
+        "wins": 13,
+        "win_rate": 46.43
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Viego"
+        ],
+        "games": 11,
+        "wins": 7,
+        "win_rate": 63.64
+      },
+      {
+        "champions": [
+          "Rell",
+          "Diana"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Aatrox"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Alistar",
+          "LeeSin"
+        ],
+        "games": 17,
+        "wins": 10,
+        "win_rate": 58.82
+      },
+      {
+        "champions": [
+          "Janna",
+          "Ambessa"
+        ],
+        "games": 5,
+        "wins": 5,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "MonkeyKing"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Vi"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Khazix"
+        ],
+        "games": 11,
+        "wins": 6,
+        "win_rate": 54.55
+      },
+      {
+        "champions": [
+          "Janna",
+          "JarvanIV"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Braum",
+          "Viego"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Khazix"
+        ],
+        "games": 9,
+        "wins": 2,
+        "win_rate": 22.22
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Qiyana"
+        ],
+        "games": 8,
+        "wins": 6,
+        "win_rate": 75.0
+      },
+      {
+        "champions": [
+          "Leona",
+          "Qiyana"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Leona",
+          "Viego"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Diana"
+        ],
+        "games": 5,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Khazix"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Rakan",
+          "LeeSin"
+        ],
+        "games": 9,
+        "wins": 3,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Viego"
+        ],
+        "games": 22,
+        "wins": 13,
+        "win_rate": 59.09
+      },
+      {
+        "champions": [
+          "Elise",
+          "Khazix"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Vi"
+        ],
+        "games": 16,
+        "wins": 8,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Aatrox"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "Aatrox"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Alistar",
+          "JarvanIV"
+        ],
+        "games": 10,
+        "wins": 7,
+        "win_rate": 70.0
+      },
+      {
+        "champions": [
+          "Elise",
+          "Viego"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Aatrox"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "JarvanIV"
+        ],
+        "games": 12,
+        "wins": 7,
+        "win_rate": 58.33
+      },
+      {
+        "champions": [
+          "Lulu",
+          "Qiyana"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Ambessa"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Bard",
+          "Taliyah"
+        ],
+        "games": 7,
+        "wins": 2,
+        "win_rate": 28.57
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Ekko"
+        ],
+        "games": 8,
+        "wins": 2,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "Elise",
+          "Nunu"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "Diana"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Elise",
+          "Ambessa"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Bard",
+          "XinZhao"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Lulu",
+          "JarvanIV"
+        ],
+        "games": 15,
+        "wins": 9,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Aatrox"
+        ],
+        "games": 6,
+        "wins": 2,
+        "win_rate": 33.33
+      },
+      {
+        "champions": [
+          "Bard",
+          "Zac"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Nautilus",
+          "JarvanIV"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Braum",
+          "Diana"
+        ],
+        "games": 6,
+        "wins": 5,
+        "win_rate": 83.33
+      },
+      {
+        "champions": [
+          "Braum",
+          "Vi"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Diana"
+        ],
+        "games": 6,
+        "wins": 0,
+        "win_rate": 0.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Jayce"
+        ],
+        "games": 15,
+        "wins": 11,
+        "win_rate": 73.33
+      },
+      {
+        "champions": [
+          "Rell",
+          "Khazix"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Qiyana"
+        ],
+        "games": 8,
+        "wins": 3,
+        "win_rate": 37.5
+      },
+      {
+        "champions": [
+          "Karma",
+          "Nidalee"
+        ],
+        "games": 7,
+        "wins": 4,
+        "win_rate": 57.14
+      },
+      {
+        "champions": [
+          "Elise",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 5,
+        "win_rate": 100.0
+      },
+      {
+        "champions": [
+          "Nami",
+          "Vi"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Pyke",
+          "DrMundo"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Jayce"
+        ],
+        "games": 8,
+        "wins": 2,
+        "win_rate": 25.0
+      },
+      {
+        "champions": [
+          "Poppy",
+          "Vi"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Neeko",
+          "XinZhao"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Karma",
+          "Khazix"
+        ],
+        "games": 7,
+        "wins": 3,
+        "win_rate": 42.86
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Vi"
+        ],
+        "games": 10,
+        "wins": 6,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Braum",
+          "LeeSin"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Janna",
+          "XinZhao"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Taliyah"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Bard",
+          "Diana"
+        ],
+        "games": 9,
+        "wins": 4,
+        "win_rate": 44.44
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Diana"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Karma",
+          "Viego"
+        ],
+        "games": 9,
+        "wins": 5,
+        "win_rate": 55.56
+      },
+      {
+        "champions": [
+          "Braum",
+          "Hecarim"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Pyke",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Thresh",
+          "JarvanIV"
+        ],
+        "games": 12,
+        "wins": 6,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Taric",
+          "Khazix"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Aatrox"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Neeko",
+          "LeeSin"
+        ],
+        "games": 15,
+        "wins": 9,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Rell",
+          "Jayce"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "Viego"
+        ],
+        "games": 5,
+        "wins": 4,
+        "win_rate": 80.0
+      },
+      {
+        "champions": [
+          "Rakan",
+          "Qiyana"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Blitzcrank",
+          "LeeSin"
+        ],
+        "games": 5,
+        "wins": 1,
+        "win_rate": 20.0
+      },
+      {
+        "champions": [
+          "Bard",
+          "RekSai"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Taliyah"
+        ],
+        "games": 7,
+        "wins": 5,
+        "win_rate": 71.43
+      },
+      {
+        "champions": [
+          "Thresh",
+          "Viego"
+        ],
+        "games": 11,
+        "wins": 2,
+        "win_rate": 18.18
+      },
+      {
+        "champions": [
+          "Taric",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 3,
+        "win_rate": 60.0
+      },
+      {
+        "champions": [
+          "Alistar",
+          "Hecarim"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Rell",
+          "LeeSin"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Neeko",
+          "Khazix"
+        ],
+        "games": 6,
+        "wins": 4,
+        "win_rate": 66.67
+      },
+      {
+        "champions": [
+          "Rell",
+          "Viego"
+        ],
+        "games": 7,
+        "wins": 6,
+        "win_rate": 85.71
+      },
+      {
+        "champions": [
+          "Taric",
+          "Viego"
+        ],
+        "games": 6,
+        "wins": 1,
+        "win_rate": 16.67
+      },
+      {
+        "champions": [
+          "Braum",
+          "Ambessa"
+        ],
+        "games": 6,
+        "wins": 3,
+        "win_rate": 50.0
+      },
+      {
+        "champions": [
+          "Pantheon",
+          "Khazix"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Pyke",
+          "Qiyana"
+        ],
+        "games": 8,
+        "wins": 5,
+        "win_rate": 62.5
+      },
+      {
+        "champions": [
+          "Pantheon",
+          "JarvanIV"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      },
+      {
+        "champions": [
+          "Elise",
+          "Pantheon"
+        ],
+        "games": 5,
+        "wins": 2,
+        "win_rate": 40.0
+      }
+    ]
+  }
+}

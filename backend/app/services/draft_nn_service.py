@@ -354,8 +354,45 @@ class DraftNNService:
             0.5,       # skill_ceiling placeholder
         ])
 
-        # 12. Reserved/padding (6)
-        features.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        # 12. TARGET ROLE-SPECIFIC features (6) - CRITICAL for role-based recommendations
+        # Get role-specific stats from champion data
+        role_stats = champion.get('role_stats', {})
+        target_role_norm = target_role.capitalize() if target_role else 'Mid'
+        role_data = role_stats.get(target_role_norm, {})
+
+        # 12a. Win rate in target role (0-1), default 0.3 if no data (penalty)
+        target_role_wr_raw = role_data.get('win_rate', 30.0)
+        target_role_wr = target_role_wr_raw / 100.0 if target_role_wr_raw > 1 else target_role_wr_raw
+        features.append(target_role_wr)
+
+        # 12b. Games ratio in target role vs total games (0-1)
+        role_games = role_data.get('games', 0)
+        total_games = champion.get('total_games', 1)
+        games_ratio = role_games / max(1, total_games)
+        features.append(games_ratio)
+
+        # 12c. Log-normalized games in role
+        import math
+        games_log = math.log10(max(1, role_games + 1)) / 3.0
+        features.append(min(1.0, games_log))
+
+        # 12d. KDA in target role (normalized 0-1)
+        kda = role_data.get('kda', 2.0)
+        kda_normalized = min(1.0, kda / 5.0)
+        features.append(kda_normalized)
+
+        # 12e. Is this the champion's primary (most played) role?
+        if role_stats:
+            primary_role = max(role_stats.keys(), key=lambda r: role_stats.get(r, {}).get('games', 0))
+            is_primary = 1.0 if target_role_norm == primary_role else 0.0
+        else:
+            # Fallback: check if target_role is in champion's listed roles
+            is_primary = 1.0 if target_role.upper() in [r.upper() for r in champion_roles] else 0.0
+        features.append(is_primary)
+
+        # 12f. Role performance score: wr * games_ratio
+        role_performance = target_role_wr * games_ratio
+        features.append(role_performance)
 
         # Total should be 48
         assert len(features) == 48, f"Feature count mismatch: {len(features)} != 48"
@@ -363,9 +400,21 @@ class DraftNNService:
         return np.array(features, dtype=np.float32)
 
     def _get_matchup_win_rate(self, champion: Dict, opponent: str, role: str) -> Optional[float]:
-        """Get matchup win rate from champion counters data."""
+        """Get matchup win rate from champion matchups/counters data."""
+        # First try scraped matchups data (role-nested structure)
+        matchups = champion.get('matchups', {})
+        role_matchups = matchups.get(role, matchups.get(role.capitalize(), {}))
+        matchup = role_matchups.get(opponent, {})
+
+        games = matchup.get('games', 0)
+        wins = matchup.get('wins', 0)
+
+        if games > 0:
+            return (wins / games) * 100
+
+        # Fall back to DB counters data (also role-nested)
         counters = champion.get('counters', {})
-        role_counters = counters.get(role, {})
+        role_counters = counters.get(role, counters.get(role.capitalize(), {}))
         matchup = role_counters.get(opponent, {})
 
         games = matchup.get('games', 0)
@@ -373,6 +422,7 @@ class DraftNNService:
 
         if games > 0:
             return (wins / games) * 100
+
         return None
 
     def _get_synergy_win_rate(self, champion: Dict, ally: str) -> Optional[float]:
@@ -415,7 +465,7 @@ class DraftNNService:
         if model is None:
             return self._rule_based_score(champion, draft_state, user_proficiency)
 
-        # Extract features
+        # Extract features (now includes role-specific features that the NN learned from)
         features = self.extract_features(champion, draft_state, user_proficiency)
 
         # Normalize features if scaler is available
@@ -423,9 +473,16 @@ class DraftNNService:
             features = scaler.transform(features.reshape(1, -1)).flatten()
 
         # Convert to tensor and predict
+        # The NN has learned role preferences from the training data -
+        # no hardcoded boosts needed. The model knows that Zilean has
+        # terrible jungle stats (low games, low WR) from the data.
         with torch.no_grad():
             features_tensor = torch.FloatTensor(features).unsqueeze(0)
             score = model(features_tensor).item()
+
+        # Small boost for user proficiency (they main this champ)
+        if user_proficiency and user_proficiency >= 4:
+            score = min(1.0, score * 1.1)  # 10% boost for high proficiency
 
         return score
 

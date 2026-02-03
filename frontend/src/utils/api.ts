@@ -236,7 +236,7 @@ export interface DraftState {
   phase: 'BAN' | 'PICK' | 'COMPLETE';
   turn: number;
   side: 'BLUE' | 'RED';
-  role: string;
+  role: string;  // User's selected role
   elo: string;
   patch: string;
   bans_blue: string[];
@@ -244,6 +244,20 @@ export interface DraftState {
   picks_blue: Array<{ champion: string; role: string }>;
   picks_red: Array<{ champion: string; role: string }>;
   is_user_turn?: boolean; // Flag for detailed vs brief LLM response
+  // Current slot info for proper recommendations
+  current_slot_role?: string;    // Role of the slot being picked (e.g., TOP, JUNGLE)
+  current_slot_side?: string;    // Side picking (BLUE or RED)
+  current_slot_position?: number; // Position 0-4
+  // User can override the assumed matchup
+  matchup_override?: string;     // Champion name user selected as their matchup
+}
+
+export interface MatchupInfo {
+  matchup_champion: string | null;  // The enemy champion assumed to be in target role
+  matchup_type: 'counter' | 'blind' | 'unknown';
+  confidence: number;  // 0-1, how confident we are in the matchup prediction
+  reasoning: string;   // Human-readable explanation
+  all_enemy_roles: Record<string, string>;  // champion -> predicted role
 }
 
 export interface ScoredChampion {
@@ -257,6 +271,22 @@ export interface ScoredChampion {
   win_rate: number;
   pick_rate: number;
   roles: string[];
+  // Role-specific stats for transparency
+  role_win_rate?: number;
+  role_games?: number;
+  role_kda?: number | null;
+  target_role?: string;
+}
+
+export interface SortedChampionsResponse {
+  champions: ScoredChampion[];
+  model_type: string;
+  phase: string;
+  target_role: string;
+  user_role: string;
+  turn: number;
+  is_user_role: boolean;
+  matchup: MatchupInfo;
 }
 
 export interface AnalysisResult {
@@ -270,17 +300,37 @@ export interface AnalysisResult {
   source: string;
   model: string;
   recommendations?: string[];  // Champion suggestions
+  // Role and matchup context
+  target_role?: string;
+  user_role?: string;
+  is_user_role?: boolean;
+  matchup?: MatchupInfo;
 }
 
 export const recommendationService = {
   // Get champions sorted by NN recommendation score
-  getSortedChampions: async (draftState: DraftState): Promise<{ champions: ScoredChampion[]; model_type: string }> => {
+  getSortedChampions: async (draftState: DraftState): Promise<SortedChampionsResponse> => {
     try {
       const response = await api.post('/recommendations/sorted-champions', draftState);
       return response.data;
     } catch (error) {
       console.error('Failed to get sorted champions:', error);
-      return { champions: [], model_type: 'error' };
+      return {
+        champions: [],
+        model_type: 'error',
+        phase: draftState.phase,
+        target_role: draftState.role,
+        user_role: draftState.role,
+        turn: draftState.turn,
+        is_user_role: true,
+        matchup: {
+          matchup_champion: null,
+          matchup_type: 'unknown',
+          confidence: 0,
+          reasoning: 'Error loading data',
+          all_enemy_roles: {}
+        }
+      };
     }
   },
 
@@ -306,6 +356,17 @@ export const recommendationService = {
     }
   },
 
+  // Get draft statistics when draft is complete
+  getDraftStats: async (draftState: DraftState): Promise<DraftStats | null> => {
+    try {
+      const response = await api.post('/recommendations/draft-stats', draftState);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get draft stats:', error);
+      return null;
+    }
+  },
+
   // Check which models are available
   getAvailableModels: async (): Promise<{ models: Record<string, boolean>; has_any_model: boolean; recommendation_mode: string }> => {
     try {
@@ -317,6 +378,41 @@ export const recommendationService = {
     }
   }
 };
+
+// Draft Stats interface for completed draft
+export interface DraftStats {
+  lane_matchup: {
+    your_champion: string | null;
+    enemy_champion: string | null;
+    win_rate: number;
+    games: number;
+    confidence: 'high' | 'medium' | 'low';
+  };
+  comp_win: {
+    your_team: number;
+    enemy_team: number;
+  };
+  synergy: {
+    your_team: {
+      score: number;
+      max_score: number;
+      details: Array<{ pair: string; win_rate: number; games: number; synergy: string }>;
+    };
+    enemy_team: {
+      score: number;
+      max_score: number;
+      details: Array<{ pair: string; win_rate: number; games: number; synergy: string }>;
+    };
+  };
+  damage_split: {
+    your_team: { ad: number; ap: number };
+    enemy_team: { ad: number; ap: number };
+  };
+  team_power: {
+    your_team: number;
+    enemy_team: number;
+  };
+}
 
 // Auth service
 export const authService = {
