@@ -1,12 +1,12 @@
 {
-  "trained_at": "2026-01-18T18:26:16.073560+00:00",
+  "trained_at": "2026-02-01T18:12:58.823528+00:00",
   "rank": "CHALLENGER",
   "patch": "latest",
-  "epochs": 5,
+  "epochs": 100,
   "batch_size": 64,
   "learning_rate": 0.001,
   "input_size": 48,
-  "best_val_loss": 0.006008706951084046,
+  "best_val_loss": 0.0011942283832468092,
   "feature_names": [
     "attack",
     "defense",
@@ -50,11 +50,11 @@
     "tier_score",
     "meta_relevance",
     "skill_ceiling",
-    "reserved_1",
-    "reserved_2",
-    "reserved_3",
-    "reserved_4",
-    "reserved_5",
-    "reserved_6"
+    "target_role_win_rate",
+    "target_role_games_ratio",
+    "target_role_games_log",
+    "target_role_kda",
+    "is_primary_role",
+    "role_performance_score"
   ]
 }

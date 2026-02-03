@@ -158,8 +158,14 @@ class NNTrainer:
             'is_marksman', 'is_support_tag', 'is_early_game', 'is_late_game',
             # Meta position (3)
             'tier_score', 'meta_relevance', 'skill_ceiling',
-            # Padding to 50 (6)
-            'reserved_1', 'reserved_2', 'reserved_3', 'reserved_4', 'reserved_5', 'reserved_6'
+            # TARGET ROLE-SPECIFIC features (6) - CRITICAL for role-based recommendations
+            # These features tell the model how good this champion is AT THE TARGET ROLE
+            'target_role_win_rate',       # Win rate in target role (0-1), 0.5 if no data
+            'target_role_games_ratio',    # Ratio of games in target role vs total (0-1)
+            'target_role_games_log',      # Log-normalized games in role (more games = higher)
+            'target_role_kda',            # KDA in target role (normalized 0-1)
+            'is_primary_role',            # 1.0 if this is champion's most played role
+            'role_performance_score'      # Combined: wr * games_ratio (rewards both)
         ]
 
         self.input_size = len(self.feature_names)
@@ -359,9 +365,43 @@ class NNTrainer:
         tier_score = win_rate
         features.extend([tier_score, 0.5, 0.5])
 
-        # Padding
-        while len(features) < self.input_size:
-            features.append(0.0)
+        # TARGET ROLE-SPECIFIC FEATURES (6) - CRITICAL for learning role preferences
+        roles_data = champ_stats.get("roles", {})
+        role_stats = roles_data.get(target_role, {})
+        total_games = champ_stats.get("total_games", 1)
+
+        # 1. Win rate in target role (0-1), default 0.3 if no data (penalty)
+        target_role_wr = role_stats.get("win_rate", 30.0) / 100.0
+        features.append(target_role_wr)
+
+        # 2. Games ratio in target role vs total games (0-1)
+        role_games = role_stats.get("games", 0)
+        games_ratio = role_games / max(1, total_games)
+        features.append(games_ratio)
+
+        # 3. Log-normalized games in role (more games = more reliable data)
+        # Log scale: 0 games = 0, 10 games = 0.5, 100 games = 0.75, 1000 games = 1.0
+        import math
+        games_log = math.log10(max(1, role_games + 1)) / 3.0  # log10(1000) = 3
+        features.append(min(1.0, games_log))
+
+        # 4. KDA in target role (normalized, 0-1)
+        kda = role_stats.get("kda", 2.0)
+        kda_normalized = min(1.0, kda / 5.0)  # KDA of 5+ = 1.0
+        features.append(kda_normalized)
+
+        # 5. Is this the champion's primary (most played) role?
+        if roles_data:
+            primary_role = max(roles_data.keys(), key=lambda r: roles_data[r].get("games", 0))
+            is_primary = 1.0 if target_role == primary_role else 0.0
+        else:
+            is_primary = 0.0
+        features.append(is_primary)
+
+        # 6. Role performance score: combines win rate with sample size
+        # High WR with many games = best, low WR or few games = worst
+        role_performance = target_role_wr * games_ratio
+        features.append(role_performance)
 
         return np.array(features[:self.input_size], dtype=np.float32)
 
@@ -388,33 +428,56 @@ class NNTrainer:
         champ_stats: Dict[str, Any],
         target_role: str
     ) -> float:
-        """Compute recommendation score label from scraped data."""
-        score = 0.0
+        """
+        Compute recommendation score label from scraped data.
 
-        # Win rate component (40%)
-        wr = champ_stats.get("win_rate", 50.0) / 100.0
-        score += wr * 0.4
+        CRITICAL: This label must reflect how good the champion is AT THE TARGET ROLE,
+        not their overall performance. This is how the NN learns role preferences.
 
-        # Role fit component (30%)
+        Label formula heavily weights:
+        - Win rate IN THE TARGET ROLE (not overall)
+        - Games played IN THE TARGET ROLE (more games = more reliable + more viable)
+        """
+        import math
         roles_data = champ_stats.get("roles", {})
-        if target_role in roles_data:
-            # Higher score if this is the champion's primary role
-            role_games = roles_data[target_role].get("games", 0)
-            total_games = champ_stats.get("total_games", 1)
-            role_ratio = role_games / max(1, total_games)
-            score += 0.15 + (0.15 * role_ratio)
-        elif roles_data:
-            score += 0.1
+        role_stats = roles_data.get(target_role, {})
 
-        # Games played as popularity indicator (20%)
-        total_games = champ_stats.get("total_games", 0)
-        popularity = min(1.0, total_games / 500.0)
-        score += popularity * 0.2
+        # If champion has NO games in this role, give very low label
+        role_games = role_stats.get("games", 0)
+        if role_games == 0:
+            # Champion doesn't play this role - label should be very low
+            # But not zero, in case data is just incomplete
+            return 0.15
 
-        # Balance bonus (10%) - already high win rate is self-explanatory
-        score += 0.1 * (1.0 - abs(wr - 0.5) * 2)
+        total_games = champ_stats.get("total_games", 1)
 
-        return min(score, 1.0)
+        # PRIMARY: Role-specific win rate (50% weight)
+        # This is THE most important signal
+        role_wr = role_stats.get("win_rate", 50.0) / 100.0
+        wr_component = role_wr * 0.5
+
+        # SECONDARY: Games in role as viability indicator (30% weight)
+        # Log scale: 1 game = 0, 10 games = 0.33, 100 games = 0.67, 1000 games = 1.0
+        games_log = math.log10(max(1, role_games)) / 3.0
+        games_component = min(1.0, games_log) * 0.3
+
+        # TERTIARY: Is this the primary role? (10% weight)
+        # Rewards champions being played in their main role
+        if roles_data:
+            primary_role = max(roles_data.keys(), key=lambda r: roles_data[r].get("games", 0))
+            is_primary = 1.0 if target_role == primary_role else 0.0
+        else:
+            is_primary = 0.0
+        primary_component = is_primary * 0.1
+
+        # QUATERNARY: Role-specific KDA (10% weight)
+        kda = role_stats.get("kda", 2.0)
+        kda_normalized = min(1.0, kda / 5.0)
+        kda_component = kda_normalized * 0.1
+
+        label = wr_component + games_component + primary_component + kda_component
+
+        return min(max(label, 0.0), 1.0)
 
     def _compute_matchup_score_from_scraped(
         self,
