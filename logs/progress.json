@@ -1,0 +1,206 @@
+{
+  "stats_scraping": {
+    "IRON": {
+      "status": "completed",
+      "matches_processed": 451,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-01-31T22:10:08.911089",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "BRONZE": {
+      "status": "completed",
+      "matches_processed": 1244,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-01T00:40:53.284866",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "SILVER": {
+      "status": "completed",
+      "matches_processed": 2984,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-01T08:40:20.481540",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "GOLD": {
+      "status": "completed",
+      "matches_processed": 3252,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-01T14:53:17.184237",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "PLATINUM": {
+      "status": "completed",
+      "matches_processed": 3820,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-01T17:21:12.423300",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "EMERALD": {
+      "status": "completed",
+      "matches_processed": 3868,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-01T19:47:44.566279",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "DIAMOND": {
+      "status": "completed",
+      "matches_processed": 4796,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-01T22:35:29.763228",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "MASTER": {
+      "status": "completed",
+      "matches_processed": 5196,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-02T00:53:30.775209",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "GRANDMASTER": {
+      "status": "completed",
+      "matches_processed": 2631,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-02T02:32:41.915340",
+      "last_error": null,
+      "patch": "16.2"
+    },
+    "CHALLENGER": {
+      "status": "completed",
+      "matches_processed": 2144,
+      "total_matches": 0,
+      "champions_with_data": 172,
+      "last_run": "2026-02-02T03:12:58.287898",
+      "last_error": null,
+      "patch": "16.2"
+    }
+  },
+  "text_scraping": {
+    "status": "not_started",
+    "champions_scraped": 0,
+    "total_champions": 0,
+    "reddit_posts": 0,
+    "mobafire_guides": 0,
+    "training_examples": 0,
+    "last_run": null,
+    "last_error": null
+  },
+  "model_training": {
+    "IRON": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    },
+    "BRONZE": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    },
+    "SILVER": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    },
+    "GOLD": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    },
+    "PLATINUM": {
+      "status": "completed",
+      "trained_at": "2026-02-02T21:16:14.064648",
+      "epochs": 30,
+      "val_loss": 0.0010171307212052247,
+      "input_size": 48,
+      "patch": null,
+      "model_path": "models/PLATINUM/draft_recommendation.pth"
+    },
+    "EMERALD": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    },
+    "DIAMOND": {
+      "status": "completed",
+      "trained_at": "2026-02-02T21:17:36.634030",
+      "epochs": 30,
+      "val_loss": 0.001343677189045896,
+      "input_size": 48,
+      "patch": null,
+      "model_path": "models/DIAMOND/draft_recommendation.pth"
+    },
+    "MASTER": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    },
+    "GRANDMASTER": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    },
+    "CHALLENGER": {
+      "status": "not_trained",
+      "trained_at": null,
+      "epochs": 0,
+      "val_loss": null,
+      "input_size": null,
+      "patch": null,
+      "model_path": null
+    }
+  },
+  "combined_model": {
+    "status": "not_trained",
+    "trained_at": null,
+    "epochs": 0,
+    "val_loss": null,
+    "input_size": null,
+    "patch": null,
+    "model_path": null
+  },
+  "last_updated": "2026-02-02T21:17:36.634618"
+}

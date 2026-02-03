@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDraftStore } from '../store/useDraftStore';
 import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
-import { Search, X, Settings, Loader2 } from 'lucide-react';
+import { Search, X, Settings, Loader2, User } from 'lucide-react';
 import { RoleIcon } from '../components/common/RoleIcon';
-import { authService, recommendationService, type ScoredChampion, type AnalysisResult, type DraftState } from '../utils/api';
+import { authService, recommendationService, type ScoredChampion, type AnalysisResult, type DraftState, type MatchupInfo, type DraftStats } from '../utils/api';
 import type { RoleType } from '../store/useDraftStore';
 
 const ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
@@ -33,7 +33,7 @@ export const DraftPage: React.FC = () => {
     loadChampions,
   } = useDraftStore();
 
-  const [latestPatch, setLatestPatch] = useState('16.1.1');
+  const [latestPatch, setLatestPatch] = useState('16.2.1');
   const [search, setSearch] = useState('');
   const [draftPhase, setDraftPhase] = useState<'BAN' | 'PICK' | 'COMPLETE'>('BAN');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -50,6 +50,13 @@ export const DraftPage: React.FC = () => {
   const [llmAnalysis, setLlmAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [modelType, setModelType] = useState<string>('loading');
+
+  // Matchup info from NN predictions
+  const [matchupInfo, setMatchupInfo] = useState<MatchupInfo | null>(null);
+  const [matchupOverride, setMatchupOverride] = useState<string | null>(null);  // User can override assumed matchup
+
+  // Draft stats for completed draft
+  const [draftStats, setDraftStats] = useState<DraftStats | null>(null);
 
   // Track if phase change was manual (to prevent auto-switch interference)
   const manualPhaseChangeRef = useRef(false);
@@ -94,19 +101,37 @@ export const DraftPage: React.FC = () => {
 
   // Build draft state object for API calls
   const buildDraftState = useCallback((): DraftState => {
+    // Determine the current slot's role (not user's role, but the slot being picked)
+    const picker = getCurrentPicker();
+    let currentSlotRole = settings.role; // Default to user's role for ban phase
+
+    if (picker && !picker.isBan) {
+      // During pick phase, get the role of the current slot being picked
+      const picksForSide = picker.side === 'BLUE' ? picks.blue : picks.red;
+      if (picksForSide[picker.position]) {
+        currentSlotRole = picksForSide[picker.position].role;
+      }
+    }
+
     return {
       phase: draftPhase,
       turn: currentTurn,
       side: settings.side,
-      role: settings.role,
+      role: settings.role,  // User's selected role
       elo: settings.elo,
       patch: settings.patch,
       bans_blue: bans.blue.filter(b => b),
       bans_red: bans.red.filter(b => b),
       picks_blue: picks.blue.filter(p => p.champion).map(p => ({ champion: p.champion, role: p.role })),
       picks_red: picks.red.filter(p => p.champion).map(p => ({ champion: p.champion, role: p.role })),
+      // CRITICAL: Include the current slot's role for proper recommendations
+      current_slot_role: currentSlotRole,
+      current_slot_side: picker?.side || settings.side,
+      current_slot_position: picker?.position ?? -1,
+      // User can override the assumed matchup
+      matchup_override: matchupOverride || undefined,
     };
-  }, [draftPhase, currentTurn, settings, bans, picks]);
+  }, [draftPhase, currentTurn, settings, bans, picks, getCurrentPicker, matchupOverride]);
 
   // Fetch NN-sorted champions when draft state changes
   const fetchSortedChampions = useCallback(async () => {
@@ -118,6 +143,10 @@ export const DraftPage: React.FC = () => {
       if (result.champions.length > 0) {
         setSortedChampions(result.champions);
         setModelType(result.model_type);
+        // Update matchup info from response
+        if (result.matchup) {
+          setMatchupInfo(result.matchup);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch sorted champions:', error);
@@ -225,13 +254,14 @@ export const DraftPage: React.FC = () => {
   }, []);
 
   // Fetch sorted champions when draft state changes (debounced)
-  // Only refetch when settings change, not on every ban/pick (we filter locally)
+  // Refetch on turn change because each slot may have a different role!
+  // Also refetch when matchup override changes
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchSortedChampions();
     }, 300); // Reduced debounce - local filtering handles immediate updates
     return () => clearTimeout(timer);
-  }, [settings.role, settings.elo, draftPhase]);
+  }, [settings.role, settings.elo, draftPhase, currentTurn, matchupOverride, fetchSortedChampions]);
 
   // Fetch LLM analysis when turn changes (debounced since it's slow)
   useEffect(() => {
@@ -240,6 +270,23 @@ export const DraftPage: React.FC = () => {
     }, 500); // Reduced debounce
     return () => clearTimeout(timer);
   }, [currentTurn, draftPhase]);
+
+  // Fetch draft stats when draft is complete
+  useEffect(() => {
+    if (draftPhase === 'COMPLETE') {
+      const fetchStats = async () => {
+        const draftState = buildDraftState();
+        const stats = await recommendationService.getDraftStats(draftState);
+        if (stats) {
+          setDraftStats(stats);
+        }
+      };
+      fetchStats();
+    } else {
+      // Clear stats when draft is not complete
+      setDraftStats(null);
+    }
+  }, [draftPhase, buildDraftState]);
 
   // Auto-switch phases based on draft state
   useEffect(() => {
@@ -383,12 +430,23 @@ export const DraftPage: React.FC = () => {
 
   // Filter champions - use NN-sorted if available, otherwise alphabetical
   // ALWAYS check against local allBannedPicked since API data may be stale
+  // Also de-duplicate by normalized name to prevent display bugs
   const filteredChamps = (() => {
     const searchLower = search.toLowerCase().trim();
+    const seenNames = new Set<string>();
+
+    const dedup = (names: string[]) => {
+      return names.filter(name => {
+        const normalized = name.toLowerCase();
+        if (seenNames.has(normalized)) return false;
+        seenNames.add(normalized);
+        return true;
+      });
+    };
 
     if (sortedChampions.length > 0) {
       // Use NN-sorted champions but ALSO check local banned/picked state
-      return sortedChampions
+      const filtered = sortedChampions
         .filter(champ => {
           // Check BOTH API availability AND local state
           if (!champ.available) return false;
@@ -397,15 +455,17 @@ export const DraftPage: React.FC = () => {
           return champ.name.toLowerCase().includes(searchLower);
         })
         .map(champ => champ.name);
+      return dedup(filtered);
     } else {
       // Fallback to allChampions from store
-      return allChampions
+      const filtered = allChampions
         .filter(champ => {
           if (allBannedPicked.has(champ)) return false;
           if (!searchLower) return true;
           return champ.toLowerCase().includes(searchLower);
         })
         .sort((a, b) => a.localeCompare(b));
+      return dedup(filtered);
     }
   })();
 
@@ -750,9 +810,14 @@ export const DraftPage: React.FC = () => {
           <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
         </div>
 
-        <Link to="/settings" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white">
-          <Settings size={20} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/profile" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white" title="Profile">
+            <User size={20} />
+          </Link>
+          <Link to="/settings" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white" title="Settings">
+            <Settings size={20} />
+          </Link>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -845,8 +910,15 @@ export const DraftPage: React.FC = () => {
                   <div className="text-gray-500 uppercase tracking-wider font-bold mb-1">Lane Matchup</div>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-400">{settings.role}:</span>
-                    <div className="text-green-400 font-bold text-lg">54%</div>
-                    <span className="text-xs text-gray-600">WR</span>
+                    <div className={`font-bold text-lg ${
+                      draftStats?.lane_matchup.win_rate && draftStats.lane_matchup.win_rate >= 52 ? 'text-green-400' :
+                      draftStats?.lane_matchup.win_rate && draftStats.lane_matchup.win_rate <= 48 ? 'text-red-400' : 'text-gray-400'
+                    }`}>
+                      {draftStats?.lane_matchup.win_rate ? `${draftStats.lane_matchup.win_rate}%` : '--'}
+                    </div>
+                    <span className="text-xs text-gray-600">
+                      {draftStats?.lane_matchup.games ? `(${draftStats.lane_matchup.games} games)` : 'WR'}
+                    </span>
                   </div>
                 </div>
 
@@ -856,9 +928,13 @@ export const DraftPage: React.FC = () => {
                 <div className="text-xs">
                   <div className="text-gray-500 uppercase tracking-wider font-bold mb-1">Comp Win %</div>
                   <div className="flex items-center gap-2">
-                    <div className="text-blue-400 font-bold text-lg">52.3%</div>
+                    <div className="text-blue-400 font-bold text-lg">
+                      {draftStats?.comp_win.your_team ? `${draftStats.comp_win.your_team}%` : '50%'}
+                    </div>
                     <span className="text-gray-600">vs</span>
-                    <div className="text-red-400 font-bold text-lg">47.7%</div>
+                    <div className="text-red-400 font-bold text-lg">
+                      {draftStats?.comp_win.enemy_team ? `${draftStats.comp_win.enemy_team}%` : '50%'}
+                    </div>
                   </div>
                 </div>
 
@@ -869,9 +945,14 @@ export const DraftPage: React.FC = () => {
                   <div className="text-gray-500 uppercase tracking-wider font-bold mb-1">Synergy Score</div>
                   <div className="flex items-center gap-1">
                     <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400" style={{width: '78%'}}></div>
+                      <div
+                        className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
+                        style={{width: `${(draftStats?.synergy.your_team.score || 5) * 10}%`}}
+                      ></div>
                     </div>
-                    <span className="text-green-400 font-mono text-sm ml-1">7.8/10</span>
+                    <span className="text-green-400 font-mono text-sm ml-1">
+                      {draftStats?.synergy.your_team.score ? `${draftStats.synergy.your_team.score}/10` : '5/10'}
+                    </span>
                   </div>
                 </div>
 
@@ -884,12 +965,16 @@ export const DraftPage: React.FC = () => {
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 bg-orange-500 rounded"></div>
                       <span className="text-gray-400 text-xs">AD</span>
-                      <span className="text-white font-mono text-sm">58%</span>
+                      <span className="text-white font-mono text-sm">
+                        {draftStats?.damage_split.your_team.ad ? `${Math.round(draftStats.damage_split.your_team.ad)}%` : '50%'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 bg-blue-500 rounded"></div>
                       <span className="text-gray-400 text-xs">AP</span>
-                      <span className="text-white font-mono text-sm">42%</span>
+                      <span className="text-white font-mono text-sm">
+                        {draftStats?.damage_split.your_team.ap ? `${Math.round(draftStats.damage_split.your_team.ap)}%` : '50%'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -918,11 +1003,11 @@ export const DraftPage: React.FC = () => {
                 onDragOver={handleDragOver}
                 onDrop={handleDropOnCenter}>
                 <div className="grid grid-cols-8 gap-2 pr-1">
-                  {filteredChamps.map(champ => {
+                  {filteredChamps.map((champ, idx) => {
                     const isInPool = championPoolNames.has(champ);
                     return (
                       <button
-                        key={champ}
+                        key={`${champ}-${idx}`}
                         onClick={() => handleChampionSelect(champ)}
                         draggable={true}
                         onDragStart={() => setDraggedChampion(champ)}
@@ -946,10 +1031,10 @@ export const DraftPage: React.FC = () => {
 
           {/* LLM Box - Expands to fill space when draft is complete */}
           <div
-            className={`${draftPhase === 'COMPLETE' ? 'flex-1' : 'h-1/2'} bg-black/90 border-t-2 ${phaseColorClass} p-4 flex flex-col`}
+            className={`${draftPhase === 'COMPLETE' ? 'flex-1' : 'h-1/2'} bg-black/90 border-t-2 ${phaseColorClass} p-3 flex flex-col`}
             onDragOver={handleDragOver}
             onDrop={handleDropOnCenter}>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1">
               <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">AI Analysis</div>
               <div className="flex items-center gap-2">
                 {isLoadingAnalysis && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
@@ -964,48 +1049,114 @@ export const DraftPage: React.FC = () => {
                   <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
                 </div>
               ) : llmAnalysis ? (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {/* Analysis text - larger and more readable */}
-                  <p className="text-gray-100 leading-relaxed text-[17px] whitespace-pre-line">{llmAnalysis.analysis}</p>
+                  <p className="text-gray-100 leading-relaxed text-[16px] whitespace-pre-line">{llmAnalysis.analysis}</p>
 
-                  {/* Champion suggestions section - clickable to select */}
-                  {llmAnalysis.recommendations && llmAnalysis.recommendations.length > 0 && draftPhase !== 'COMPLETE' && (
-                    <div className="pt-4 border-t border-gray-700">
-                      <div className="text-sm text-amber-500 uppercase tracking-wider mb-3 font-bold">
-                        {draftPhase === 'BAN' ? 'Recommended Bans' : 'Recommended Picks'}
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {llmAnalysis.recommendations.slice(0, 5).map((champ: string, idx: number) => {
-                          // Check if champion is already banned/picked
-                          const isUnavailable = [
-                            ...bans.blue.filter(Boolean),
-                            ...bans.red.filter(Boolean),
-                            ...picks.blue.map(p => p.champion).filter(Boolean),
-                            ...picks.red.map(p => p.champion).filter(Boolean)
-                          ].includes(champ);
-
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => !isUnavailable && handleChampionSelect(champ)}
-                              disabled={isUnavailable}
-                              className={`flex items-center gap-2 rounded-lg px-3 py-2 border transition-all ${
-                                isUnavailable
-                                  ? 'bg-gray-900/50 border-gray-800 opacity-50 cursor-not-allowed'
-                                  : 'bg-gray-800/90 border-gray-700 hover:border-amber-500 hover:bg-gray-700/90 cursor-pointer'
-                              }`}
+                  {/* Champion suggestions section - synced with picker using sortedChampions */}
+                  {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (
+                    <div className="pt-2 border-t border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs text-amber-500 uppercase tracking-wider font-bold">
+                          {draftPhase === 'BAN' ? 'Recommended Bans' : 'Recommended Picks'}
+                        </div>
+                        {/* Matchup dropdown - inline with header */}
+                        {draftPhase === 'PICK' && matchupInfo && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500">
+                              {matchupInfo.matchup_type === 'counter' ? `vs ${matchupInfo.matchup_champion}` : 'Blind'}
+                            </span>
+                            <select
+                              value={matchupOverride || ''}
+                              onChange={(e) => setMatchupOverride(e.target.value || null)}
+                              className="text-[10px] bg-gray-800 border border-gray-600 rounded px-1.5 py-0.5 text-gray-300 cursor-pointer"
                             >
-                              <img src={getChampionImageUrl(champ, latestPatch)} alt={champ} className="w-8 h-8 rounded" />
-                              <span className="text-base text-gray-200 font-medium">{champ}</span>
-                            </button>
-                          );
-                        })}
+                              <option value="">Auto</option>
+                              {Object.entries(matchupInfo.all_enemy_roles || {}).map(([champ, role]) => (
+                                <option key={champ} value={champ}>
+                                  {champ} ({role})
+                                </option>
+                              ))}
+                              <option value="__blind__">Blind</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {/* Use sortedChampions (same as picker) to ensure sync */}
+                        {sortedChampions
+                          .filter(c => c.available && !allBannedPicked.has(c.name))
+                          .slice(0, 5)
+                          .map((champ, idx) => {
+                            const isInPool = championPoolNames.has(champ.name);
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => handleChampionSelect(champ.name)}
+                                className={`flex items-center gap-1.5 rounded px-2 py-1.5 border transition-all cursor-pointer ${
+                                  isInPool
+                                    ? 'bg-cyan-900/30 border-cyan-500 hover:border-cyan-400 hover:bg-cyan-800/40'
+                                    : 'bg-gray-800/90 border-gray-700 hover:border-amber-500 hover:bg-gray-700/90'
+                                }`}
+                              >
+                                <img src={getChampionImageUrl(champ.name, latestPatch)} alt={champ.name} className="w-6 h-6 rounded" />
+                                <span className="text-sm text-gray-200 font-medium">{champ.name}</span>
+                                <span className="text-[10px] text-gray-500">{champ.score.toFixed(1)}</span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top Pick Stats - Transparency Section */}
+                  {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (
+                    <div className="pt-2 border-t border-gray-700">
+
+                      {/* Top Pick Stats */}
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 font-bold">
+                        Top Pick Stats ({sortedChampions[0]?.target_role || settings.role})
+                      </div>
+                      <div className="bg-gray-900/60 rounded p-2">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <img
+                            src={getChampionImageUrl(sortedChampions[0]?.name, latestPatch)}
+                            alt={sortedChampions[0]?.name}
+                            className="w-8 h-8 rounded"
+                          />
+                          <div>
+                            <div className="text-gray-200 font-semibold text-sm">{sortedChampions[0]?.name}</div>
+                            <div className="text-[10px] text-gray-500">Score: {sortedChampions[0]?.score?.toFixed(1)}</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
+                          <div className="bg-gray-800/50 rounded p-1.5">
+                            <div className="text-amber-400 font-bold">
+                              {sortedChampions[0]?.role_win_rate
+                                ? `${(sortedChampions[0].role_win_rate * 100).toFixed(1)}%`
+                                : `${(sortedChampions[0]?.win_rate * 100).toFixed(1)}%`}
+                            </div>
+                            <div className="text-[9px] text-gray-500">Win Rate</div>
+                          </div>
+                          <div className="bg-gray-800/50 rounded p-1.5">
+                            <div className="text-blue-400 font-bold">
+                              {sortedChampions[0]?.role_games?.toLocaleString() || 'N/A'}
+                            </div>
+                            <div className="text-[9px] text-gray-500">Games</div>
+                          </div>
+                          <div className="bg-gray-800/50 rounded p-1.5">
+                            <div className="text-green-400 font-bold">
+                              {sortedChampions[0]?.role_kda?.toFixed(2) || 'N/A'}
+                            </div>
+                            <div className="text-[9px] text-gray-500">KDA</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Source indicator */}
-                  <div className="text-[10px] text-gray-700 pt-2 border-t border-gray-800">
+                  <div className="text-[9px] text-gray-700 pt-1">
                     {llmAnalysis.source === 'huggingface' ? `${llmAnalysis.model}` : 'Rule-based'}
                   </div>
                 </div>

@@ -232,9 +232,12 @@ yarn-error.log*
 !.env.example
 
 # Logs - keep folder structure but ignore log files
+logs/**/*.log
+logs/**/*.json
 logs/*.log
 logs/*.json
 !logs/.gitkeep
+!logs/progress.json
 *.log
 
 # Runtime data

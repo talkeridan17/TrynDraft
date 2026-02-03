@@ -8,7 +8,7 @@ export async function getLatestPatch(): Promise<string> {
     return versions[0]; // First item is the latest version
   } catch (error) {
     console.error('Failed to fetch latest patch:', error);
-    return '16.1.1'; // Fallback to current known patch
+    return '16.2.1'; // Fallback to current known patch
   }
 }
 
@@ -81,7 +81,7 @@ function normalizeChampionId(championId: string): string {
  * Get champion square icon URL (for picker grid)
  */
 export function getChampionImageUrl(championId: string, patch?: string): string {
-  const version = patch || '16.1.1';
+  const version = patch || '16.2.1';
   const normalized = normalizeChampionId(championId);
   return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${normalized}.png`;
 }

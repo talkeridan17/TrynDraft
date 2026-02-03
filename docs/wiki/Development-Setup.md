@@ -11,7 +11,37 @@ This guide walks you through setting up TrynDraft for local development.
 | npm | 9+ | `npm --version` |
 | Git | Any | `git --version` |
 
-## Quick Start
+## Automated Setup (Recommended)
+
+The fastest way to get started:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/TrynDraft.git
+cd TrynDraft
+
+# Run the setup script (installs everything)
+./scripts/setup-dev.sh
+
+# Start both servers
+./scripts/start-dev.sh
+```
+
+**That's it!** Open http://localhost:5173 in your browser.
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `./scripts/setup-dev.sh` | Full development environment setup |
+| `./scripts/start-dev.sh` | Start both backend and frontend servers |
+| `./scripts/stop-dev.sh` | Stop all development servers |
+
+---
+
+## Manual Setup
+
+If you prefer manual setup or the scripts don't work on your system:
 
 ### 1. Clone the Repository
 
