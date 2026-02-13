@@ -76,6 +76,11 @@ def load_scraped_role_stats(elo: str, patch: str) -> Dict[str, Dict]:
     """
     Load role-specific stats from scraped data files.
     Returns dict mapping champion name -> role_stats
+
+    Fallback strategy:
+    1. Try exact patch (e.g., "16.3.1")
+    2. Try major.minor (e.g., "16.3")
+    3. Fall back to latest available patch
     """
     # Try to find scraped data
     base_path = Path("scraped_data/riot_stats")
@@ -109,6 +114,46 @@ def load_scraped_role_stats(elo: str, patch: str) -> Dict[str, Dict]:
             except Exception as e:
                 logger.warning(f"Failed to load scraped data from {data_path}: {e}")
 
+    # Fallback: Use latest available patch
+    if base_path.exists():
+        try:
+            # Get all patch directories, sorted in reverse order (latest first)
+            patch_dirs = sorted(
+                [d for d in base_path.iterdir() if d.is_dir() and d.name.startswith("patch_")],
+                key=lambda x: x.name,
+                reverse=True
+            )
+
+            for patch_dir in patch_dirs:
+                data_path = patch_dir / elo.upper() / "champion_stats.json"
+                if data_path.exists():
+                    try:
+                        with open(data_path) as f:
+                            data = json.load(f)
+                            champions = data.get("champions", {})
+
+                            # Extract role_stats for each champion
+                            role_stats_map = {}
+                            for champ_name, champ_data in champions.items():
+                                roles = champ_data.get("roles", {})
+                                total_games = sum(r.get("games", 0) for r in roles.values())
+                                role_stats_map[champ_name] = {
+                                    "role_stats": roles,
+                                    "total_games": total_games,
+                                    "matchups": champ_data.get("matchups", {})
+                                }
+
+                            fallback_patch = patch_dir.name.replace("patch_", "")
+                            logger.warning(f"Patch {patch} not found, falling back to {fallback_patch}")
+                            logger.info(f"Loaded role stats for {len(role_stats_map)} champions from {data_path}")
+                            return role_stats_map
+                    except Exception as e:
+                        logger.warning(f"Failed to load fallback data from {data_path}: {e}")
+
+        except Exception as e:
+            logger.error(f"Failed to find fallback patch data: {e}")
+
+    logger.error(f"No scraped data found for {elo}/{patch} or any fallback patch")
     return {}
 
 
@@ -300,6 +345,8 @@ async def get_sorted_champions(
     role = data.get('role', 'MID')
     elo = data.get('elo', 'PLATINUM')
     patch = data.get('patch', '14.24')
+
+    logger.info(f"🎯 [REQUEST] phase={phase}, turn={turn}, role={role}, elo={elo}, side={side}")
     bans_blue = data.get('bans_blue', [])
     bans_red = data.get('bans_red', [])
     picks_blue = data.get('picks_blue', [])
@@ -334,7 +381,7 @@ async def get_sorted_champions(
         'picks_red': picks_red
     }
 
-    # Load role-specific stats from scraped data
+    # Load role-specific stats from scraped data (auto-fallback to latest if patch not found)
     scraped_role_stats = load_scraped_role_stats(elo, patch)
 
     # Get user's champion pool if authenticated
@@ -513,16 +560,25 @@ async def get_sorted_champions(
         role_stats = champion.get('role_stats', {})
         target_role_stats = role_stats.get(target_role, role_stats.get(target_role.capitalize(), {}))
 
-        role_wr = target_role_stats.get('win_rate', champion['win_rate'])
-        role_games = target_role_stats.get('games', 0)
-        role_kda = target_role_stats.get('kda', 0)
+        # If no role-specific data, use None instead of fallback to avoid misleading stats
+        if target_role_stats:
+            role_wr = target_role_stats.get('win_rate', 0)
+            role_games = target_role_stats.get('games', 0)
+            role_kda = target_role_stats.get('kda', 0)
+        else:
+            role_wr = 0
+            role_games = 0
+            role_kda = 0
 
         # CRITICAL: Heavily penalize champions with no games in target role
         # This prevents Vi being recommended for ADC when she has 0 ADC games
-        if role_games == 0 and phase == 'PICK':
-            score *= 0.05  # 95% penalty - almost never recommend
-        elif role_games < 10 and phase == 'PICK':
-            score *= 0.3   # 70% penalty for very low sample size
+        # Apply in BOTH phases - even for bans, we only care about role-specific threats
+        if role_games == 0:
+            score *= 0.001  # 99.9% penalty - essentially never recommend
+        elif role_games < 10:
+            score *= 0.1   # 90% penalty for very low sample size
+        elif role_games < 30:
+            score *= 0.5   # 50% penalty for low sample size
 
         scored_champions.append({
             'id': champion['id'],
@@ -532,10 +588,11 @@ async def get_sorted_champions(
             'available': is_available,
             'in_user_pool': is_in_user_pool,
             'user_proficiency': user_champion_pool.get(champion['name']) if is_in_user_pool else None,
-            'win_rate': (champion['win_rate'] / 100) if champion['win_rate'] > 1 else champion['win_rate'],
-            'pick_rate': (champion['pick_rate'] / 100) if champion['pick_rate'] > 1 else champion['pick_rate'],
+            # Database stores as basis points (10000 = 100%), convert to decimal for frontend
+            'win_rate': champion['win_rate'] / 10000 if champion['win_rate'] else 0.5,
+            'pick_rate': champion['pick_rate'] / 10000 if champion['pick_rate'] else 0.05,
             'roles': champion['roles'],
-            # Role-specific stats for transparency
+            # Role-specific stats for transparency (scraped data uses percentage, convert to decimal)
             'role_win_rate': role_wr / 100 if role_wr > 1 else role_wr,
             'role_games': role_games,
             'role_kda': round(role_kda, 2) if role_kda else None,
@@ -544,6 +601,9 @@ async def get_sorted_champions(
 
     # Sort by score (highest first), with available champions prioritized
     scored_champions.sort(key=lambda x: (x['available'], x['score']), reverse=True)
+
+    # Log actual response being sent to frontend for debugging
+    logger.info(f"🔍 RESPONSE for {target_role}/{elo}: Top 5 = {[(c['name'], c['score'], c['role_games']) for c in scored_champions[:5]]}")
 
     return {
         'champions': scored_champions,
