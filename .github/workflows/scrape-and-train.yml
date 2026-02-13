@@ -57,12 +57,17 @@ jobs:
         working-directory: backend
         env:
           RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+          SECRET_KEY: "github-actions-dummy-secret-key-for-scraping-only"
+          DATABASE_URL: "sqlite:///./tryndraft_ci.db"
         run: |
           python scripts/run_scrapers.py all-ranks
 
       - name: Train NN models on new data
         if: steps.check.outputs.ALREADY_SCRAPED == 'false'
         working-directory: backend
+        env:
+          SECRET_KEY: "github-actions-dummy-secret-key-for-training-only"
+          DATABASE_URL: "sqlite:///./tryndraft_ci.db"
         run: |
           python scripts/train_nn.py --all --epochs 30
 
