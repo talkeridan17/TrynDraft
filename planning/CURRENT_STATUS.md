@@ -1,7 +1,7 @@
 # TrynDraft - Current Development Status
 
-**Last Updated:** 2026-02-02
-**Version:** 0.8.0-beta
+**Last Updated:** 2026-02-12
+**Version:** 0.8.2-beta
 
 ---
 
@@ -190,5 +190,60 @@ TrynDraft/
 
 ---
 
-**Project Status:** Beta Ready
-**Next Milestone:** Production Deployment
+## Recent Bug Fixes (2026-02-12)
+
+### Critical Bugs Fixed ✅
+1. **Win Rate Display Bug** - FIXED
+   - **Problem:** Database stores win_rate as basis points (10000 = 100%), but code divided by 100 instead of 10000
+   - **Symptom:** Transparency window showed "10000%" or "4773%" instead of "100%" or "47.7%"
+   - **Fix:** Changed `win_rate / 100` to `win_rate / 10000` in recommendations.py:544
+   - **Location:** [backend/app/api/v1/endpoints/recommendations.py:544-545](../backend/app/api/v1/endpoints/recommendations.py)
+
+2. **Draft Stats Damage Split Bug** - FIXED
+   - **Problem:** Checking `if (ad)` instead of `if (ad !== undefined)` caused 0 values to show fallback "50%"
+   - **Symptom:** Full AD team showed "100% AD, 50% AP" instead of "100% AD, 0% AP"
+   - **Fix:** Changed truthiness check to explicit `!== undefined` check
+   - **Location:** [frontend/src/pages/DraftPage.tsx:969,976](../frontend/src/pages/DraftPage.tsx)
+
+3. **Picker Alphabetical Order Bug** - ✅ FIXED
+   - **Problem:** Champions showed in alphabetical order instead of NN-sorted order
+   - **Root Cause:** Scraped data missing for current patch (16.3.1), only had data for 16.2
+   - **Symptom:** All champions had `role_games=0` → all got score 0.02 → sorted by database order (alphabetical)
+   - **Fix:** Added automatic fallback to latest available patch when requested patch not found
+   - **Location:** [backend/app/api/v1/endpoints/recommendations.py:75-150](../backend/app/api/v1/endpoints/recommendations.py)
+   - **Status:** ✅ Working - now shows correct NN scores (Ivern, Briar, Graves for Jungle/Platinum)
+
+### Automated Workflows Status
+4. **Automated Scraping** ✅ CREATED
+   - Created `.github/workflows/scrape-and-train.yml`
+   - Runs every 6 hours via cron: `0 */6 * * *`
+   - Detects latest patch, checks if already scraped, runs scrapers for all ranks
+   - Auto-commits scraped data and retrained models to repo
+   - **Status:** Ready for testing (user should manually trigger first)
+
+5. **Text Data Scraper** ✅ TESTED
+   - Created `scripts/scrape_llm_text.py` for LLM training data
+   - Logs to `logs/text/scrape_TIMESTAMP.log`
+   - Outputs to `training_data/text_data.jsonl`
+   - **Status:** Working, tested with 10 champions
+
+### Remaining Issues
+6. **Data Weighting Strategy** ⚠️
+   - Not implemented for old vs new patches
+   - Should decrease value of old patch data while keeping it
+   - **Action Required:** Implement exponential decay or similar
+
+7. **Login Issue** ⚠️
+   - User reports can't log in
+   - Auth code looks correct
+   - **Needs Verification:** Backend running? .env configured?
+
+8. **Deployment Blocked** ❌
+   - Railway build timeouts due to PyTorch size (2GB+)
+   - **Solutions:** CPU-only PyTorch OR different platform
+
+---
+
+**Project Status:** Beta Ready (Deployment Paused)
+**Next Milestone:** Automated Workflows + Deployment
+**Blocking Issues:** GitHub Actions workflows, Railway deployment

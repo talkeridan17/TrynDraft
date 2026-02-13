@@ -50,6 +50,7 @@ export const DraftPage: React.FC = () => {
   const [llmAnalysis, setLlmAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [modelType, setModelType] = useState<string>('loading');
+  const [hoveredChampion, setHoveredChampion] = useState<string | null>(null);
 
   // Matchup info from NN predictions
   const [matchupInfo, setMatchupInfo] = useState<MatchupInfo | null>(null);
@@ -113,7 +114,7 @@ export const DraftPage: React.FC = () => {
       }
     }
 
-    return {
+    const draftState = {
       phase: draftPhase,
       turn: currentTurn,
       side: settings.side,
@@ -131,6 +132,8 @@ export const DraftPage: React.FC = () => {
       // User can override the assumed matchup
       matchup_override: matchupOverride || undefined,
     };
+    console.log('🔧 [BUILD] Draft state:', { role: draftState.role, elo: draftState.elo, phase: draftState.phase, currentSlotRole });
+    return draftState;
   }, [draftPhase, currentTurn, settings, bans, picks, getCurrentPicker, matchupOverride]);
 
   // Fetch NN-sorted champions when draft state changes
@@ -139,17 +142,26 @@ export const DraftPage: React.FC = () => {
 
     try {
       const draftState = buildDraftState();
+      console.log('🔍 [PICKER] Fetching sorted champions:', { role: draftState.role, elo: draftState.elo, phase: draftState.phase });
       const result = await recommendationService.getSortedChampions(draftState);
+      console.log('✅ [PICKER] API Response:', {
+        count: result.champions.length,
+        modelType: result.model_type,
+        top5: result.champions.slice(0, 5).map(c => `${c.name} (score:${c.score}, games:${c.role_games})`)
+      });
       if (result.champions.length > 0) {
         setSortedChampions(result.champions);
         setModelType(result.model_type);
+        console.log('💾 [PICKER] Set sortedChampions state with', result.champions.length, 'champions');
         // Update matchup info from response
         if (result.matchup) {
           setMatchupInfo(result.matchup);
         }
+      } else {
+        console.warn('⚠️ [PICKER] API returned 0 champions - will use alphabetical fallback');
       }
     } catch (error) {
-      console.error('Failed to fetch sorted champions:', error);
+      console.error('❌ [PICKER] Failed to fetch sorted champions:', error);
     }
   }, [buildDraftState, draftPhase]);
 
@@ -455,7 +467,13 @@ export const DraftPage: React.FC = () => {
           return champ.name.toLowerCase().includes(searchLower);
         })
         .map(champ => champ.name);
-      return dedup(filtered);
+      const dedupedFiltered = dedup(filtered);
+      console.log('📊 [PICKER] Using NN-sorted champions:', {
+        sortedCount: sortedChampions.length,
+        filteredCount: dedupedFiltered.length,
+        top3: dedupedFiltered.slice(0, 3)
+      });
+      return dedupedFiltered;
     } else {
       // Fallback to allChampions from store
       const filtered = allChampions
@@ -465,7 +483,13 @@ export const DraftPage: React.FC = () => {
           return champ.toLowerCase().includes(searchLower);
         })
         .sort((a, b) => a.localeCompare(b));
-      return dedup(filtered);
+      const dedupedFiltered = dedup(filtered);
+      console.warn('⚠️ [PICKER] Using ALPHABETICAL fallback:', {
+        allChampionsCount: allChampions.length,
+        filteredCount: dedupedFiltered.length,
+        top3: dedupedFiltered.slice(0, 3)
+      });
+      return dedupedFiltered;
     }
   })();
 
@@ -966,14 +990,14 @@ export const DraftPage: React.FC = () => {
                       <div className="w-3 h-3 bg-orange-500 rounded"></div>
                       <span className="text-gray-400 text-xs">AD</span>
                       <span className="text-white font-mono text-sm">
-                        {draftStats?.damage_split.your_team.ad ? `${Math.round(draftStats.damage_split.your_team.ad)}%` : '50%'}
+                        {draftStats?.damage_split.your_team.ad !== undefined ? `${Math.round(draftStats.damage_split.your_team.ad)}%` : '50%'}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 bg-blue-500 rounded"></div>
                       <span className="text-gray-400 text-xs">AP</span>
                       <span className="text-white font-mono text-sm">
-                        {draftStats?.damage_split.your_team.ap ? `${Math.round(draftStats.damage_split.your_team.ap)}%` : '50%'}
+                        {draftStats?.damage_split.your_team.ap !== undefined ? `${Math.round(draftStats.damage_split.your_team.ap)}%` : '50%'}
                       </span>
                     </div>
                   </div>
@@ -1012,6 +1036,8 @@ export const DraftPage: React.FC = () => {
                         draggable={true}
                         onDragStart={() => setDraggedChampion(champ)}
                         onDragEnd={handleDragEnd}
+                        onMouseEnter={() => setHoveredChampion(champ)}
+                        onMouseLeave={() => setHoveredChampion(null)}
                         className={`aspect-square rounded overflow-hidden relative group hover:scale-105 hover:z-10 transition-transform cursor-grab active:cursor-grabbing ${
                           isInPool
                             ? 'border-2 border-cyan-400 shadow-lg shadow-cyan-400/50 ring-1 ring-cyan-400/30'
@@ -1110,50 +1136,61 @@ export const DraftPage: React.FC = () => {
                   )}
 
                   {/* Top Pick Stats - Transparency Section */}
-                  {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (
+                  {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (() => {
+                    // Show stats for hovered champion, or top pick if no hover
+                    const displayChamp = hoveredChampion
+                      ? sortedChampions.find(c => c.name === hoveredChampion)
+                      : sortedChampions[0];
+
+                    if (!displayChamp) return null;
+
+                    return (
                     <div className="pt-2 border-t border-gray-700">
 
-                      {/* Top Pick Stats */}
+                      {/* Champion Stats */}
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 font-bold">
-                        Top Pick Stats ({sortedChampions[0]?.target_role || settings.role})
+                        {hoveredChampion ? '🎯 Hovered' : '⭐ Top Pick'} Stats ({displayChamp.target_role || settings.role})
                       </div>
                       <div className="bg-gray-900/60 rounded p-2">
                         <div className="flex items-center gap-2 mb-1.5">
                           <img
-                            src={getChampionImageUrl(sortedChampions[0]?.name, latestPatch)}
-                            alt={sortedChampions[0]?.name}
+                            src={getChampionImageUrl(displayChamp.name, latestPatch)}
+                            alt={displayChamp.name}
                             className="w-8 h-8 rounded"
                           />
                           <div>
-                            <div className="text-gray-200 font-semibold text-sm">{sortedChampions[0]?.name}</div>
-                            <div className="text-[10px] text-gray-500">Score: {sortedChampions[0]?.score?.toFixed(1)}</div>
+                            <div className="text-gray-200 font-semibold text-sm">{displayChamp.name}</div>
+                            <div className="text-[10px] text-gray-500">Score: {displayChamp.score?.toFixed(1)}</div>
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
                           <div className="bg-gray-800/50 rounded p-1.5">
                             <div className="text-amber-400 font-bold">
-                              {sortedChampions[0]?.role_win_rate
-                                ? `${(sortedChampions[0].role_win_rate * 100).toFixed(1)}%`
-                                : `${(sortedChampions[0]?.win_rate * 100).toFixed(1)}%`}
+                              {displayChamp.role_win_rate
+                                ? `${(displayChamp.role_win_rate * 100).toFixed(1)}%`
+                                : displayChamp.win_rate
+                                ? `${(displayChamp.win_rate * 100).toFixed(1)}%`
+                                : 'N/A'}
                             </div>
                             <div className="text-[9px] text-gray-500">Win Rate</div>
                           </div>
                           <div className="bg-gray-800/50 rounded p-1.5">
                             <div className="text-blue-400 font-bold">
-                              {sortedChampions[0]?.role_games?.toLocaleString() || 'N/A'}
+                              {displayChamp.role_games?.toLocaleString() || '0'}
                             </div>
                             <div className="text-[9px] text-gray-500">Games</div>
                           </div>
                           <div className="bg-gray-800/50 rounded p-1.5">
                             <div className="text-green-400 font-bold">
-                              {sortedChampions[0]?.role_kda?.toFixed(2) || 'N/A'}
+                              {displayChamp.role_kda?.toFixed(2) || 'N/A'}
                             </div>
                             <div className="text-[9px] text-gray-500">KDA</div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Source indicator */}
                   <div className="text-[9px] text-gray-700 pt-1">
