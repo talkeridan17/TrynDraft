@@ -60,7 +60,7 @@ jobs:
           SECRET_KEY: "github-actions-dummy-secret-key-for-scraping-only"
           DATABASE_URL: "sqlite:///./tryndraft_ci.db"
         run: |
-          python scripts/run_scrapers.py all-ranks
+          python scripts/run_scrapers.py stats --mode full
 
       - name: Train NN models on new data
         if: steps.check.outputs.ALREADY_SCRAPED == 'false'
