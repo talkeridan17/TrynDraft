@@ -372,6 +372,7 @@ backend/*.pyc
 backend/data_cache/
 backend/logs/
 backend/training_data/  # LLM training data (can be large)
+!llm-ai-stuff/data/
 
 # Docker
 docker-compose.override.yml
