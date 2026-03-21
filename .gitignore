@@ -388,3 +388,5 @@ docker-compose.override.yml
 Thumbs.db
 
 .claude
+llm-ai-stuff/training/temp_data/*
+llm-ai-stuff/training/deeplol_collector.py
