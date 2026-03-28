@@ -31,6 +31,8 @@ from pathlib import Path
 from collections import deque
 from dataclasses import dataclass, asdict
 from typing import Optional
+import dotenv
+dotenv.load_dotenv()
 
 import requests
 
@@ -503,22 +505,40 @@ if __name__ == "__main__":
     parser.add_argument("--platform",   default="na1", choices=list(PLATFORM_TO_REGION.keys()))
     parser.add_argument("--tier",       default="EMERALD", choices=list(TIER_DIVISIONS.keys()))
     parser.add_argument("--output",     default="data/raw")
-    parser.add_argument("--max-summoners",         type=int, default=200)
-    parser.add_argument("--matches-per-summoner",  type=int, default=20)
+    parser.add_argument("--max-summoners",         type=int, default=550)
+    parser.add_argument("--matches-per-summoner",  type=int, default=100)
     parser.add_argument("--require-plugged-in",    action="store_true",
                         help="Pause whenever the laptop is unplugged, not just on low battery")
+    parser.add_argument("--default_full_scrape", default=False)
     args = parser.parse_args()
 
-    api_key = os.environ.get("RIOT_API_KEY")
+    api_key = dotenv.dotenv_values().get("RIOT_API_KEY")
     if not api_key:
         raise ValueError("Set the RIOT_API_KEY environment variable")
 
-    scrape(
-        api_key=api_key,
-        platform=args.platform,
-        tier=args.tier,
-        output_dir=args.output,
-        max_summoners=args.max_summoners,
-        matches_per_summoner=args.matches_per_summoner,
-        require_plugged_in=args.require_plugged_in,
-    )
+    if args.default_full_scrape:
+        args.max_summoners = 500
+        args.matches_per_summoner = 100
+        major_regions = ["na1", "euw1", "kr"]
+        top_tiers = ["CHALLENGER", "GRANDMASTER"]
+        for region in major_regions:
+            for tier in top_tiers:
+                scrape(
+                    api_key=api_key,
+                    platform=region,
+                    tier=tier,
+                    output_dir=args.output,
+                    max_summoners=args.max_summoners,
+                    matches_per_summoner=args.matches_per_summoner,
+                    require_plugged_in=args.require_plugged_in,
+                )
+    else:
+        scrape(
+            api_key=api_key,
+            platform=args.platform,
+            tier=args.tier,
+            output_dir=args.output,
+            max_summoners=args.max_summoners,
+            matches_per_summoner=args.matches_per_summoner,
+            require_plugged_in=args.require_plugged_in,
+        )
