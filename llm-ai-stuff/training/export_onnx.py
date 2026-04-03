@@ -37,15 +37,19 @@ class ONNXExportWrapper(nn.Module):
         event_types: torch.Tensor,
         domain: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+
+        B, S = champion_ids.shape
+        domain_expanded = domain.unsqueeze(1).expand(B, S)
+
         batch = {
             "champion_ids": champion_ids,
             "sides": sides,
             "phases": phases,
             "lanes": lanes,
             "event_types": event_types,
-            "domain": domain,
+            "domain": domain_expanded,
         }
-        return self.model(batch, target_mask=None)
+        return self.model._embed_tokens(batch)
 
 
 def export_to_onnx(
