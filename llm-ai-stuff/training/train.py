@@ -4,9 +4,11 @@ import pickle
 import pandas as pd
 import torch
 import torch.nn as nn
+import argparse
 from torch.utils.data import Dataset, DataLoader, Sampler
 from ast import literal_eval
 from collections import defaultdict
+from pathlib import Path
 
 # ── Domain flags (must match your unified dataframe) ──────────────────────────
 DOMAIN_PRO   = 0
@@ -22,10 +24,13 @@ LANE_MAP = {
     "UNKNOWN": 5,
 }
 
+parser = argparse.ArgumentParser()
+
 # ── Champion vocab ────────────────────────────────────────────────────────────
 # Set high enough to cover all champion IDs including future releases.
 # Index 0 is reserved as a padding sentinel — no champion has ID 0.
 CHAMPION_VOCAB = 1000
+NO_BAN_ID = CHAMPION_VOCAB - 1
 
 # ── Event types ───────────────────────────────────────────────────────────────
 EVENT_BAN  = 0
@@ -152,7 +157,14 @@ class DraftDataset(Dataset):
         return len(self.records)
 
     def __getitem__(self, idx):
+        if isinstance(idx, list):
+            return [self.records[i] for i in idx]
         return self.records[idx]
+    
+    def domain_indices(self) -> tuple[list, list]:
+        pro   = [i for i, r in enumerate(self.records) if r["domain"] == DOMAIN_PRO]
+        soloq = [i for i, r in enumerate(self.records) if r["domain"] == DOMAIN_SOLOQ]
+        return pro, soloq
     
     def _parse_row(self, row) -> dict | None:
         try:
@@ -183,6 +195,14 @@ class DraftDataset(Dataset):
                 p1_picks = [p for p in sorted_picks if p["phase"] == 1]
                 p2_picks = [p for p in sorted_picks if p["phase"] == 2]
 
+                for ban in p1_bans:
+                    if ban["champion_id"] == -1:
+                        ban["champion_id"] = NO_BAN_ID
+
+                for ban in p2_bans:
+                    if ban["champion_id"] == -1:
+                        ban["champion_id"] = NO_BAN_ID
+
                 if len(p1_bans) != 6 or len(p2_bans) != 4:
                     return None
                 if len(p1_picks) != 6 or len(p2_picks) != 4:
@@ -201,6 +221,11 @@ class DraftDataset(Dataset):
                     for p in p2_picks]
                 )
             else:
+
+                for ban in sorted_bans:
+                    if ban["champion_id"] == -1:
+                        ban["champion_id"] = NO_BAN_ID
+
                 events = (
                     [_make_event(b["champion_id"], b["side"], b["phase"], 5, EVENT_BAN)
                     for b in sorted_bans]  +
@@ -233,17 +258,448 @@ class DraftDataset(Dataset):
         except (KeyError, TypeError, ValueError):
             return None
 
-class StratifiedSampler():
-    pass
+def _shuffled(lst: list) -> list:
+    return [lst[i] for i in torch.randperm(len(lst)).tolist()]
 
-with open("data/unified_data.pkl", "rb") as f:
-    df = pickle.load(f)
+class StratifiedSampler(Sampler):
+    def __init__(self, pro_idx: list, soloq_idx: list, batch_size: int=64, pro_fraction: float=0.4):
+        self.pro_idx = pro_idx
+        self.soloq_idx = soloq_idx
+        self.pro_per_batch = max(1, int(batch_size * pro_fraction))
+        self.soloq_per_batch = batch_size - self.pro_per_batch
+        self.batch_size = batch_size
+        self.num_batches = min(len(self.pro_idx) // self.pro_per_batch, len(self.soloq_idx) // self.soloq_per_batch)
+        print(f"StratifiedSampler: {self.num_batches} batches / epoch | Pro: {self.pro_per_batch} | Soloq: {self.soloq_per_batch}")
+    
+    def __iter__(self):
+        pro_pool = _shuffled(self.pro_idx)
+        soloq_pool = _shuffled(self.soloq_idx)
+        
+        for b in range(self.num_batches):
+            pro_batch   = pro_pool  [b * self.pro_per_batch   : (b+1) * self.pro_per_batch]
+            soloq_batch = soloq_pool[b * self.soloq_per_batch : (b+1) * self.soloq_per_batch]
 
-dataset = DraftDataset(df)
-print(len(dataset))
+            # Combine and shuffle within the batch so domain isn't
+            # positionally correlated (all pro first, then soloq)
+            batch = pro_batch + soloq_batch
+            yield [batch[i] for i in _shuffled(list(range(len(batch))))]
+    
+    def __len__(self):
+        return self.num_batches * self.batch_size
 
-# Check domain split
-pro_n   = sum(1 for i in range(len(dataset)) if dataset[i]["domain"] == DOMAIN_PRO)
-soloq_n = len(dataset) - pro_n
-print(f"Pro: {pro_n} | Soloq: {soloq_n}")
+def collate_fn(batch: list):
+    return {k: torch.stack([record[k] for record in batch]) for k in batch[0].keys()}
+
+def make_dataloaders(
+    df: pd.DataFrame,
+    val_split: float = 0.05,
+    batch_size: int = 64,
+    pro_fraction: float = 0.40,
+    num_workers: int = 2
+):
+    dataset = DraftDataset(df)
+    pro_idx, soloq_idx = dataset.domain_indices()
+    n_val_pro   = max(1, int(len(pro_idx)   * val_split))
+    n_val_soloq = max(1, int(len(soloq_idx) * val_split))
+
+    val_pro_idx   = pro_idx[:n_val_pro]
+    val_soloq_idx = soloq_idx[:n_val_soloq]
+    val_idx       = set(val_pro_idx + val_soloq_idx)
+
+    train_idx = [i for i in range(len(dataset)) if i not in val_idx]
+
+    global_to_local = {g: l for l, g in enumerate(train_idx)}
+
+    train_pro   = [global_to_local[i] for i in train_idx
+                   if dataset[i]["domain"] == DOMAIN_PRO]
+    train_soloq = [global_to_local[i] for i in train_idx
+                   if dataset[i]["domain"] == DOMAIN_SOLOQ]
+
+    train_set = torch.utils.data.Subset(dataset, train_idx)
+    val_set   = torch.utils.data.Subset(dataset, list(val_idx))
+
+    sampler = StratifiedSampler(
+        train_pro, train_soloq,
+        batch_size=batch_size,
+        pro_fraction=pro_fraction,
+    )
+
+    train_loader = DataLoader(
+        train_set,
+        batch_sampler=sampler,
+        collate_fn=collate_fn,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+
+    val_loader = DataLoader(
+        val_set,
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+
+
+    return train_loader, val_loader
+
+class DraftTransformer(nn.Module):
+    def __init__(
+        self,
+        num_tags: int,
+        d_model: int = 256,
+        n_heads: int = 8,
+        num_layers: int = 4,
+        ffn_dim: int = 1024,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+        self.champion_embed = nn.Embedding(CHAMPION_VOCAB, d_model, padding_idx=0)
+        self.side_embed = nn.Embedding(2, d_model // 4)
+        self.phase_embed = nn.Embedding(3, d_model // 4)
+        self.lane_embed = nn.Embedding(6, d_model // 4)
+        self.event_embed = nn.Embedding(2, d_model // 4)
+        self.domain_embed = nn.Embedding(2, d_model // 4)
+
+        self.aux_proj = nn.Linear(5 * (d_model // 4), d_model)
+
+        self.tag_proj = nn.Sequential(nn.Linear(num_tags, 64), nn.GELU())
+        self.damage_proj = nn.Linear(3, d_model)
+        self.feature_proj = nn.Linear(d_model + 64, d_model)
+
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
+        nn.init.trunc_normal_(self.cls_token, std=0.02)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=n_heads,
+            dim_feedforward=ffn_dim,
+            dropout=dropout,
+            batch_first=True,
+            norm_first=True,
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+        self.pick_ban_head = nn.Sequential(
+            nn.Linear(d_model, ffn_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(ffn_dim, CHAMPION_VOCAB),
+        )
+
+        self.win_head = nn.Linear(d_model, 1)
+        self._init_weights()
+    
+    def _init_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.trunc_normal_(module.weight, std=0.02)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+            elif isinstance(module, nn.Embedding):
+                nn.init.trunc_normal_(module.weight, std=0.02)
+    
+    def forward(self, batch: dict, target_mask: torch.Tensor | None = None):
+        B = batch["champion_ids"].size(0)
+        tokens = self._embed_tokens(batch)
+        cls = self.cls_token.expand(B, -1, -1)
+        seq = torch.cat([cls, tokens], dim=1)
+
+        src_key_padding_mask = None
+        if target_mask is not None:
+            cls_mask = torch.zeros(B, 1, dtype=torch.bool, device=target_mask.device)
+            src_key_padding_mask = torch.cat([cls_mask, target_mask], dim=1)
+        
+        encoded = self.transformer(seq, src_key_padding_mask=src_key_padding_mask)
+        cls_out = encoded[:, 0, :]  # CLS token
+        logits = self.pick_ban_head(cls_out)
+        win_logit = self.win_head(cls_out).squeeze(-1)
+        
+        return logits, win_logit
+
+    def register_static_features(self, tag_matrix: torch.Tensor, damage_matrix: torch.Tensor):
+        self.register_buffer("tag_matrix", tag_matrix)
+        self.register_buffer("damage_matrix", damage_matrix)
+    
+    def _embed_tokens(self, batch: dict):
+        ids = batch["champion_ids"].clamp(0, CHAMPION_VOCAB - 1)
+        B, S = ids.shape
+        domain = batch["domain"].unsqueeze(1).expand(B, S)
+
+        champ_emb = self.champion_embed(ids)
+        aux_emb = self.aux_proj(torch.cat([
+            self.side_embed(batch["sides"]),
+            self.phase_embed(batch["phases"]),
+            self.lane_embed(batch["lanes"]),
+            self.event_embed(batch["event_types"]),
+            self.domain_embed(domain),
+        ], dim=-1))
+
+        tag_feats = self.tag_proj(self.tag_matrix[ids].float())
+        damage_feats = self.damage_proj(self.damage_matrix[ids])
+
+        token = champ_emb + aux_emb + damage_feats
+        token = self.feature_proj(torch.cat([token, tag_feats], dim=-1))
+        
+        return token
+
+def build_champion_weights(df: pd.DataFrame) -> torch.Tensor:
+    counts = torch.zeros(CHAMPION_VOCAB)
+    for picks in df["picks"]:
+        for p in picks:
+            cid = p.get("champion_id")
+            if cid and 0 < cid < CHAMPION_VOCAB:
+                counts[cid] += 1
+    for bans in df["bans"]:
+        for b in bans:
+            cid = b.get("champion_id")
+            if cid and 0 < cid < CHAMPION_VOCAB:
+                counts[cid] += 1
+    
+    weights = 1.0 / (counts + 1).sqrt()
+    weights[0] = 0.0  # Padding
+    weights[NO_BAN_ID] = 0.0  # No ban num
+    weights = weights / weights.sum() * CHAMPION_VOCAB
+    return weights
+
+class DraftLoss(nn.Module):
+    WIN_WEIGHT = 0.3
+
+    def __init__(self, champion_weights: torch.Tensor):
+        super().__init__()
+        self.ce = nn.CrossEntropyLoss(reduction='none', label_smoothing=0.1)
+        self.bce = nn.BCEWithLogitsLoss(reduction='none')
+        self.register_buffer("champion_weights", champion_weights)
+    
+    def forward(self, logits, win_logit, targets):
+        pick_loss = self.ce(logits, targets["target_id"])
+        
+        sample_weights = self.champion_weights[targets["target_id"]]
+        pick_loss = pick_loss * sample_weights
+
+        pick_loss = (pick_loss * targets["recency_weight"]).mean()
+
+        win_loss = self.bce(win_logit, targets["blue_win"])
+        win_loss = (win_loss * targets["recency_weight"] * targets["win_confidence"]).mean()
+
+        total = pick_loss + self.WIN_WEIGHT * win_loss
+
+        return total, pick_loss.detach(), win_loss.detach()
+
+def sample_target_and_mask(batch):
+    B = batch["champion_ids"].size(0)
+
+    valid_mask = (batch["champion_ids"] != 0) & \
+                 (batch["champion_ids"] != NO_BAN_ID)
+
+    target_slots = torch.zeros(B, dtype=torch.long)
+    for i in range(B):
+        valid_positions = valid_mask[i].nonzero().squeeze(1)
+        sampled         = valid_positions[torch.randint(len(valid_positions), (1,))]
+        target_slots[i] = sampled
+
+    target_ids = batch["champion_ids"][torch.arange(B), target_slots]
+    is_pick    = batch["is_pick"][torch.arange(B), target_slots]
+
+    positions = torch.arange(20).unsqueeze(0).expand(B, -1)
+    mask      = positions >= target_slots.unsqueeze(1)
+    targets = {
+        "target_id": target_ids,
+        "is_pick": is_pick,
+        "blue_win": batch["blue_win"],
+        "win_confidence": batch["win_confidence"],
+        "recency_weight": batch["recency_weight"],
+    }
+    
+    return targets, mask
+
+def train_epoch(model, loader, optimizer, loss_fn, device, scaler=None):
+    model.train()
+    total_loss = pick_loss_sum = win_loss_sum = correct = total = 0
+
+    for batch in loader:
+        batch = {k: v.to(device) for k, v in batch.items()}
+        targets, mask = sample_target_and_mask(batch)
+        targets = {k: v.to(device) for k, v in targets.items()}
+        mask = mask.to(device)
+
+
+        optimizer.zero_grad()
+        if scaler is not None:
+            with torch.autocast(device_type="cuda"):
+                logits, win_logit = model(batch, target_mask=mask)
+                loss, pick_l, win_l = loss_fn(logits, win_logit, targets)
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            logits, win_logit = model(batch, target_mask=mask)
+            loss, pick_l, win_l = loss_fn(logits, win_logit, targets)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+        
+        preds = logits.argmax(dim=-1)
+        correct += (preds == targets["target_id"]).sum().item()
+        total += batch["champion_ids"].size(0)
+
+        total_loss += loss.item()
+        pick_loss_sum += pick_l.item()
+        win_loss_sum += win_l.item()
+    
+    n = max(len(loader), 1)
+    return {
+        "loss": total_loss / n,
+        "pick_loss": pick_loss_sum / n,
+        "win_loss": win_loss_sum / n,
+        "pick_acc": correct / max(total, 1)
+    }
+
+@torch.no_grad()
+def val_epoch(model, loader, loss_fn, device):
+    model.eval()
+    total_loss = 0.0
+    pick_loss_sum = 0.0
+    win_loss_sum = 0.0
+    correct = 0
+    total = 0
+    
+    for batch in loader:
+        batch = {k: v.to(device) for k, v in batch.items()}
+        targets, mask = sample_target_and_mask(batch)
+        targets = {k: v.to(device) for k, v in targets.items()}
+        mask = mask.to(device)
+        
+        logits, win_logit = model(batch, target_mask=mask)
+        loss, pick_l, win_l = loss_fn(logits, win_logit, targets)
+
+
+        preds = logits.argmax(dim=-1)
+        correct += (preds == targets["target_id"]).sum().item()
+        total += batch["champion_ids"].size(0)
+        
+        total_loss += loss.item()
+        pick_loss_sum += pick_l.item()
+        win_loss_sum += win_l.item()
+    
+    n = max(len(loader), 1)
+    return {
+        "loss": total_loss / n,
+        "pick_loss": pick_loss_sum / n,
+        "win_loss": win_loss_sum / n,
+        "pick_acc": correct / max(total, 1)
+    }
+
+def main(args):
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.mps.is_available() else "cpu")
+    print(f"Using device: {device}")
+    print(f"Loading {args.data}")
+    with open(args.data, "rb") as f:
+        df = pickle.load(f)
+    print(f"Loaded {len(df)} records")
+    print(f"Loading tag matrix from {args.tags}")
+    with open(args.tags, "rb") as f:
+        tag_df = pickle.load(f)
+
+    print(f"Loading damage matrix from {args.damage}")
+    with open(args.damage, "rb") as f:
+        damage_matrix = pickle.load(f)
+    
+    print(f"Loaded tag matrix")
+    print(f"Loaded damage matrix")
+
+    damage_matrix_tensor = build_damage_matrix(damage_matrix)
+    tag_matrix, valid_tags = build_tag_matrix(tag_df, damage_matrix)
+    print(f"Tags: {tag_matrix.size(1)} | Damage matrix: {damage_matrix_tensor.shape}")
+
+    champion_weights = build_champion_weights(df).to(device)
+    print(f"Champion weights built, shape: {champion_weights.shape}")
+
+    train_loader, val_loader = make_dataloaders(
+        df,
+        val_split=args.val_split,
+        batch_size=args.batch_size,
+        pro_fraction=args.pro_fraction,
+        num_workers=args.num_workers
+    )
+
+    model = DraftTransformer(
+        num_tags=tag_matrix.size(1),
+        d_model=args.d_model,
+        num_layers=args.n_layers,    
+    ).to(device)
+    model.register_static_features(tag_matrix.to(device), damage_matrix_tensor.to(device))
+    print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
+
+    loss_fn   = DraftLoss(champion_weights)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=args.lr, weight_decay=0.05
+    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=args.epochs, eta_min=1e-5
+    )
+    scaler = torch.amp.GradScaler("cuda") if device.type == "cuda" else None
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+
+    import json
+    (out / "valid_tags.json").write_text(json.dumps(valid_tags))
+    print(f"Checkpoints will be saved to: {out}")
+
+    best_val_loss = float("inf")
+
+    for epoch in range(1, args.epochs + 1):
+        train_m = train_epoch(model, train_loader, optimizer, loss_fn, device, scaler)
+        val_m   = val_epoch(model, val_loader, loss_fn, device)
+        scheduler.step()
+
+        print(
+            f"Epoch {epoch:03d} | "
+            f"train loss {train_m['loss']:.4f}  acc {train_m['pick_acc']:.3f} | "
+            f"val loss {val_m['loss']:.4f}  acc {val_m['pick_acc']:.3f} | "
+            f"lr {scheduler.get_last_lr()[0]:.2e}"
+        )
+
+        # Save checkpoint on every improvement
+        if val_m["loss"] < best_val_loss:
+            best_val_loss = val_m["loss"]
+            torch.save({
+                "epoch":        epoch,
+                "model":        model.state_dict(),
+                "optimizer":    optimizer.state_dict(),
+                "val_loss":     val_m["loss"],
+                "val_pick_acc": val_m["pick_acc"],
+                "args":         vars(args),
+                "num_tags":     tag_matrix.size(1),
+            }, out / "best.pt")
+            print(f"  Saved best checkpoint (val_loss={best_val_loss:.4f})")
+
+        # Save periodic checkpoint every 5 epochs for resuming
+        if epoch % 5 == 0:
+            torch.save({
+                "epoch": epoch,
+                "model": model.state_dict(),
+            }, out / f"epoch_{epoch:03d}.pt")
+
+
+
+if __name__ == "__main__":
+    parser.add_argument("--data",         required=True,          help="Path to unified pickle")
+    parser.add_argument("--tags",         required=True,          help="Path to champion tags CSV")
+    parser.add_argument("--damage",       required=True,          help="Path to damage stats pickle")
+    parser.add_argument("--output",       default="checkpoints")
+    parser.add_argument("--epochs",       type=int,   default=30)
+    parser.add_argument("--batch-size",   type=int,   default=64)
+    parser.add_argument("--lr",           type=float, default=1e-4)
+    parser.add_argument("--d-model",      type=int,   default=256)
+    parser.add_argument("--n-layers",     type=int,   default=4)
+    parser.add_argument("--pro-fraction", type=float, default=0.40)
+    parser.add_argument("--val-split",    type=float, default=0.05)
+    parser.add_argument("--num-workers",  type=int,   default=2)
+    args = parser.parse_args()
+    main(args)
+
 

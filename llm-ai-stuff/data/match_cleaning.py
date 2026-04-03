@@ -5,10 +5,10 @@ import pickle
 
 df = pd.DataFrame()
 
-for file in os.listdir("raw/matches"):
+for file in os.listdir("raw/matches/data/raw_soloq"):
     if not file.endswith(".json"):
         continue
-    with open(os.path.join("raw/matches", file), "r") as f:
+    with open(os.path.join("raw/matches/data/raw_soloq", file), "r") as f:
         data = json.load(f)
         df = pd.concat([df, pd.DataFrame([data])])
 
