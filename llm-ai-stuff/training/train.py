@@ -14,6 +14,8 @@ from pathlib import Path
 DOMAIN_PRO   = 0
 DOMAIN_SOLOQ = 1
 
+
+
 # ── Lane encoding ─────────────────────────────────────────────────────────────
 LANE_MAP = {
     "TOP":     0,
@@ -38,6 +40,24 @@ EVENT_PICK = 1
 
 MIN_TAG_CHAMPIONS = 3   # tags appearing on fewer champions are filtered out
 
+PRO_SEQUENCE = [
+    (0, 1, EVENT_BAN),  (1, 1, EVENT_BAN),  (0, 1, EVENT_BAN),  (1, 1, EVENT_BAN),  (0, 1, EVENT_BAN),  (1, 1, EVENT_BAN),
+    (0, 2, EVENT_PICK), (1, 2, EVENT_PICK), (0, 2, EVENT_PICK), (1, 2, EVENT_PICK), (0, 2, EVENT_PICK), (1, 2, EVENT_PICK),
+    (0, 3, EVENT_BAN),  (1, 3, EVENT_BAN),  (0, 3, EVENT_BAN),  (1, 3, EVENT_BAN),
+    (0, 4, EVENT_PICK), (1, 4, EVENT_PICK), (0, 4, EVENT_PICK), (1, 4, EVENT_PICK),
+]
+
+# 10 bans in no order followed by picks in order B, R, R, B, B, R, R, B, B, R
+SOLOQ_SEQUENCE = [
+    # Phase 1 bans: B, B, R, R, B, R
+    (0, 1, EVENT_BAN), (0, 1, EVENT_BAN), (1, 1, EVENT_BAN), (1, 1, EVENT_BAN), (0, 1, EVENT_BAN), (1, 1, EVENT_BAN),
+    # Phase 2 bans: B, R, B, R
+    (0, 2, EVENT_BAN), (1, 2, EVENT_BAN), (0, 2, EVENT_BAN), (1, 2, EVENT_BAN),
+    # Phase 2 picks: B, R, R, B, B, R
+    (0, 2, EVENT_PICK), (1, 2, EVENT_PICK), (1, 2, EVENT_PICK), (0, 2, EVENT_PICK), (0, 2, EVENT_PICK), (1, 2, EVENT_PICK),
+    # Phase 3 picks: R, B, B, R
+    (1, 3, EVENT_PICK), (0, 3, EVENT_PICK), (0, 3, EVENT_PICK), (1, 3, EVENT_PICK),
+]
 
 def build_damage_matrix(damage_df: pd.DataFrame) -> torch.Tensor:
     """

@@ -21,6 +21,7 @@ from train import (
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from data.utility import load_champion_map, reverse_champion_map
+from proficiency import build_proficiency_map, get_champion_proficiency
 
 saved_map = load_champion_map()
 reverse_map = reverse_champion_map()
@@ -241,22 +242,36 @@ def predict(
             "is_pick":       not slot_is_ban,
         }
 
-def named_pred(
-    model:          DraftTransformer,
-    events:         list[dict],
-    domain:         int,
-    picked_ids:     list[int],
-    banned_ids:     list[int],
-    target_slot:    int | None = None,
-    top_k:          int = 3,
-    device:         torch.device = torch.device("cpu"),
-    ):
-
-    output = predict(model, events, domain, picked_ids, banned_ids, target_slot, top_k, device)
-    for suggestion in output["suggestions"]:
-        suggestion["champion_name"] = id_to_champion(suggestion["champion_id"])
+def predict_named(
+    model: DraftTransformer,
+    events: list[dict],
+    domain: int,
+    picked_ids: list[int],
+    banned_ids: list[int],
+    proficiency_map: dict,
+    target_slot: int,
+    top_k: int = 3,
+    device: torch.device = torch.device("cpu"),
+):
+    result = predict(
+        model,
+        events,
+        domain,
+        picked_ids,
+        banned_ids,
+        target_slot,
+        top_k,
+        device,
+    )
     
-    return output
+    for s in result["suggestions"]:
+        s["champion_name"] = saved_map[s["champion_id"]]
+        if proficiency_map is not None:
+            s["proficiency"] = get_champion_proficiency(proficiency_map, s["champion_id"])
+        else:
+            s["proficiency"] = None
+    return result
+
 
 if __name__ == "__main__":
     with open("data/annotated_abilities_df.pkl", "rb") as f:
@@ -273,46 +288,39 @@ if __name__ == "__main__":
         {"champion_id": 238, "lane": "UNKNOWN"},  # ban 3 — red
     ]
 
-    result = named_pred(
+    deeplol_data = {
+        "mid": [
+            {"champion_id": 103, "games": 3,  "win_rate": 33.33, "ai_score": 51.12},
+            {"champion_id": 147, "games": 25, "win_rate": 60.0,  "ai_score": 72.50},
+            {"champion_id": 876, "games": 18, "win_rate": 55.0,  "ai_score": 68.30},
+        ],
+        "support": [
+            {"champion_id": 147, "games": 10, "win_rate": 70.0,  "ai_score": 75.00},
+        ]
+    }
+
+    prof_map = build_proficiency_map(deeplol_data, min_games=3)
+
+    result = predict_named(
         model=model,
         events=partial_events,
         domain=DOMAIN_PRO,
         picked_ids=[],
         banned_ids=[235, 114, 238],
+        proficiency_map=prof_map,
         device=device,
+        target_slot=4
     )
 
-    print(f"Slot {result['target_slot']} ({'pick' if result['is_pick'] else 'ban'}) | "
-        f"Win prob: {result['win_prob']:.1%}")
+    print(f"Slot {result['target_slot']} | Win prob: {result['win_prob']:.1%}")
     for s in result["suggestions"]:
-        print(f"  {s['champion_name']:<20} {s['probability']:.1%}")
+        prof = s["proficiency"]
+        prof_str = (
+            f"games={prof.games} wr={prof.win_rate:.1f}% "
+            f"ai={prof.ai_score:.1f} prof={prof.proficiency:.4f}"
+            if prof else "no data"
+        )
+        print(f"  {s['champion_name']:<20} {s['probability']:.1%}  |  {prof_str}")
 
-    print()
-
-    # Fuller draft — all 6 bans done, predict first pick
-    fuller_events = [
-        {"champion_id": 235, "lane": "UNKNOWN"},
-        {"champion_id": 114, "lane": "UNKNOWN"},
-        {"champion_id": 238, "lane": "UNKNOWN"},
-        {"champion_id": 122, "lane": "UNKNOWN"},
-        {"champion_id":  99, "lane": "UNKNOWN"},
-        {"champion_id":  55, "lane": "UNKNOWN"},
-    ]
-
-    result2 = named_pred(
-        model=model,
-        events=fuller_events,
-        domain=DOMAIN_PRO,
-        picked_ids=[],
-        banned_ids=[235, 114, 238, 122, 99, 55],
-        device=device,
-    )
-
-    print(f"Slot {result2['target_slot']} ({'pick' if result2['is_pick'] else 'ban'}) | "
-        f"Win prob: {result2['win_prob']:.1%}")
-    for s in result2["suggestions"]:
-        print(f"  {s['champion_name']:<20} {s['probability']:.1%}")
-
-    result = simulate_pro_draft(model, device)
 
         
