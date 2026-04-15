@@ -24,9 +24,14 @@ class ONNXExportWrapper(nn.Module):
     Wrapper to convert dict-style forward to tensor inputs for ONNX compatibility.
     ONNX doesn't support dict inputs, so we flatten them to individual tensors.
     """
-    def __init__(self, base_model: DraftTransformer):
+    def __init__(self, base_model: DraftTransformer, tag_matrix: torch.Tensor, damage_matrix: torch.Tensor):
         super().__init__()
         self.model = base_model
+        # Register static matrices as buffers for ONNX export
+        self.register_buffer("tag_matrix", tag_matrix)
+        self.register_buffer("damage_matrix", damage_matrix)
+        # Register on the base model too
+        self.model.register_static_features(tag_matrix, damage_matrix)
 
     def forward(
         self,
@@ -36,10 +41,15 @@ class ONNXExportWrapper(nn.Module):
         lanes: torch.Tensor,
         event_types: torch.Tensor,
         domain: torch.Tensor,
+        target_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
 
         B, S = champion_ids.shape
+        # Domain is [B], expand to [B, S] for broadcasting
         domain_expanded = domain.unsqueeze(1).expand(B, S)
+
+        # is_pick is derived from event_types (EVENT_PICK = 1)
+        is_pick = event_types == 1
 
         batch = {
             "champion_ids": champion_ids,
@@ -48,8 +58,11 @@ class ONNXExportWrapper(nn.Module):
             "lanes": lanes,
             "event_types": event_types,
             "domain": domain_expanded,
+            "is_pick": is_pick,
         }
-        return self.model._embed_tokens(batch)
+
+        # Call the full forward pass with optional target_mask
+        return self.model(batch, target_mask=target_mask)
 
 
 def export_to_onnx(
@@ -104,9 +117,13 @@ def export_to_onnx(
     model.load_state_dict(ckpt["model"])
     model.eval()
 
-    # Wrap for ONNX export
-    wrapped = ONNXExportWrapper(model).to(device)
+    # Wrap for ONNX export (pass static matrices to register as buffers)
+    wrapped = ONNXExportWrapper(model, tag_matrix.to(device), damage_matrix.to(device)).to(device)
     wrapped.eval()
+
+    # Get static matrix numpy versions for validation
+    tag_matrix_np = tag_matrix.cpu().numpy()
+    damage_matrix_np = damage_matrix.cpu().numpy()
 
     # Create dummy inputs for tracing
     # Shape: [batch_size, sequence_length=20]
@@ -120,6 +137,7 @@ def export_to_onnx(
         torch.randint(0, 6, (batch_size, seq_len), dtype=torch.long, device=device),             # lanes
         torch.randint(0, 2, (batch_size, seq_len), dtype=torch.long, device=device),              # event_types
         torch.randint(0, 2, (batch_size,), dtype=torch.long, device=device),                      # domain
+        torch.zeros(batch_size, seq_len, dtype=torch.bool, device=device),                        # target_mask (optional)
     )
 
     input_names = [
@@ -129,6 +147,7 @@ def export_to_onnx(
         "lanes",
         "event_types",
         "domain",
+        "target_mask",
     ]
 
     output_names = ["pick_ban_logits", "win_probability_logit"]
@@ -140,6 +159,7 @@ def export_to_onnx(
         "lanes": {0: "batch_size"},
         "event_types": {0: "batch_size"},
         "domain": {0: "batch_size"},
+        "target_mask": {0: "batch_size"},
         "pick_ban_logits": {0: "batch_size"},
         "win_probability_logit": {0: "batch_size"},
     }
@@ -173,6 +193,10 @@ def export_to_onnx(
         "ffn_dim": args.get("ffn_dim", 1024),
         "valid_tags": valid_tags,
         "opset_version": opset_version,
+        "static_matrices": {
+            "tag_matrix": {"shape": [CHAMPION_VOCAB, num_tags], "dtype": "float32"},
+            "damage_matrix": {"shape": [CHAMPION_VOCAB, 3], "dtype": "float32"},
+        },
     }
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=2)
@@ -199,6 +223,7 @@ def export_to_onnx(
                 "lanes": dummy_inputs[3].numpy(),
                 "event_types": dummy_inputs[4].numpy(),
                 "domain": dummy_inputs[5].numpy(),
+                "target_mask": dummy_inputs[6].numpy(),
             }
 
             outputs = session.run(None, test_inputs)

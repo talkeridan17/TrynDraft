@@ -445,7 +445,10 @@ class DraftTransformer(nn.Module):
     def _embed_tokens(self, batch: dict):
         ids = batch["champion_ids"].clamp(0, CHAMPION_VOCAB - 1)
         B, S = ids.shape
-        domain = batch["domain"].unsqueeze(1).expand(B, S)
+        domain = batch["domain"]
+        # Handle both [B] and [B, S] domain shapes
+        if domain.dim() == 1:
+            domain = domain.unsqueeze(1).expand(B, S)
 
         champ_emb = self.champion_embed(ids)
         aux_emb = self.aux_proj(torch.cat([
