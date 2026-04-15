@@ -142,5 +142,21 @@
     "zone",
     "zoning_tool"
   ],
-  "opset_version": 17
+  "opset_version": 17,
+  "static_matrices": {
+    "tag_matrix": {
+      "shape": [
+        1000,
+        134
+      ],
+      "dtype": "float32"
+    },
+    "damage_matrix": {
+      "shape": [
+        1000,
+        3
+      ],
+      "dtype": "float32"
+    }
+  }
 }
