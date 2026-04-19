@@ -5,6 +5,7 @@ import { recommendationService } from '../utils/api';
 
 type GameMode = 'SOLOQ' | 'CLASH';
 type RoleType = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' | 'FLEX';
+type SettingsTab = 'soloq' | 'clash';
 
 const ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
 
@@ -57,6 +58,7 @@ export const SettingsPage: React.FC = () => {
   const [deeplolStatus, setDeeplolStatus] = useState('');
   const [isLoadingDeeplol, setIsLoadingDeeplol] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('soloq');
 
   useEffect(() => {
     try {
@@ -195,76 +197,151 @@ export const SettingsPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-6 mb-6">
-          <button onClick={() => setMode('SOLOQ')} className={`p-4 rounded-lg border-2 text-left transition-all ${mode === 'SOLOQ' ? 'border-amber-500 bg-amber-500/10' : 'border-gray-800 hover:border-amber-500/50'}`}>
-            <div className="flex items-center gap-2 mb-1"><Trophy size={18} className="text-amber-500" /><span className="text-white font-semibold">Solo Queue</span></div>
-            <p className="text-xs text-gray-400">Uses your Riot IDs and selected role.</p>
+        <div className="flex items-center gap-4 mb-6 border-b border-gray-800 pb-4">
+          <button
+            onClick={() => setActiveTab('soloq')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'soloq' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50' : 'text-gray-400 hover:text-gray-200'}`}
+          >
+            <Trophy size={18} />
+            Solo Queue
           </button>
-
-          <button onClick={() => setMode('CLASH')} className={`p-4 rounded-lg border-2 text-left transition-all ${mode === 'CLASH' ? 'border-blue-500 bg-blue-500/10' : 'border-gray-800 hover:border-blue-500/50'}`}>
-            <div className="flex items-center gap-2 mb-1"><Users size={18} className="text-blue-500" /><span className="text-white font-semibold">Clash</span></div>
-            <p className="text-xs text-gray-400">Role-bound IDs per team.</p>
+          <button
+            onClick={() => setActiveTab('clash')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${activeTab === 'clash' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'text-gray-400 hover:text-gray-200'}`}
+          >
+            <Users size={18} />
+            Clash
           </button>
-
-          <div className="p-4 rounded-lg border border-gray-800">
-            <div className="flex items-center gap-2 mb-2"><UserRound size={18} className="text-cyan-500" /><span className="text-white font-semibold">Primary Role</span></div>
-            <div className="flex gap-1 flex-wrap">{ROLES.map((r) => <button key={r} onClick={() => setRole(r)} className={`px-2 py-1 text-xs rounded border ${role === r ? 'border-cyan-500 text-cyan-300 bg-cyan-500/10' : 'border-gray-700 text-gray-400'}`}>{r}</button>)}</div>
-          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-          <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-            <h2 className="text-white font-semibold mb-2">Deeplol Loader</h2>
-            <div className="flex items-center gap-2 mb-3">
-              <input
-                value={deeplolRegion}
-                onChange={(e) => setDeeplolRegion(e.target.value.toUpperCase())}
-                placeholder="Region (NA1, EUW1, KR...)"
-                className="w-40 bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
-              />
-              <input
-                type="number"
-                value={deeplolSeason}
-                onChange={(e) => setDeeplolSeason(Number(e.target.value || 27))}
-                className="w-28 bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
-              />
-              <button
-                onClick={handleLoadFromDeeplol}
-                disabled={isLoadingDeeplol}
-                className="px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 text-white text-sm"
-              >
-                {isLoadingDeeplol ? 'Loading...' : 'Load from Deeplol'}
-              </button>
-              {deeplolStatus && <span className="text-xs text-cyan-300">{deeplolStatus}</span>}
-            </div>
-            <p className="text-xs text-gray-500">Uses the same flow as Python: Riot ID lookup to puu_id to champion-stat to role stats extraction.</p>
-          </section>
-
-          <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-            <h2 className="text-white font-semibold mb-2">Solo Queue Riot IDs</h2>
-            <p className="text-xs text-gray-500 mb-2">One per line. First entry is primary.</p>
-            <textarea value={soloRaw} onChange={(e) => setSoloRaw(e.target.value)} rows={5} placeholder={'GameName#NA1\nAnotherSmurf#NA1'} className="w-full bg-black border border-gray-700 rounded px-3 py-2 text-sm text-gray-200" />
-          </section>
-
-          <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-            <h2 className="text-white font-semibold mb-2">Clash Riot IDs By Role</h2>
-            <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-2 px-1">
-              <div>Role</div><div className="text-blue-400">Blue Team Riot ID</div><div className="text-red-400">Red Team Riot ID</div>
-            </div>
-            <div className="space-y-2">
-              {ROLES.map((r) => (
-                <div key={r} className="grid grid-cols-3 gap-2 items-center">
-                  <div className="text-sm text-gray-200 px-1">{r}</div>
-                  <input value={blueByRole.find((x) => x.role === r)?.riot_id || ''} onChange={(e) => setRoleId('BLUE', r, e.target.value)} placeholder={`${r} blue`} className="bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200" />
-                  <input value={redByRole.find((x) => x.role === r)?.riot_id || ''} onChange={(e) => setRoleId('RED', r, e.target.value)} disabled={enemyUnknown} placeholder={`${r} red`} className="bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 disabled:opacity-40" />
+        <div className="flex-1 overflow-y-auto pr-2">
+          {activeTab === 'soloq' ? (
+            <div className="space-y-6">
+              <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <UserRound size={20} className="text-amber-500" />
+                  <h2 className="text-white font-semibold">Primary Role</h2>
                 </div>
-              ))}
+                <div className="flex gap-2 flex-wrap">
+                  {ROLES.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => { setRole(r); setMode('SOLOQ'); }}
+                      className={`px-4 py-2 text-sm rounded-lg border transition-all ${role === r ? 'border-amber-500 text-amber-400 bg-amber-500/10' : 'border-gray-700 text-gray-400 hover:border-gray-600'}`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                <h2 className="text-white font-semibold mb-2">Your Riot IDs</h2>
+                <p className="text-xs text-gray-500 mb-3">Enter your Riot IDs (one per line). The first entry is your primary account.</p>
+                <textarea
+                  value={soloRaw}
+                  onChange={(e) => { setSoloRaw(e.target.value); setMode('SOLOQ'); }}
+                  rows={6}
+                  placeholder={'GameName#NA1\nAnotherSmurf#NA1'}
+                  className="w-full bg-black border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:border-amber-500 focus:outline-none"
+                />
+              </section>
+
+              <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                <h2 className="text-white font-semibold mb-3">Load Champion Proficiencies</h2>
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    value={deeplolRegion}
+                    onChange={(e) => setDeeplolRegion(e.target.value.toUpperCase())}
+                    placeholder="Region (NA1, EUW1, KR...)"
+                    className="w-40 bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
+                  />
+                  <input
+                    type="number"
+                    value={deeplolSeason}
+                    onChange={(e) => setDeeplolSeason(Number(e.target.value || 27))}
+                    className="w-28 bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
+                  />
+                  <button
+                    onClick={handleLoadFromDeeplol}
+                    disabled={isLoadingDeeplol}
+                    className="px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 text-white text-sm"
+                  >
+                    {isLoadingDeeplol ? 'Loading...' : 'Load from Deeplol'}
+                  </button>
+                  {deeplolStatus && <span className="text-xs text-cyan-300">{deeplolStatus}</span>}
+                </div>
+                <p className="text-xs text-gray-500">Uses the same flow as Python: Riot ID lookup to puu_id to champion-stat to role stats extraction.</p>
+              </section>
             </div>
-            <label className="flex items-center gap-2 mt-3 text-sm text-gray-300">
-              <input type="checkbox" checked={enemyUnknown} onChange={(e) => setEnemyUnknown(e.target.checked)} />
-              Enemy team unknown
-            </label>
-          </section>
+          ) : (
+            <div className="space-y-6">
+              <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                <h2 className="text-white font-semibold mb-4">Team Riot IDs By Role</h2>
+                <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-3 px-1">
+                  <div>Role</div>
+                  <div className="text-blue-400">Blue Team Riot ID</div>
+                  <div className="text-red-400">Red Team Riot ID</div>
+                </div>
+                <div className="space-y-2">
+                  {ROLES.map((r) => (
+                    <div key={r} className="grid grid-cols-3 gap-2 items-center">
+                      <div className="text-sm text-gray-200 px-1 font-medium">{r}</div>
+                      <input
+                        value={blueByRole.find((x) => x.role === r)?.riot_id || ''}
+                        onChange={(e) => { setRoleId('BLUE', r, e.target.value); setMode('CLASH'); }}
+                        placeholder={`${r} blue`}
+                        className="bg-black border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 focus:border-blue-500 focus:outline-none"
+                      />
+                      <input
+                        value={redByRole.find((x) => x.role === r)?.riot_id || ''}
+                        onChange={(e) => { setRoleId('RED', r, e.target.value); setMode('CLASH'); }}
+                        disabled={enemyUnknown}
+                        placeholder={`${r} red`}
+                        className="bg-black border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-200 disabled:opacity-40 focus:border-red-500 focus:outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <label className="flex items-center gap-2 mt-4 text-sm text-gray-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enemyUnknown}
+                    onChange={(e) => setEnemyUnknown(e.target.checked)}
+                    className="rounded border-gray-600"
+                  />
+                  Enemy team unknown
+                </label>
+              </section>
+
+              <section className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                <h2 className="text-white font-semibold mb-3">Load Champion Proficiencies</h2>
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    value={deeplolRegion}
+                    onChange={(e) => setDeeplolRegion(e.target.value.toUpperCase())}
+                    placeholder="Region (NA1, EUW1, KR...)"
+                    className="w-40 bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
+                  />
+                  <input
+                    type="number"
+                    value={deeplolSeason}
+                    onChange={(e) => setDeeplolSeason(Number(e.target.value || 27))}
+                    className="w-28 bg-black border border-gray-700 rounded px-2 py-1 text-sm text-gray-200"
+                  />
+                  <button
+                    onClick={handleLoadFromDeeplol}
+                    disabled={isLoadingDeeplol}
+                    className="px-3 py-1.5 rounded bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 text-white text-sm"
+                  >
+                    {isLoadingDeeplol ? 'Loading...' : 'Load from Deeplol'}
+                  </button>
+                  {deeplolStatus && <span className="text-xs text-cyan-300">{deeplolStatus}</span>}
+                </div>
+                <p className="text-xs text-gray-500">Uses the same flow as Python: Riot ID lookup to puu_id to champion-stat to role stats extraction.</p>
+              </section>
+            </div>
+          )}
         </div>
       </div>
     </div>

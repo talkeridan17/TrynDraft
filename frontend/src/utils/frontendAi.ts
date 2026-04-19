@@ -7,18 +7,20 @@ const NO_BAN_ID = 999;
 const MIN_GAMES = 3;
 
 const LLM_MODELS = {
-  'onnx-community/Qwen2.5-0.5B-Instruct': { label: 'Qwen2.5 0.5B ONNX (recommended)', higher: false },
-  'onnx-community/Qwen2.5-1.5B-Instruct': { label: 'Qwen2.5 1.5B ONNX', higher: true },
-  'onnx-community/Qwen2-0.5B-Instruct-ONNX': { label: 'Qwen2 0.5B ONNX', higher: false },
-  'onnx-community/SmolLM2-1.7B-Instruct': { label: 'SmolLM2 1.7B ONNX', higher: true },
+  'onnx-community/Qwen2.5-0.5B-Instruct': { label: 'Qwen2.5 0.5B (Fastest)', higher: false },
+  'onnx-community/Qwen2.5-1.5B-Instruct': { label: 'Qwen2.5 1.5B (Balanced)', higher: true },
+  'onnx-community/SmolLM2-135M-Instruct': { label: 'SmolLM2 135M (Ultra-light)', higher: false },
+  'onnx-community/Llama-3.2-1B-Instruct': { label: 'Llama 3.2 1B (High Quality)', higher: true },
 } as const;
 
 const DEFAULT_LLM_MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct';
 const LEGACY_MODEL_MAP: Record<string, string> = {
+  'HuggingFaceTB/SmolLM2-1.7B-Instruct': 'onnx-community/Qwen2.5-1.5B-Instruct',
   'Qwen/Qwen2.5-0.5B-Instruct': 'onnx-community/Qwen2.5-0.5B-Instruct',
   'Qwen/Qwen2.5-1.5B-Instruct': 'onnx-community/Qwen2.5-1.5B-Instruct',
-  'Qwen/Qwen2-0.5B-Instruct': 'onnx-community/Qwen2-0.5B-Instruct-ONNX',
-  'HuggingFaceTB/SmolLM2-1.7B-Instruct': 'onnx-community/SmolLM2-1.7B-Instruct',
+  'Xenova/Qwen2.5-0.5B-Instruct': 'onnx-community/Qwen2.5-0.5B-Instruct',
+  'Xenova/Qwen2.5-1.5B-Instruct': 'onnx-community/Qwen2.5-1.5B-Instruct',
+  'onnx-community/Qwen2-0.5B-Instruct-ONNX': 'onnx-community/Qwen2.5-0.5B-Instruct',
 };
 
 const SOLOQ_SEQUENCE: Array<[number, number, number]> = [
@@ -322,23 +324,6 @@ export async function fetchAndStoreDeeplolByRiotIds(
   return { imported, source: base };
 }
 
-function buildRagContext(input: DraftInput, top: Array<{ name: string; softmax: number; proficiency: Proficiency | null }>) {
-  const profMap = getSavedProficiencies();
-  const roleNorm = input.role.toLowerCase() === 'support' ? 'supporter' : input.role.toLowerCase();
-  const pool = Object.entries(profMap)
-    .map(([cid, p]) => ({ cid, ...p }))
-    .filter((p) => !p.role || p.role === roleNorm)
-    .sort((a, b) => b.proficiency - a.proficiency)
-    .slice(0, 8)
-    .map((p) => `cid=${p.cid}, role=${p.role || 'any'}, prof=${p.proficiency.toFixed(3)}, games=${p.games}, wr=${p.win_rate.toFixed(1)}%, ai=${p.ai_score.toFixed(1)}`);
-
-  const topSoftmax = top.map((x, i) => `${i + 1}. ${x.name} ${(x.softmax * 100).toFixed(2)}%`).join('\n');
-  return {
-    retrieved: pool.length ? pool.join('\n') : 'none',
-    topSoftmax,
-  };
-}
-
 function parseChampionTagsCsv(csvText: string, validTagSet: Set<string>): Map<string, string[]> {
   const lines = csvText.split('\n');
   const map = new Map<string, Map<string, number>>();
@@ -400,10 +385,13 @@ export function setLLMModel(modelId: string) {
 
 function resolveStoredLLMModel(): string {
   const raw = localStorage.getItem('explainability_llm_model') || DEFAULT_LLM_MODEL;
+  // Migrate old onnx-community models to Xenova equivalents
   const mapped = LEGACY_MODEL_MAP[raw] || raw;
   const valid = (mapped in LLM_MODELS) ? mapped : DEFAULT_LLM_MODEL;
   if (valid !== raw) {
     localStorage.setItem('explainability_llm_model', valid);
+    // eslint-disable-next-line no-console
+    console.log('Migrated LLM model from', raw, 'to', valid);
   }
   return valid;
 }
@@ -419,20 +407,47 @@ export function getLLMModelOptions() {
 async function loadTransformers() {
   if (transformersLoadPromise) return transformersLoadPromise;
   const importer = (0, eval)('u => import(u)') as (u: string) => Promise<any>;
-  transformersLoadPromise = importer('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js');
+  // Update to v3 for better compatibility with onnx-community models
+  transformersLoadPromise = importer('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/dist/transformers.min.js');
   return transformersLoadPromise;
 }
 
 async function getLLMPipeline() {
   if (llmPipelinePromise) return llmPipelinePromise;
   llmPipelinePromise = (async () => {
-    const t = await loadTransformers();
-    t.env.allowLocalModels = false;
-    const model = resolveStoredLLMModel();
-    return t.pipeline('text-generation', model, {
-      dtype: 'q4',
-      subfolder: 'onnx',
-    });
+    try {
+      // eslint-disable-next-line no-console
+      console.log('Loading LLM model...');
+      const t = await loadTransformers();
+      t.env.allowLocalModels = false;
+      const model = resolveStoredLLMModel();
+      // eslint-disable-next-line no-console
+      console.log('Creating pipeline for model:', model);
+
+      const options: any = {
+        quantized: true,
+      };
+
+      // Add progress callback to help user see loading status
+      options.progress_callback = (progress: any) => {
+        if (progress.status === 'progress') {
+          // eslint-disable-next-line no-console
+          console.log(`Loading ${model}: ${progress.progress.toFixed(1)}% (${progress.loaded}/${progress.total} bytes)`);
+        } else if (progress.status === 'done') {
+          // eslint-disable-next-line no-console
+          console.log(`Finished loading ${progress.file}`);
+        }
+      };
+
+      const pipeline = await t.pipeline('text-generation', model, options);
+      // eslint-disable-next-line no-console
+      console.log('LLM pipeline loaded successfully');
+      return pipeline;
+    } catch (err) {
+      // Reset promise so we can retry on next call
+      llmPipelinePromise = null;
+      throw err;
+    }
   })();
   return llmPipelinePromise;
 }
@@ -523,10 +538,9 @@ export async function runFrontendExplainability(args: {
   draftState: DraftInput;
   topChampions: Array<{ name: string; softmax: number; proficiency: Proficiency | null }>;
   isUserTurn?: boolean;
+  onStream?: (text: string) => void;
 }) {
   const { current } = getLLMModelOptions();
-  const rag = buildRagContext(args.draftState, args.topChampions);
-  const action = args.draftState.phase === 'BAN' ? 'BAN' : 'PICK';
   const tagIndex = await loadModelTagIndex();
 
   const top5 = args.topChampions.slice(0, 5).map((c, i) => {
@@ -536,37 +550,70 @@ export async function runFrontendExplainability(args: {
     return `${i + 1}. ${c.name} (softmax=${(c.softmax * 100).toFixed(2)}%, ${prof}, model_champion_id=${champId ?? 'unknown'}, tag_index_evidence=[${tags}])`;
   }).join('\n');
 
-  const modeLine = args.draftState.mode === 'CLASH'
-    ? `Mode: CLASH | Blue IDs: ${(args.draftState.clash_blue_ids || []).join(', ') || 'none'} | Red IDs: ${args.draftState.clash_enemy_unknown ? 'unknown' : ((args.draftState.clash_red_ids || []).join(', ') || 'none')} | BlueRoleIDs: ${(args.draftState.clash_blue_by_role || []).map(x => `${x.role}:${x.riot_id}`).join(', ') || 'none'} | RedRoleIDs: ${(args.draftState.clash_enemy_unknown ? [] : (args.draftState.clash_red_by_role || [])).map(x => `${x.role}:${x.riot_id}`).join(', ') || 'none'}`
-    : `Mode: SOLOQ | Riot ID: ${args.draftState.solo_riot_id || 'not set'}`;
+  const prompt = `System: You are a League of Legends draft assistant. Use ONLY the provided evidence.
 
-  const prompt = `<|im_start|>system\nYou are a League draft assistant using retrieval-augmented generation (RAG). You MUST use both retrieved Deeplol context and model tag-index evidence in your reasoning.\nIf phase is BAN, output BAN advice only (who to ban and why). Do not output pick recommendations in BAN phase.\nIf phase is PICK, output PICK advice only.\n<|im_end|>\n<|im_start|>user\n${modeLine}\nRole: ${args.draftState.role}\nPhase: ${args.draftState.phase}\nAction required: ${action}\nTurn: ${args.draftState.turn}\nBlue bans: ${args.draftState.bans_blue.join(', ') || 'none'}\nRed bans: ${args.draftState.bans_red.join(', ') || 'none'}\nBlue picks: ${args.draftState.picks_blue.map(p => `${p.champion}(${p.role})`).join(', ') || 'none'}\nRed picks: ${args.draftState.picks_red.map(p => `${p.champion}(${p.role})`).join(', ') || 'none'}\n\nRetrieved Deeplol context:\n${rag.retrieved}\n\nModel softmax ranking:\n${rag.topSoftmax}\n\nTop candidates details with tag-index evidence:\n${top5}\n\nWrite 5-7 sentences for ${action} only: 1) best ${action.toLowerCase()} target and why, 2) two alternatives, 3) explicitly cite at least two tag_index_evidence traits used in reasoning, 4) include proficiency-vs-softmax tradeoff.\n<|im_end|>\n<|im_start|>assistant\n`;
+Candidate:
+${top5}
+
+Role: ${args.draftState.role}
+Phase: ${args.draftState.phase}
+
+Instruction: For each candidate, write 1 short sentence using their tag_index_evidence. If tags are "none", mention they are a high-confidence model pick.
+
+Example Format:
+1. Champion: Explanation.
+2. Champion: Explanation.
+
+Assistant:
+1.`;
 
   try {
     const generator = await getLLMPipeline();
-    const messages = [
-      { role: 'system', content: 'You are a League draft assistant.' },
-      { role: 'user', content: prompt },
-    ];
-    const output = await generator(messages as any, {
+    const t = await loadTransformers();
+
+    // eslint-disable-next-line no-console
+    console.log('Generating explanation with prompt length:', prompt.length);
+
+    let streamedText = '';
+    const streamer = args.onStream ? new t.TextStreamer(generator.tokenizer, {
+      skip_prompt: true,
+      callback_function: (text: string) => {
+        streamedText += text;
+        // Clean up tokens in real-time and prepend the '1.' we forced
+        const cleaned = streamedText.replace(/<\|im_start\|>|<\|im_end\|>|system|user|assistant/gi, '').trim();
+        args.onStream?.('1. ' + cleaned);
+      },
+    }) : undefined;
+
+    const output = await generator(prompt, {
       max_new_tokens: args.isUserTurn ? 160 : 96,
       temperature: 0.35,
-      do_sample: false,
+      do_sample: true,
       repetition_penalty: 1.15,
+      return_full_text: false,
+      streamer,
     });
+    // eslint-disable-next-line no-console
+    console.log('LLM raw output:', output);
     let raw = '';
     const first = output?.[0]?.generated_text;
-    if (Array.isArray(first)) {
-      raw = String(first[first.length - 1]?.content || '').trim();
+    // eslint-disable-next-line no-console
+    console.log('First generated_text:', first);
+    if (typeof first === 'string') {
+      // Clean up any remaining artifacts and prepend the '1.' we forced in the prompt
+      const cleaned = first.replace(/<\|im_start\|>|<\|im_end\|>|system|user|assistant/gi, '').trim();
+      raw = '1. ' + cleaned;
     } else {
-      raw = String(first || '').replace(prompt, '').trim();
+      raw = String(first || '').trim();
     }
     return { analysis: raw || 'LLM response was empty. Try a smaller model or reload.', model: current, source: 'frontend_llm_rag' };
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('LLM explainability error:', err);
     const quick = args.topChampions.slice(0, 3).map(c => c.name).join(', ');
     return {
-      analysis: `Model-first picks: ${quick}. I weighted softmax output and Deeplol proficiency together; prefer higher proficiency when model confidence is close.` ,
-      model: `${current} (fallback)` ,
+      analysis: `Error: ${err instanceof Error ? err.message : String(err)}. Model-first picks: ${quick}.`,
+      model: `${current} (fallback)`,
       source: 'frontend_fallback',
     };
   }
