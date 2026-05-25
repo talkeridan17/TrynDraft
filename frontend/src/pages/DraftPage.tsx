@@ -2,20 +2,14 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDraftStore } from '../store/useDraftStore';
 import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
-import { Search, X, Settings, Loader2, User } from 'lucide-react';
+import { Search, X, Settings, Loader2 } from 'lucide-react';
 import { RoleIcon } from '../components/common/RoleIcon';
-import { authService, recommendationService, type ScoredChampion, type AnalysisResult, type DraftState, type MatchupInfo, type DraftStats } from '../utils/api';
+import { recommendationService, type ScoredChampion, type AnalysisResult, type DraftState, type MatchupInfo, type DraftStats } from '../utils/api';
 import type { RoleType } from '../store/useDraftStore';
+import { getDraftSequence, getTurnFromSlot, type DraftMode } from '../utils/draftOrder';
 
 const ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
-const RANKS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
-
-interface ChampionPoolItem {
-  id: string;
-  champion_name: string;
-  role: string;
-  playstyles?: string[];
-}
+const PICK_ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT', 'FLEX'];
 
 export const DraftPage: React.FC = () => {
   const {
@@ -27,6 +21,7 @@ export const DraftPage: React.FC = () => {
     setCurrentTurn,
     addBan,
     addPick,
+    setRole,
     resetDraft,
     getCurrentPicker,
     allChampions,
@@ -43,13 +38,21 @@ export const DraftPage: React.FC = () => {
   const [draggedChampion, setDraggedChampion] = useState<string | null>(null);
 
   // Champion pool state
-  const [championPoolNames, setChampionPoolNames] = useState<Set<string>>(new Set());
+  const [championPoolNames] = useState<Set<string>>(new Set());
 
   // NN-sorted champions and LLM analysis
   const [sortedChampions, setSortedChampions] = useState<ScoredChampion[]>([]);
   const [llmAnalysis, setLlmAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [modelType, setModelType] = useState<string>('loading');
+  const [llmModel, setLlmModel] = useState<string>('onnx-community/Qwen2.5-0.5B-Instruct');
+  const [llmOptions, setLlmOptions] = useState<Array<{ id: string; label: string; higher: boolean }>>([]);
+  const [profileSettings, setProfileSettings] = useState({
+    soloRiotIds: [] as string[],
+    clashBlueByRole: [] as Array<{ role: string; riot_id: string }>,
+    clashRedByRole: [] as Array<{ role: string; riot_id: string }>,
+    clashEnemyUnknown: false,
+  });
   const [hoveredChampion, setHoveredChampion] = useState<string | null>(null);
 
   // Matchup info from NN predictions
@@ -69,36 +72,26 @@ export const DraftPage: React.FC = () => {
 
   const currentPicker = getCurrentPicker();
 
-  // Define loadUserPreferences first so it can be used in useEffect and reset button
-  const loadUserPreferences = useCallback(async () => {
+  const loadLocalProfileSettings = useCallback(() => {
     try {
-      const user = await authService.getCurrentUser();
-      if (user?.preferences) {
-        // Auto-populate rank from user preferences
-        if (user.preferences.rank) {
-          setSettings({ elo: user.preferences.rank });
-        }
-        // Auto-populate role from first preferred role
-        if (user.preferences.preferred_roles && user.preferences.preferred_roles.length > 0) {
-          setSettings({ role: user.preferences.preferred_roles[0] as RoleType });
-        }
+      const raw = localStorage.getItem('tryndraft_player_settings');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const mode = parsed.mode === 'CLASH' ? 'CLASH' : 'SOLOQ';
+      setSettings({ mode });
+      if (parsed.role && ROLES.includes(parsed.role)) {
+        setSettings({ role: parsed.role as RoleType });
       }
+      setProfileSettings({
+        soloRiotIds: Array.isArray(parsed.soloRiotIds) ? parsed.soloRiotIds : [],
+        clashBlueByRole: Array.isArray(parsed.clashBlueByRole) ? parsed.clashBlueByRole : [],
+        clashRedByRole: Array.isArray(parsed.clashRedByRole) ? parsed.clashRedByRole : [],
+        clashEnemyUnknown: !!parsed.clashEnemyUnknown,
+      });
     } catch (error) {
-      // User might not be logged in, that's okay
-      console.log('Could not load user preferences');
+      console.error('Failed to load local profile settings', error);
     }
   }, [setSettings]);
-
-  const loadChampionPool = useCallback(async () => {
-    try {
-      const pool = await authService.getChampionPool();
-      // Create a Set of champion names for quick lookup
-      setChampionPoolNames(new Set(pool.map((c: ChampionPoolItem) => c.champion_name)));
-    } catch (error) {
-      console.error('Failed to load champion pool:', error);
-      // User might not be logged in, that's okay
-    }
-  }, []);
 
   // Build draft state object for API calls
   const buildDraftState = useCallback((): DraftState => {
@@ -114,13 +107,20 @@ export const DraftPage: React.FC = () => {
       }
     }
 
+    const mode = (settings.mode || 'SOLOQ') as DraftMode;
     const draftState = {
       phase: draftPhase,
       turn: currentTurn,
       side: settings.side,
-      role: settings.role,  // User's selected role
-      elo: settings.elo,
+      role: currentSlotRole || settings.role,
       patch: settings.patch,
+      mode,
+      solo_riot_id: mode === 'SOLOQ' ? (profileSettings.soloRiotIds[0] || '') : undefined,
+      clash_blue_ids: mode === 'CLASH' ? profileSettings.clashBlueByRole.map(x => x.riot_id).filter(Boolean) : undefined,
+      clash_red_ids: mode === 'CLASH' ? profileSettings.clashRedByRole.map(x => x.riot_id).filter(Boolean) : undefined,
+      clash_blue_by_role: mode === 'CLASH' ? profileSettings.clashBlueByRole.filter(x => x.riot_id) : undefined,
+      clash_red_by_role: mode === 'CLASH' ? profileSettings.clashRedByRole.filter(x => x.riot_id) : undefined,
+      clash_enemy_unknown: mode === 'CLASH' ? profileSettings.clashEnemyUnknown : undefined,
       bans_blue: bans.blue.filter(b => b),
       bans_red: bans.red.filter(b => b),
       picks_blue: picks.blue.filter(p => p.champion).map(p => ({ champion: p.champion, role: p.role })),
@@ -132,9 +132,9 @@ export const DraftPage: React.FC = () => {
       // User can override the assumed matchup
       matchup_override: matchupOverride || undefined,
     };
-    console.log('🔧 [BUILD] Draft state:', { role: draftState.role, elo: draftState.elo, phase: draftState.phase, currentSlotRole });
+    console.log('🔧 [BUILD] Draft state:', { role: draftState.role, mode: draftState.mode, phase: draftState.phase, currentSlotRole });
     return draftState;
-  }, [draftPhase, currentTurn, settings, bans, picks, getCurrentPicker, matchupOverride]);
+  }, [draftPhase, currentTurn, settings, bans, picks, getCurrentPicker, matchupOverride, profileSettings]);
 
   // Fetch NN-sorted champions when draft state changes
   const fetchSortedChampions = useCallback(async () => {
@@ -142,7 +142,7 @@ export const DraftPage: React.FC = () => {
 
     try {
       const draftState = buildDraftState();
-      console.log('🔍 [PICKER] Fetching sorted champions:', { role: draftState.role, elo: draftState.elo, phase: draftState.phase });
+      console.log('🔍 [PICKER] Fetching sorted champions:', { role: draftState.role, mode: draftState.mode, phase: draftState.phase });
       const result = await recommendationService.getSortedChampions(draftState);
       console.log('✅ [PICKER] API Response:', {
         count: result.champions.length,
@@ -259,9 +259,11 @@ export const DraftPage: React.FC = () => {
       setSettings({ patch: version });
     });
 
-    // Load user's champion pool and preferences
-    loadChampionPool();
-    loadUserPreferences();
+    // Local profile settings
+    loadLocalProfileSettings();
+    const llm = recommendationService.getFrontendLLMOptions();
+    setLlmModel(llm.current);
+    setLlmOptions(llm.options);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -273,7 +275,7 @@ export const DraftPage: React.FC = () => {
       fetchSortedChampions();
     }, 300); // Reduced debounce - local filtering handles immediate updates
     return () => clearTimeout(timer);
-  }, [settings.role, settings.elo, draftPhase, currentTurn, matchupOverride, fetchSortedChampions]);
+  }, [settings.role, draftPhase, currentTurn, matchupOverride, fetchSortedChampions]);
 
   // Fetch LLM analysis when turn changes (debounced since it's slow)
   useEffect(() => {
@@ -302,7 +304,6 @@ export const DraftPage: React.FC = () => {
 
   // Auto-switch phases based on draft state
   useEffect(() => {
-    // Skip auto-switching if the user just manually changed the phase
     if (manualPhaseChangeRef.current) {
       manualPhaseChangeRef.current = false;
       return;
@@ -310,73 +311,36 @@ export const DraftPage: React.FC = () => {
 
     const totalBans = bans.blue.filter(b => b).length + bans.red.filter(b => b).length;
     const totalPicks = picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length;
+    if (totalBans === 10 && totalPicks === 10) {
+      if (draftPhase !== 'COMPLETE') setDraftPhase('COMPLETE');
+      return;
+    }
 
-    // Only auto-switch to COMPLETE if we're not already in COMPLETE
-    if (totalBans === 10 && totalPicks === 10 && draftPhase !== 'COMPLETE') {
-      setDraftPhase('COMPLETE');
-    }
-    // Check if we've moved to pick phase (all bans done, but picks not complete)
-    else if (totalBans === 10 && totalPicks < 10 && draftPhase !== 'PICK') {
-      setDraftPhase('PICK');
-    }
-    // If we're in pick phase but have unfilled bans, stay in ban phase
-    else if (totalBans < 10 && draftPhase === 'PICK') {
-      setDraftPhase('BAN');
-    }
-  }, [bans, picks, draftPhase]);
+    if (currentPicker?.isBan && draftPhase !== 'BAN') setDraftPhase('BAN');
+    if (!currentPicker?.isBan && draftPhase !== 'PICK') setDraftPhase('PICK');
+  }, [bans, picks, draftPhase, currentPicker]);
 
   const findNextUnfilledSlot = useCallback(() => {
-    const userSide = settings.side;
-    const enemySide = userSide === 'BLUE' ? 'RED' : 'BLUE';
-
-    // Define the full draft sequence
-    // Turns 0-4: User's bans
-    // Turns 5-9: Enemy's bans
-    // Turns 10-19: Picks in snake order
-
-    // Get ban lists based on user's side
-    const userBanList = userSide === 'BLUE' ? bans.blue : bans.red;
-    const enemyBanList = enemySide === 'BLUE' ? bans.blue : bans.red;
-
-    // Check user's bans (turns 0-4)
-    for (let i = 0; i < 5; i++) {
-      const banValue = userBanList[i];
-      if (!banValue || banValue === '') {
-        setCurrentTurn(i);
-        return;
+    const mode = (settings.mode || 'SOLOQ') as DraftMode;
+    const sequence = getDraftSequence(mode);
+    for (let i = 0; i < sequence.length; i++) {
+      const slot = sequence[i];
+      if (slot.isBan) {
+        const banList = slot.side === 'BLUE' ? bans.blue : bans.red;
+        if (!banList[slot.position]) {
+          setCurrentTurn(i);
+          return;
+        }
+      } else {
+        const pickList = slot.side === 'BLUE' ? picks.blue : picks.red;
+        if (!pickList[slot.position]?.champion) {
+          setCurrentTurn(i);
+          return;
+        }
       }
     }
-
-    // Check enemy's bans (turns 5-9)
-    for (let i = 0; i < 5; i++) {
-      const banValue = enemyBanList[i];
-      if (!banValue || banValue === '') {
-        setCurrentTurn(5 + i);
-        return;
-      }
-    }
-
-    // Pick phase sequence (turns 10-19) - snake draft order
-    const pickSequence = [
-      { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 }, { side: 'RED', pos: 1 }, { side: 'BLUE', pos: 1 },
-      { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 }, { side: 'RED', pos: 3 }, { side: 'BLUE', pos: 3 },
-      { side: 'BLUE', pos: 4 }, { side: 'RED', pos: 4 },
-    ];
-
-    // Check picks (turns 10-19)
-    for (let i = 0; i < pickSequence.length; i++) {
-      const slot = pickSequence[i];
-      const pickList = slot.side === 'BLUE' ? picks.blue : picks.red;
-      const champValue = pickList[slot.pos]?.champion;
-      if (!champValue || champValue === '') {
-        setCurrentTurn(10 + i);
-        return;
-      }
-    }
-
-    // All slots filled
     setCurrentTurn(-1);
-  }, [bans, picks, settings.side, setCurrentTurn]);
+  }, [bans, picks, settings.mode, setCurrentTurn]);
 
 
   // Helper to check if draft is complete
@@ -534,61 +498,37 @@ export const DraftPage: React.FC = () => {
     const freshBans = freshState.bans;
     const freshPicks = freshState.picks;
 
-    const userSide = settings.side;
-    const enemySide = userSide === 'BLUE' ? 'RED' : 'BLUE';
+    const mode = (settings.mode || 'SOLOQ') as DraftMode;
+    const sequence = getDraftSequence(mode);
+    const blueBans = [...freshBans.blue];
+    const redBans = [...freshBans.red];
+    const bluePicks = [...freshPicks.blue];
+    const redPicks = [...freshPicks.red];
 
-    // Get current bans/picks from FRESH state, then account for the one we just added
-    const userBanList = [...(userSide === 'BLUE' ? freshBans.blue : freshBans.red)];
-    const enemyBanList = [...(enemySide === 'BLUE' ? freshBans.blue : freshBans.red)];
-    const bluePickList = [...freshPicks.blue];
-    const redPickList = [...freshPicks.red];
-
-    // Mark the slot we just filled
     if (justUsedPicker.isBan) {
-      if (justUsedPicker.side === userSide) {
-        userBanList[justUsedPicker.position] = justSelectedChampion;
-      } else {
-        enemyBanList[justUsedPicker.position] = justSelectedChampion;
-      }
+      if (justUsedPicker.side === 'BLUE') blueBans[justUsedPicker.position] = justSelectedChampion;
+      else redBans[justUsedPicker.position] = justSelectedChampion;
     } else {
-      if (justUsedPicker.side === 'BLUE') {
-        bluePickList[justUsedPicker.position] = { ...bluePickList[justUsedPicker.position], champion: justSelectedChampion };
+      if (justUsedPicker.side === 'BLUE') bluePicks[justUsedPicker.position] = { ...bluePicks[justUsedPicker.position], champion: justSelectedChampion };
+      else redPicks[justUsedPicker.position] = { ...redPicks[justUsedPicker.position], champion: justSelectedChampion };
+    }
+
+    for (let i = 0; i < sequence.length; i++) {
+      const slot = sequence[i];
+      if (slot.isBan) {
+        const banList = slot.side === 'BLUE' ? blueBans : redBans;
+        if (!banList[slot.position]) {
+          setCurrentTurn(i);
+          return;
+        }
       } else {
-        redPickList[justUsedPicker.position] = { ...redPickList[justUsedPicker.position], champion: justSelectedChampion };
+        const pickList = slot.side === 'BLUE' ? bluePicks : redPicks;
+        if (!pickList[slot.position]?.champion) {
+          setCurrentTurn(i);
+          return;
+        }
       }
     }
-
-    // Find next empty slot
-    for (let i = 0; i < 5; i++) {
-      if (!userBanList[i] || userBanList[i] === '') {
-        setCurrentTurn(i);
-        return;
-      }
-    }
-    for (let i = 0; i < 5; i++) {
-      if (!enemyBanList[i] || enemyBanList[i] === '') {
-        setCurrentTurn(5 + i);
-        return;
-      }
-    }
-
-    const pickSequence = [
-      { side: 'BLUE' as const, pos: 0 }, { side: 'RED' as const, pos: 0 },
-      { side: 'RED' as const, pos: 1 }, { side: 'BLUE' as const, pos: 1 },
-      { side: 'BLUE' as const, pos: 2 }, { side: 'RED' as const, pos: 2 },
-      { side: 'RED' as const, pos: 3 }, { side: 'BLUE' as const, pos: 3 },
-      { side: 'BLUE' as const, pos: 4 }, { side: 'RED' as const, pos: 4 },
-    ];
-
-    for (let i = 0; i < pickSequence.length; i++) {
-      const slot = pickSequence[i];
-      const pickList = slot.side === 'BLUE' ? bluePickList : redPickList;
-      if (!pickList[slot.pos]?.champion || pickList[slot.pos]?.champion === '') {
-        setCurrentTurn(10 + i);
-        return;
-      }
-    }
-
     setCurrentTurn(-1);
   };
 
@@ -600,21 +540,11 @@ export const DraftPage: React.FC = () => {
     }
 
     if (isBan) {
-      // Calculate turn based on new ban order (user's 5 bans first, then enemy's 5)
-      const userSide = settings.side;
-      if (side === userSide) {
-        setCurrentTurn(position); // User's bans are turns 0-4
-      } else {
-        setCurrentTurn(5 + position); // Enemy's bans are turns 5-9
-      }
+      const turn = getTurnFromSlot((settings.mode || 'SOLOQ') as DraftMode, side, position, true);
+      if (turn !== -1) setCurrentTurn(turn);
     } else {
-      const pickOrder = [
-        { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 }, { side: 'RED', pos: 1 }, { side: 'BLUE', pos: 1 },
-        { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 }, { side: 'RED', pos: 3 }, { side: 'BLUE', pos: 3 },
-        { side: 'BLUE', pos: 4 }, { side: 'RED', pos: 4 },
-      ];
-      const turnIndex = pickOrder.findIndex(p => p.side === side && p.pos === position);
-      if (turnIndex !== -1) setCurrentTurn(10 + turnIndex);
+      const turn = getTurnFromSlot((settings.mode || 'SOLOQ') as DraftMode, side, position, false);
+      if (turn !== -1) setCurrentTurn(turn);
     }
   };
 
@@ -725,6 +655,19 @@ export const DraftPage: React.FC = () => {
     setHoveredSlot(null);
   };
 
+  const renderRolePicker = (side: 'BLUE' | 'RED', index: number, role: RoleType) => (
+    <select
+      value={role}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onChange={(e) => setRole(index, side, e.target.value as RoleType)}
+      className="absolute right-2 top-2 bg-black/70 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-gray-200"
+      title="Pick role"
+    >
+      {PICK_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+    </select>
+  );
+
   // Handle dragging back to center (picker or LLM box) to clear slot
   const handleDropOnCenter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -734,13 +677,8 @@ export const DraftPage: React.FC = () => {
         const banList = draggedSide === 'BLUE' ? bans.blue : bans.red;
         if (banList[draggedIndex]) {
           addBan('', draggedSide, draggedIndex);
-          // Move cursor to the cleared ban slot
-          const userSide = settings.side;
-          if (draggedSide === userSide) {
-            setCurrentTurn(draggedIndex); // User's bans are turns 0-4
-          } else {
-            setCurrentTurn(5 + draggedIndex); // Enemy's bans are turns 5-9
-          }
+          const turn = getTurnFromSlot((settings.mode || 'SOLOQ') as DraftMode, draggedSide, draggedIndex, true);
+          if (turn !== -1) setCurrentTurn(turn);
           // Update phase to BAN since we're now missing a ban
           manualPhaseChangeRef.current = true;
           setDraftPhase('BAN');
@@ -750,14 +688,8 @@ export const DraftPage: React.FC = () => {
         const pickList = draggedSide === 'BLUE' ? picks.blue : picks.red;
         if (pickList[draggedIndex]?.champion) {
           addPick('', pickList[draggedIndex].role, draggedSide, draggedIndex);
-          // Move cursor to the now-empty slot
-          const pickOrder = [
-            { side: 'BLUE', pos: 0 }, { side: 'RED', pos: 0 }, { side: 'RED', pos: 1 }, { side: 'BLUE', pos: 1 },
-            { side: 'BLUE', pos: 2 }, { side: 'RED', pos: 2 }, { side: 'RED', pos: 3 }, { side: 'BLUE', pos: 3 },
-            { side: 'BLUE', pos: 4 }, { side: 'RED', pos: 4 },
-          ];
-          const turnIndex = pickOrder.findIndex(p => p.side === draggedSide && p.pos === draggedIndex);
-          if (turnIndex !== -1) setCurrentTurn(10 + turnIndex);
+          const turn = getTurnFromSlot((settings.mode || 'SOLOQ') as DraftMode, draggedSide, draggedIndex, false);
+          if (turn !== -1) setCurrentTurn(turn);
           // Update phase to PICK since we're now missing a pick
           manualPhaseChangeRef.current = true;
           setDraftPhase('PICK');
@@ -788,40 +720,19 @@ export const DraftPage: React.FC = () => {
             <button onClick={() => setSettings({ side: 'RED' })} className={`px-5 py-2 rounded text-sm font-medium ${settings.side === 'RED' ? 'bg-gray-700 text-white' : 'text-gray-500'}`}>Red</button>
           </div>
 
-          {/* Roles */}
-          <div className="flex gap-2">
-            {ROLES.map(role => (
-              <button key={role} onClick={() => setSettings({ role })} className={`p-2 rounded bg-gray-900 ${settings.role === role ? 'ring-2 ring-gray-400' : ''}`} title={role}>
-                <RoleIcon role={role} size={18} className={settings.role === role ? 'opacity-100' : 'opacity-40'} />
-              </button>
-            ))}
-          </div>
-
-          {/* Rank - Icon Selector */}
-          <div className="flex gap-1.5 bg-gray-900 rounded p-1">
-            {RANKS.map(rank => {
-              const rankLower = rank.toLowerCase();
-              const rankIconUrl = `https://raw.communitydragon.org/pbe/plugins/rcp-fe-lol-shared-components/global/default/${rankLower}.png`;
-              return (
-                <button
-                  key={rank}
-                  onClick={() => setSettings({ elo: rank })}
-                  className={`p-1.5 rounded ${settings.elo === rank ? 'ring-2 ring-gray-400' : ''}`}
-                  title={rank}
-                >
-                  <img src={rankIconUrl} alt={rank} className={`w-6 h-6 ${settings.elo === rank ? 'opacity-100' : 'opacity-40'}`} />
-                </button>
-              );
-            })}
-          </div>
-
           {/* Patch */}
           <div className="text-sm text-gray-500 font-mono">{latestPatch}</div>
 
           {/* Phase Toggle */}
           <div className="flex gap-2 bg-gray-900 rounded p-1">
             <button onClick={() => { manualPhaseChangeRef.current = true; setDraftPhase('BAN'); setCurrentTurn(0); }} className={`px-4 py-2 rounded text-sm font-bold ${draftPhase === 'BAN' ? 'bg-red-500 text-white' : 'text-gray-600'}`}>BAN</button>
-            <button onClick={() => { manualPhaseChangeRef.current = true; setDraftPhase('PICK'); setCurrentTurn(10); }} className={`px-4 py-2 rounded text-sm font-bold ${draftPhase === 'PICK' ? 'bg-blue-500 text-white' : 'text-gray-600'}`}>PICK</button>
+            <button onClick={() => {
+              manualPhaseChangeRef.current = true;
+              setDraftPhase('PICK');
+              const sequence = getDraftSequence((settings.mode || 'SOLOQ') as DraftMode);
+              const firstPickTurn = sequence.findIndex(s => !s.isBan);
+              setCurrentTurn(firstPickTurn === -1 ? 10 : firstPickTurn);
+            }} className={`px-4 py-2 rounded text-sm font-bold ${draftPhase === 'PICK' ? 'bg-blue-500 text-white' : 'text-gray-600'}`}>PICK</button>
             <button
               onClick={() => { manualPhaseChangeRef.current = true; setDraftPhase('COMPLETE'); }}
               disabled={bans.blue.filter(b => b).length + bans.red.filter(b => b).length < 10 || picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length < 10}
@@ -835,9 +746,6 @@ export const DraftPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link to="/profile" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white" title="Profile">
-            <User size={20} />
-          </Link>
           <Link to="/settings" className="p-2 hover:bg-gray-900 rounded text-gray-500 hover:text-white" title="Settings">
             <Settings size={20} />
           </Link>
@@ -899,16 +807,12 @@ export const DraftPage: React.FC = () => {
                   {pick.champion ? (
                     <>
                       <img src={getChampionSplashUrl(pick.champion)} alt={pick.champion} className="w-full h-full object-cover object-center pointer-events-none" />
-                      {/* Role icon overlay - only show for user's team */}
-                      {settings.side === 'BLUE' && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/70 rounded-md p-1.5 backdrop-blur-sm">
-                          <RoleIcon role={pick.role} size={20} />
-                        </div>
-                      )}
+                      {renderRolePicker('BLUE', i, pick.role)}
                     </>
                   ) : (
                     <div className="w-full h-full bg-gray-950 flex items-center justify-center border border-gray-900">
-                      {settings.side === 'BLUE' && <RoleIcon role={pick.role} size={24} className="text-gray-800" />}
+                      <RoleIcon role={pick.role} size={24} className="text-gray-800" />
+                      {renderRolePicker('BLUE', i, pick.role)}
                     </div>
                   )}
                 </button>
@@ -919,6 +823,30 @@ export const DraftPage: React.FC = () => {
 
         {/* CENTER - Statistics Bar, Champion Picker and LLM Box */}
         <div className={`flex-1 flex flex-col border-l border-r ${phaseColorClass} min-w-0`}>
+          <div className="px-3 pt-2 pb-1 border-b border-gray-900 flex items-center gap-2">
+            <div className="text-[11px] px-2 py-1 rounded bg-gray-900 border border-gray-700 text-gray-300">
+              Mode: {settings.mode}
+            </div>
+            <div className="text-[10px] text-gray-500 truncate">
+              Load Deeplol in Settings
+            </div>
+            <select
+              value={llmModel}
+              onChange={(e) => {
+                setLlmModel(e.target.value);
+                recommendationService.setFrontendLLMModel(e.target.value);
+                fetchLLMAnalysis();
+              }}
+              className="text-[11px] bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-300"
+              title="Explainability LLM model"
+            >
+              {llmOptions.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
           {/* Statistics Bar - Only visible when draft is complete */}
           {/* TODO: These statistics are placeholders. Will be calculated from scraped data:
               - Lane matchup win rates from opponent.gg/op.gg
@@ -1065,7 +993,7 @@ export const DraftPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 {isLoadingAnalysis && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
                 <span className="text-[10px] text-gray-700 font-mono">
-                  {modelType === 'neural_network' ? 'NN' : modelType === 'rule_based' ? 'Rules' : ''}
+                  {modelType === 'frontend_onnx_only' ? 'Local ONNX+Softmax' : modelType === 'neural_network' ? 'NN' : modelType === 'rule_based' ? 'Rules' : ''}
                 </span>
               </div>
             </div>
@@ -1194,7 +1122,7 @@ export const DraftPage: React.FC = () => {
 
                   {/* Source indicator */}
                   <div className="text-[9px] text-gray-700 pt-1">
-                    {llmAnalysis.source === 'huggingface' ? `${llmAnalysis.model}` : 'Rule-based'}
+                    {llmAnalysis.model} · {llmAnalysis.source}
                   </div>
                 </div>
               ) : (
@@ -1271,16 +1199,12 @@ export const DraftPage: React.FC = () => {
                   {pick.champion ? (
                     <>
                       <img src={getChampionSplashUrl(pick.champion)} alt={pick.champion} className="w-full h-full object-cover object-center pointer-events-none" />
-                      {/* Role icon overlay - only show for user's team */}
-                      {settings.side === 'RED' && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/70 rounded-md p-1.5 backdrop-blur-sm">
-                          <RoleIcon role={pick.role} size={20} />
-                        </div>
-                      )}
+                      {renderRolePicker('RED', i, pick.role)}
                     </>
                   ) : (
                     <div className="w-full h-full bg-gray-950 flex items-center justify-center border border-gray-900">
-                      {settings.side === 'RED' && <RoleIcon role={pick.role} size={24} className="text-gray-800" />}
+                      <RoleIcon role={pick.role} size={24} className="text-gray-800" />
+                      {renderRolePicker('RED', i, pick.role)}
                     </div>
                   )}
                 </button>

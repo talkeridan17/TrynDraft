@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { fetchAndStoreDeeplolByRiotIds, getLLMModelOptions, importDeeplolJson, runFrontendExplainability, runFrontendRanking, setLLMModel } from './frontendAi';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -10,41 +11,7 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-// Request interceptor for auth
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Response interceptor
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Only redirect on 401 for truly protected routes
-    if (error.response?.status === 401) {
-      const url = error.config?.url || '';
-      // These requests are optional for guests - don't redirect on 401
-      const isOptionalAuthRequest =
-        url.includes('/champion-pool') ||
-        url.includes('/users/me') ||
-        url.includes('/preferences');
-
-      // Don't redirect to login if:
-      // 1. It's an optional auth request (guest users can view draft without these)
-      // 2. We're already on the login page
-      // 3. We're on the draft page (guests allowed)
-      const isOnDraftPage = window.location.pathname === '/draft' || window.location.pathname === '/';
-      if (!isOptionalAuthRequest && window.location.pathname !== '/login' && !isOnDraftPage) {
-        localStorage.removeItem('access_token');
-        window.location.href = '/login';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
+// No auth interceptors: frontend-only mode.
 
 // Champion service - UPDATED WITH REAL API CALLS
 export const championService = {
@@ -237,8 +204,15 @@ export interface DraftState {
   turn: number;
   side: 'BLUE' | 'RED';
   role: string;  // User's selected role
-  elo: string;
-  patch: string;
+  elo?: string;
+  patch?: string;
+  mode?: 'SOLOQ' | 'CLASH';
+  solo_riot_id?: string;
+  clash_blue_ids?: string[];
+  clash_red_ids?: string[];
+  clash_blue_by_role?: Array<{ role: string; riot_id: string }>;
+  clash_red_by_role?: Array<{ role: string; riot_id: string }>;
+  clash_enemy_unknown?: boolean;
   bans_blue: string[];
   bans_red: string[];
   picks_blue: Array<{ champion: string; role: string }>;
@@ -311,13 +285,28 @@ export const recommendationService = {
   // Get champions sorted by NN recommendation score
   getSortedChampions: async (draftState: DraftState): Promise<SortedChampionsResponse> => {
     try {
-      const response = await api.post('/recommendations/sorted-champions', draftState);
-      return response.data;
+      const local = await runFrontendRanking(draftState);
+      return {
+        champions: local.champions,
+        model_type: local.model_type,
+        phase: draftState.phase,
+        target_role: draftState.current_slot_role || draftState.role,
+        user_role: draftState.role,
+        turn: draftState.turn,
+        is_user_role: (draftState.current_slot_role || draftState.role) === draftState.role,
+        matchup: {
+          matchup_champion: null,
+          matchup_type: 'unknown',
+          confidence: 0.5,
+          reasoning: 'Frontend-only mode does not infer lane matchup yet.',
+          all_enemy_roles: {}
+        }
+      };
     } catch (error) {
       console.error('Failed to get sorted champions:', error);
       return {
         champions: [],
-        model_type: 'error',
+        model_type: 'onnx_unavailable',
         phase: draftState.phase,
         target_role: draftState.role,
         user_role: draftState.role,
@@ -327,7 +316,7 @@ export const recommendationService = {
           matchup_champion: null,
           matchup_type: 'unknown',
           confidence: 0,
-          reasoning: 'Error loading data',
+          reasoning: 'Required model unavailable. Ensure /models/model.onnx and /models/model.onnx.data are present.',
           all_enemy_roles: {}
         }
       };
@@ -337,8 +326,32 @@ export const recommendationService = {
   // Get LLM analysis for current draft state
   getAnalysis: async (draftState: DraftState): Promise<AnalysisResult | null> => {
     try {
-      const response = await api.post('/recommendations/analysis', draftState);
-      return response.data;
+      const local = await runFrontendRanking(draftState);
+      const topChampions = local.softmaxTop5.map((x: any) => ({
+        name: x.champion,
+        softmax: x.softmax,
+        proficiency: x.proficiency
+      }));
+      const llm = await runFrontendExplainability({
+        draftState,
+        topChampions,
+        isUserTurn: draftState.is_user_turn
+      });
+      return {
+        analysis: llm.analysis,
+        stage: draftState.phase,
+        turn: draftState.turn,
+        phase: draftState.phase,
+        advantage: 'N/A',
+        blue_power: 0,
+        red_power: 0,
+        source: llm.source,
+        model: llm.model,
+        recommendations: topChampions.map((c: { name: string }) => c.name),
+        target_role: draftState.current_slot_role || draftState.role,
+        user_role: draftState.role,
+        is_user_role: (draftState.current_slot_role || draftState.role) === draftState.role,
+      };
     } catch (error) {
       console.error('Failed to get draft analysis:', error);
       return null;
@@ -347,20 +360,34 @@ export const recommendationService = {
 
   // Get full gameplan when draft is complete
   getGameplan: async (draftState: DraftState): Promise<any> => {
-    try {
-      const response = await api.post('/recommendations/gameplan', draftState);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get gameplan:', error);
-      return null;
-    }
+    const analysis = await recommendationService.getAnalysis(draftState);
+    return analysis;
   },
 
   // Get draft statistics when draft is complete
   getDraftStats: async (draftState: DraftState): Promise<DraftStats | null> => {
     try {
-      const response = await api.post('/recommendations/draft-stats', draftState);
-      return response.data;
+      const local = await runFrontendRanking(draftState);
+      const top = local.champions[0];
+      return {
+        lane_matchup: {
+          your_champion: draftState.picks_blue[0]?.champion || null,
+          enemy_champion: draftState.picks_red[0]?.champion || null,
+          win_rate: top ? Number((top.win_rate * 100).toFixed(1)) : 50,
+          games: top?.role_games || 0,
+          confidence: top?.role_games && top.role_games > 25 ? 'high' : top?.role_games && top.role_games > 10 ? 'medium' : 'low',
+        },
+        comp_win: { your_team: 50, enemy_team: 50 },
+        synergy: {
+          your_team: { score: 5, max_score: 10, details: [] },
+          enemy_team: { score: 5, max_score: 10, details: [] },
+        },
+        damage_split: {
+          your_team: { ad: 50, ap: 50 },
+          enemy_team: { ad: 50, ap: 50 },
+        },
+        team_power: { your_team: 50, enemy_team: 50 },
+      };
     } catch (error) {
       console.error('Failed to get draft stats:', error);
       return null;
@@ -370,13 +397,22 @@ export const recommendationService = {
   // Check which models are available
   getAvailableModels: async (): Promise<{ models: Record<string, boolean>; has_any_model: boolean; recommendation_mode: string }> => {
     try {
-      const response = await api.get('/recommendations/models');
-      return response.data;
+      const llm = getLLMModelOptions();
+      const models = llm.options.reduce((acc, model) => {
+        acc[model.id] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+      return { models, has_any_model: true, recommendation_mode: 'frontend_onnx_llm' };
     } catch (error) {
       console.error('Failed to get available models:', error);
       return { models: {}, has_any_model: false, recommendation_mode: 'error' };
     }
-  }
+  },
+
+  getFrontendLLMOptions: () => getLLMModelOptions(),
+  setFrontendLLMModel: (modelId: string) => setLLMModel(modelId),
+  importDeeplolProficiencies: (rawJson: string) => importDeeplolJson(rawJson),
+  fetchDeeplolProficienciesByRiotIds: async (riotIds: string[], region?: string, season?: number) => fetchAndStoreDeeplolByRiotIds(riotIds, region, season),
 };
 
 // Draft Stats interface for completed draft
@@ -414,78 +450,4 @@ export interface DraftStats {
   };
 }
 
-// Auth service
-export const authService = {
-  login: async (username: string, password: string) => {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const response = await api.post('/users/login', formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-    
-    if (response.data.access_token) {
-      localStorage.setItem('access_token', response.data.access_token);
-    }
-    
-    return response.data;
-  },
-
-  register: async (userData: any) => {
-    const response = await api.post('/users/register', userData);
-    return response.data;
-  },
-
-  logout: () => {
-    localStorage.removeItem('access_token');
-  },
-
-  getCurrentUser: async () => {
-    try {
-      const response = await api.get('/users/me');
-      return response.data;
-    } catch (error) {
-      return null;
-    }
-  },
-
-  updateUser: async (userData: any) => {
-    const response = await api.put('/users/me', userData);
-    return response.data;
-  },
-
-  // Champion Pool Management
-  getChampionPool: async () => {
-    const response = await api.get('/users/me/champion-pool');
-    return response.data;
-  },
-
-  addToChampionPool: async (championData: { champion_name: string; role?: string; playstyles?: string[] }) => {
-    const response = await api.post('/users/me/champion-pool', championData);
-    return response.data;
-  },
-
-  updateChampionPool: async (championId: string, updateData: { playstyles?: string[]; proficiency?: number }) => {
-    const response = await api.put(`/users/me/champion-pool/${championId}`, updateData);
-    return response.data;
-  },
-
-  removeFromChampionPool: async (championId: string) => {
-    const response = await api.delete(`/users/me/champion-pool/${championId}`);
-    return response.data;
-  },
-
-  // User Preferences
-  getPreferences: async () => {
-    const response = await api.get('/users/me/preferences');
-    return response.data;
-  },
-
-  updatePreferences: async (preferences: { preferred_roles?: string[]; rank?: string; profile_picture?: string }) => {
-    const response = await api.put('/users/me/preferences', preferences);
-    return response.data;
-  }
-};
+// Login/profile APIs intentionally removed in frontend-only mode.

@@ -372,6 +372,7 @@ backend/*.pyc
 backend/data_cache/
 backend/logs/
 backend/training_data/  # LLM training data (can be large)
+!llm-ai-stuff/data/
 
 # Docker
 docker-compose.override.yml
@@ -387,3 +388,5 @@ docker-compose.override.yml
 Thumbs.db
 
 .claude
+llm-ai-stuff/training/temp_data/*
+llm-ai-stuff/training/deeplol_collector.py

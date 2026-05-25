@@ -29,6 +29,8 @@ export const RankIcon: React.FC<RankIconProps> = ({ rank, size = 32, className =
       alt={rank}
       width={size}
       height={size}
+      crossOrigin="anonymous"
+      referrerPolicy="no-referrer"
       className={className}
       style={{ width: size, height: size }}
     />

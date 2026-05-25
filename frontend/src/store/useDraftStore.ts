@@ -1,16 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { championService } from '../utils/api';
+import { getDraftSequence, type DraftMode } from '../utils/draftOrder';
 
-export type GameModeType = 'SWIFT' | 'DRAFT' | 'RANKED' | 'ARAM' | 'FLEX' | 'CLASH' | 'CUSTOM' | 'PRO';
+export type GameModeType = DraftMode;
 export type TeamSide = 'BLUE' | 'RED';
-export type RoleType = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+export type RoleType = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' | 'FLEX';
 
 interface DraftSettings {
   mode: GameModeType;
   side: TeamSide;
   role: RoleType;
-  elo: string;
   patch: string;
   phase: 'BAN' | 'PICK';
 }
@@ -64,10 +64,9 @@ interface DraftState {
 const defaultRoles: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
 
 const defaultSettings: DraftSettings = {
-  mode: 'DRAFT',
+  mode: 'SOLOQ',
   side: 'BLUE',
   role: 'TOP',
-  elo: 'PLATINUM',
   patch: '16.2.1',
   phase: 'BAN',
 };
@@ -130,32 +129,10 @@ export const useDraftStore = create<DraftState>()(
 
         // If turn is -1, no cursor (all slots filled)
         if (turn === -1) return null;
-
-        const userSide = state.settings.side;
-        const enemySide: TeamSide = userSide === 'BLUE' ? 'RED' : 'BLUE';
-
-        if (turn < 10) { // Ban phase - user's 5 bans first, then enemy's 5
-          if (turn < 5) {
-            return { side: userSide, position: turn, isBan: true };
-          } else {
-            return { side: enemySide, position: turn - 5, isBan: true };
-          }
-        } else { // Pick phase
-          const pickOrder = [
-            { side: 'BLUE' as TeamSide, position: 0 },
-            { side: 'RED' as TeamSide, position: 0 },
-            { side: 'RED' as TeamSide, position: 1 },
-            { side: 'BLUE' as TeamSide, position: 1 },
-            { side: 'BLUE' as TeamSide, position: 2 },
-            { side: 'RED' as TeamSide, position: 2 },
-            { side: 'RED' as TeamSide, position: 3 },
-            { side: 'BLUE' as TeamSide, position: 3 },
-            { side: 'BLUE' as TeamSide, position: 4 },
-            { side: 'RED' as TeamSide, position: 4 },
-          ];
-          const picker = pickOrder[turn - 10];
-          return { ...picker, isBan: false };
-        }
+        const sequence = getDraftSequence(state.settings.mode);
+        const picker = sequence[turn];
+        if (!picker) return null;
+        return picker;
       },
       
       // Actions
@@ -445,9 +422,9 @@ export const useDraftStore = create<DraftState>()(
         set((state) => ({
           settings: {
             ...defaultSettings,
-            // Preserve user's role and elo settings
+            // Preserve user's role and mode settings
             role: state.settings.role,
-            elo: state.settings.elo,
+            mode: state.settings.mode,
             patch: state.settings.patch,
           },
           currentTurn: 0,
@@ -484,7 +461,7 @@ export const useDraftStore = create<DraftState>()(
         };
 
         // Helper to fix picks arrays
-        const fixPicksArray = (arr: any): Array<{ champion: string; role: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' }> => {
+        const fixPicksArray = (arr: any): Array<{ champion: string; role: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' | 'FLEX' }> => {
           const defaultRoles: Array<'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'> = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
           const result = defaultRoles.map(role => ({ champion: '', role }));
           if (Array.isArray(arr)) {
@@ -492,7 +469,7 @@ export const useDraftStore = create<DraftState>()(
               if (i < 5 && pick && typeof pick === 'object') {
                 result[i] = {
                   champion: typeof pick.champion === 'string' ? pick.champion : '',
-                  role: defaultRoles.includes(pick.role) ? pick.role : defaultRoles[i]
+                  role: [...defaultRoles, 'FLEX'].includes(pick.role) ? pick.role : defaultRoles[i]
                 };
               }
             });
@@ -530,6 +507,12 @@ export const useDraftStore = create<DraftState>()(
 
           // Reset currentTurn to 0
           persistedState.currentTurn = 0;
+        }
+
+        // Normalize mode after older schemas
+        if (!persistedState.settings) persistedState.settings = { ...defaultSettings };
+        if (persistedState.settings.mode !== 'SOLOQ' && persistedState.settings.mode !== 'CLASH') {
+          persistedState.settings.mode = 'SOLOQ';
         }
 
         return persistedState;
