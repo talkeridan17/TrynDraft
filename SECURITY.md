@@ -169,10 +169,4 @@ Run `pip list --outdated` and `npm outdated` regularly to check for updates.
 
 ---
 
-## Contact
-
-For security concerns, contact:
-- Email: security@tryndraft.com
-- GitHub: Open a private security advisory
-
 **Last Updated:** 2026-01-26
