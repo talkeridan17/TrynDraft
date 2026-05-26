@@ -74,6 +74,7 @@ const defaultSettings: DraftSettings = {
 const defaultPicks = defaultRoles.map(role => ({ champion: '', role }));
 
 // Helper function to compute taken champions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const computeTakenChampions = (bans: { blue: string[]; red: string[] }, picks: { blue: any[]; red: any[] }) => {
   const taken = new Set<string>();
   
@@ -446,8 +447,9 @@ export const useDraftStore = create<DraftState>()(
         // Don't persist allChampions - fetch fresh every time
       }),
       // Migrate old state format to new format
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       migrate: (persistedState: any, version: number) => {
-        // Helper to fix bans arrays
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fixBansArray = (arr: any): string[] => {
           const result = ['', '', '', '', ''];
           if (Array.isArray(arr)) {
@@ -461,6 +463,7 @@ export const useDraftStore = create<DraftState>()(
         };
 
         // Helper to fix picks arrays
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fixPicksArray = (arr: any): Array<{ champion: string; role: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' | 'FLEX' }> => {
           const defaultRoles: Array<'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'> = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
           const result = defaultRoles.map(role => ({ champion: '', role }));

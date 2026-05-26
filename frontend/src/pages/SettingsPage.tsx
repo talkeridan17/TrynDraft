@@ -68,6 +68,7 @@ export const SettingsPage: React.FC = () => {
         return;
       }
       const parsed = JSON.parse(raw);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const normalizedRows = (rows: any): RoleBoundId[] => {
         const out = emptyRoleRows();
         if (Array.isArray(rows)) {
@@ -171,7 +172,7 @@ export const SettingsPage: React.FC = () => {
     try {
       const res = await recommendationService.fetchDeeplolProficienciesByRiotIds(ids, deeplolRegion, deeplolSeason);
       setDeeplolStatus(`Loaded ${res.imported} champion proficiency entries.`);
-    } catch (error) {
+    } catch {
       setDeeplolStatus('Failed to load from Deeplol.');
     } finally {
       setIsLoadingDeeplol(false);

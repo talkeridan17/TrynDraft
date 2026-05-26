@@ -1,474 +1,172 @@
-# TrynDraft - AI-Powered League of Legends Drafting Assistant
+# TrynDraft
 
-> Smart drafting tool with neural network recommendations, LLM-powered strategic analysis, and real-time champion statistics.
+> AI-powered League of Legends draft assistant — runs entirely in your browser, no account or server required.
 
 <p align="center">
   <img src="frontend/public/logo.svg" alt="TrynDraft Logo" width="80" height="80" />
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Alpha_Development-yellow" alt="Status"/>
-  <img src="https://img.shields.io/badge/Python-3.12-blue" alt="Python"/>
+  <img src="https://img.shields.io/badge/Status-Beta_Ready-green" alt="Status"/>
   <img src="https://img.shields.io/badge/React-19-blue" alt="React"/>
-  <img src="https://img.shields.io/badge/FastAPI-Latest-teal" alt="FastAPI"/>
   <img src="https://img.shields.io/badge/TypeScript-5.6-blue" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/TailwindCSS-3.4-06B6D4" alt="TailwindCSS"/>
+  <img src="https://img.shields.io/badge/ONNX-Runtime_Web-orange" alt="ONNX"/>
+  <img src="https://img.shields.io/badge/Version-0.7.0--beta-lightgrey" alt="Version"/>
 </p>
-
-**Current Version:** 0.5.0-alpha
-**Last Updated:** 2026-01-26
 
 ---
 
 ## What is TrynDraft?
 
-TrynDraft is an intelligent drafting assistant for League of Legends that combines multiple AI technologies to provide optimal draft recommendations:
+TrynDraft is a **fully client-side** League of Legends draft assistant. Open the page, enter your Riot ID (`Name#TAG`), and get AI-powered pick and ban suggestions — no login, no server, no backend.
 
-- **Neural Network**: 50-feature PyTorch model analyzing champion statistics, matchups, synergies, and team compositions
-- **LLM Analysis**: Strategic commentary and gameplans powered by Qwen2.5-72B (via HuggingFace)
-- **Real-time Stats**: Live champion data from Riot API including win rates, pick rates, and matchup data
-- **User Profiles**: Personalized recommendations based on your champion pool and preferences
+- **DraftTransformer** — 5M-parameter Transformer trained on ~160K pro + high-ELO matches, runs in-browser via ONNX Runtime Web
+- **LLM Explainability** — Qwen2.5 (0.5B / 1.5B) quantized models explain top picks in natural language via Transformers.js
+- **Deeplol Proficiency** — Your Riot ID is used to fetch your champion stats from Deeplol and bias recommendations toward your best picks
+- **Champion Data** — Always up-to-date via Riot's Data Dragon CDN; no static bundle needed
 
 ---
 
-## Key Features
+## Quick Start
 
-### AI-Powered Recommendations
-- 50-feature neural network evaluating champions based on:
-  - Base stats (attack, defense, magic, difficulty)
-  - Meta statistics (win rate, pick rate, ban rate)
-  - User proficiency and champion pool
-  - Matchup win rates against enemy picks
-  - Synergy with ally picks
-  - Team composition balance
+```bash
+git clone https://github.com/talkeridan17/TrynDraft.git
+cd TrynDraft/frontend
+npm install
+npm run dev
+```
 
-### LLM Strategic Analysis
-- Real-time analysis at every draft stage
-- Team power assessment with advantage calculator
-- Strategic gameplans for both Blue and Red teams
-- Win conditions and composition analysis
-- Role-specific recommendations (e.g., jungle bans suggest jungle champions)
+Open [http://localhost:5173](http://localhost:5173). That's it.
 
-### User Profiles & Champion Pools
-- Save your champion pool with proficiency ratings (1-5 stars)
-- Set your main role and rank for tailored recommendations
-- Profile picture customization with champion splash art
-- Preferences auto-populate when entering draft
+To build for production:
 
-### Draft Interface
-- Clean, intuitive drag-and-drop interface
-- Ban and pick phases with visual indicators
-- Clickable champion suggestions in LLM analysis
-- Guest mode for quick access without account
-- Game mode selection (Ranked/Clash/Pro)
+```bash
+npm run build   # outputs to frontend/dist/
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for deploying to Vercel or Netlify (5 minutes, free tier).
+
+---
+
+## Project Map
+
+This is your navigation hub. Every major aspect of the project is listed below with a link to the relevant file or folder.
+
+### Frontend — [frontend/](frontend/)
+
+The entire app lives here. React 19 + TypeScript + Vite + Tailwind.
+
+| What | Where |
+|------|-------|
+| App entry & routes | [frontend/src/App.tsx](frontend/src/App.tsx) |
+| Draft page (main UI) | [frontend/src/pages/DraftPage.tsx](frontend/src/pages/DraftPage.tsx) |
+| Settings page | [frontend/src/pages/SettingsPage.tsx](frontend/src/pages/SettingsPage.tsx) |
+| Layout + Nav | [frontend/src/components/layout/](frontend/src/components/layout/) |
+| Draft components | [frontend/src/components/drafting/](frontend/src/components/drafting/) |
+| AI inference (ONNX + LLM + Deeplol) | [frontend/src/utils/frontendAi.ts](frontend/src/utils/frontendAi.ts) |
+| Service layer (API wrapper) | [frontend/src/utils/api.ts](frontend/src/utils/api.ts) |
+| Draft state (Zustand) | [frontend/src/store/useDraftStore.ts](frontend/src/store/useDraftStore.ts) |
+| ONNX model + metadata | [frontend/public/models/](frontend/public/models/) |
+
+**Key flows:**
+- User enters `Name#TAG` on Draft page → `fetchAndStoreDeeplolByRiotIds()` stores proficiency in `localStorage`
+- On any draft pick → `runFrontendRanking()` loads ONNX model, scores all champions, adjusts by proficiency
+- "Explain" button → `runFrontendExplainability()` runs Qwen2.5 in-browser
+
+### AI Model — [model-training/](model-training/)
+
+Everything needed to understand, retrain, and re-export the DraftTransformer.
+
+| What | Where |
+|------|-------|
+| Full architecture & pipeline docs | [model-training/PIPELINE.md](model-training/PIPELINE.md) |
+| ONNX model + base PyTorch model | [model-training/models/](model-training/models/) |
+| Training script | [model-training/training/train.py](model-training/training/train.py) |
+| ONNX export script | [model-training/training/export_onnx.py](model-training/training/export_onnx.py) |
+| Full refresh pipeline (scrape → train → export → deploy) | [model-training/training/refresh.py](model-training/training/refresh.py) |
+| Proficiency computation | [model-training/training/proficiency.py](model-training/training/proficiency.py) |
+| Scraping (pro-play + SoloQ) | [model-training/scraping/](model-training/scraping/) |
+| Training data (pickles, CSVs) | [model-training/data/](model-training/data/) |
+| Champion/tag lookup tables | [model-training/checkpoints/](model-training/checkpoints/) |
+
+**To retrain the model** (requires Riot API key):
+
+```bash
+cd model-training
+python training/refresh.py --riot-key $RIOT_API_KEY --platform na1
+```
+
+See [model-training/PIPELINE.md](model-training/PIPELINE.md) for full instructions.
+
+### Deployment — [DEPLOYMENT.md](DEPLOYMENT.md)
+
+Static site deployment. No backend needed. Read this when you're ready to go live.
+
+### Backend — [backend/](backend/)
+
+The FastAPI backend from the original architecture. **Currently dormant** — the app runs fully client-side and does not need this. It is kept for potential future use (saved drafts, team history). Do not deploy it or run CI against it.
+
+### Docs & Planning
+
+| What | Where |
+|------|-------|
+| Contributing guidelines | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Security policy | [SECURITY.md](SECURITY.md) |
+| Code of conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
+| Wiki (setup, branching, FAQ) | [docs/wiki/](docs/wiki/) |
+| Historical planning | [planning/](planning/) |
+
+---
+
+## CI/CD
+
+CI runs on every push to `main` and `dev`: lints and builds the frontend. See [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+Auto-deploy to Vercel on merge to `main` can be enabled — see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+---
+
+## Roadmap
+
+| Status | Item |
+|--------|------|
+| ✅ Done | DraftTransformer ONNX, full client-side inference |
+| ✅ Done | Deeplol Riot ID proficiency, cached in localStorage |
+| ✅ Done | SoloQ + Clash draft sequences |
+| ✅ Done | LLM explainability (Qwen2.5 in-browser) |
+| ✅ Done | Inline Riot ID entry on Draft page |
+| ✅ Done | Frontend-only app (no login/profile) |
+| 🔄 Now | Domain acquisition, final QA |
+| 🟡 Next | Deploy static site → live URL (est. 1–2 days) |
+| 🟡 Next | Model retrain with latest patch data |
+| 🟠 Soon | Patch staleness warning, Clash team proficiency |
+
+**Target launch: early June 2026**
 
 ---
 
 ## Tech Stack
 
-### Frontend
-- React 19 + TypeScript + Vite
-- Zustand (state management with persist middleware)
-- TailwindCSS + Lucide Icons
-- Axios for API calls
-
-### Backend
-- FastAPI (Python 3.12)
-- SQLAlchemy 2.0 + SQLite (dev) / PostgreSQL (prod)
-- JWT Authentication (bcrypt + python-jose)
-- PyTorch for neural network
-- HuggingFace Inference API (Qwen2.5-72B)
-
-### Data & ML
-- Riot API (champion stats, match data)
-- Data Dragon (champion images, icons)
-- Community Dragon (role/rank icons)
-- PyTorch Neural Network (50-feature model)
-- BeautifulSoup + aiohttp (web scraping for training data)
-
-### Deployment
-- Docker + docker-compose
-- Nginx reverse proxy
-- PostgreSQL + Redis (production)
-- Environment-based configuration
-
----
-
-## Quick Start (Recommended)
-
-```bash
-# Clone and setup everything with one command
-git clone https://github.com/talkeridan17/TrynDraft.git
-cd TrynDraft
-./scripts/setup-dev.sh
-
-# Start both servers
-./scripts/start-dev.sh
-```
-
-That's it! Open http://localhost:5173 in your browser.
-
----
-
-## Developer Setup (Manual)
-
-If you prefer to set things up manually, or if the script doesn't work on your system:
-
-### Prerequisites
-- Python 3.12+
-- Node.js 18+ (recommend using nvm)
-- Git
-- Docker & Docker Compose (optional, for production testing)
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/talkeridan17/TrynDraft.git
-cd TrynDraft
-```
-
-### 2. Backend Setup
-```bash
-cd backend
-
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file (copy from example or create new)
-cat > .env << 'EOF'
-# Database (SQLite for local development)
-DATABASE_URL=sqlite:///./tryndraft.db
-
-# Security - generate your own secret key
-SECRET_KEY=your-secret-key-change-me
-
-# Riot API (optional - get from developer.riotgames.com)
-RIOT_API_KEY=your-riot-api-key
-
-# HuggingFace (optional - disabled by default to avoid charges)
-HF_TOKEN=your-huggingface-token
-USE_HUGGINGFACE_API=false  # Set to true when ready for production
-
-# CORS origins
-CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
-
-# Debug mode
-DEBUG=True
-EOF
-
-# Initialize database and seed champion data
-python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine)"
-python scripts/seed_champions.py
-
-# Start backend server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 3. Frontend Setup
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Create .env file
-echo "VITE_API_URL=http://localhost:8000" > .env
-
-# Start development server
-npm run dev
-```
-
-### 4. Access the Application
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs (Swagger UI)
-- **Alternative API Docs**: http://localhost:8000/redoc (ReDoc)
-
-### 5. Seed Initial Data (Optional)
-```bash
-cd backend
-source .venv/bin/activate
-
-# Sync champions from Data Dragon
-python scripts/seed_champions.py
-```
-
----
-
-## Development Workflow
-
-### Branch Strategy
-- `main` - Production-ready code
-- `dev` - Development branch (merge PRs here)
-- Feature branches: `feature/your-feature-name`
-- Bug fixes: `fix/bug-description`
-
-### Running Tests
-```bash
-# Backend tests
-cd backend
-pytest
-
-# Frontend tests
-cd frontend
-npm test
-```
-
-### Code Style
-- **Python**: Follow PEP 8, use type hints
-- **TypeScript**: ESLint + Prettier (configured)
-- **Commits**: Use conventional commits (feat:, fix:, docs:, etc.)
-
-### Common Commands
-```bash
-# Backend
-cd backend && source .venv/bin/activate
-uvicorn app.main:app --reload --port 8000  # Start server
-alembic upgrade head                        # Run migrations
-alembic revision --autogenerate -m "msg"    # Create migration
-
-# Frontend
-cd frontend
-npm run dev          # Start dev server
-npm run build        # Production build
-npm run lint         # Run ESLint
-```
-
----
-
-## Data Scraping
-
-TrynDraft uses automated scraping to collect champion statistics and training data for AI models.
-
-### Quick Start
-
-```bash
-cd backend
-source .venv/bin/activate
-
-# Test the scraper setup
-python scripts/test_scrapers.py
-
-# Quick test (Challenger rank, ~5 minutes)
-python scripts/run_scrapers.py stats --mode quick
-
-# Load scraped data into database
-python scripts/run_scrapers.py load
-
-# Check status
-python scripts/run_scrapers.py status
-```
-
-### Scraping Types
-
-**1. Stats Scraping** (Riot API)
-- Collects real match data per rank
-- Win rates, matchups, synergies
-- Requires `RIOT_API_KEY` from [developer.riotgames.com](https://developer.riotgames.com/)
-
-```bash
-# Scrape specific rank (recommended: GOLD)
-python scripts/run_scrapers.py stats --rank GOLD
-
-# Scrape multiple ranks
-python scripts/run_scrapers.py stats --rank GOLD PLATINUM DIAMOND
-
-# High elo scrape (Challenger, GM, Master, Diamond)
-python scripts/run_scrapers.py stats --mode high_elo
-
-# Full scrape (all ranks, 8-12 hours)
-python scripts/run_scrapers.py stats --mode full
-```
-
-**2. Text Scraping** (LLM Training)
-- Scrapes MOBAFire guides and Reddit discussions
-- No API key required
-
-```bash
-# Test mode (5 champions)
-python scripts/run_scrapers.py text --test
-
-# Full scrape (50 champions)
-python scripts/run_scrapers.py text
-```
-
-### Automated Scraping
-
-Setup daily/weekly automated scraping:
-
-```bash
-# Install cron jobs
-./scripts/setup_scraping_automation.sh
-
-# Remove automation
-./scripts/remove_scraping_automation.sh
-```
-
-Auto-schedule:
-- Daily 3 AM: Scrape GOLD rank
-- Weekly Monday: Scrape high elo
-- Weekly Sunday: Scrape LLM training data
-- Daily 5 AM: Load data into database
-
-### Documentation
-
-For complete scraping guide, see [docs/SCRAPING.md](docs/SCRAPING.md)
-
----
-
-## Environment Variables Reference
-
-### Backend (.env)
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | Database connection string |
-| `SECRET_KEY` | Yes | JWT signing key (generate with `openssl rand -hex 32`) |
-| `RIOT_API_KEY` | No | Riot API key for live data |
-| `HF_TOKEN` | No | HuggingFace API token for LLM |
-| `USE_HUGGINGFACE_API` | No | Enable/disable HuggingFace API (default: false) |
-| `CORS_ORIGINS` | No | Allowed CORS origins (JSON array) |
-| `DEBUG` | No | Enable debug mode (default: false) |
-| `REDIS_URL` | No | Redis URL for caching (production) |
-
-### Frontend (.env)
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_API_URL` | Yes | Backend API URL |
-
----
-
-## Project Structure
-
-```
-TrynDraft/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/endpoints/    # API routes (users, champions, drafts, etc.)
-│   │   ├── core/                # Configuration (settings, security)
-│   │   ├── services/            # Business logic
-│   │   │   ├── llm_service.py   # LLM analysis & scraping
-│   │   │   ├── llm_prompts.py   # Prompt templates
-│   │   │   ├── draft_nn_service.py  # Neural network
-│   │   │   └── data_dragon.py   # Riot data fetching
-│   │   ├── models.py            # SQLAlchemy models
-│   │   ├── schemas.py           # Pydantic schemas
-│   │   ├── auth.py              # JWT authentication
-│   │   └── database.py          # Database connection
-│   ├── alembic/                 # Database migrations
-│   ├── scripts/                 # Utility scripts
-│   ├── logs/                    # Log files (gitignored)
-│   └── requirements.txt
-├── frontend/
-│   ├── public/                  # Static assets
-│   │   └── logo.svg             # TrynDraft logo
-│   └── src/
-│       ├── components/          # React components
-│       │   ├── common/          # Shared components
-│       │   ├── drafting/        # Draft-specific components
-│       │   └── layout/          # Layout components
-│       ├── pages/               # Page components
-│       │   ├── DraftPage.tsx    # Main draft interface
-│       │   ├── ProfilePage.tsx  # User profile
-│       │   ├── SettingsPage.tsx # Game settings
-│       │   └── LoginPage.tsx    # Authentication
-│       ├── store/               # Zustand store
-│       │   └── useDraftStore.ts # Draft state management
-│       └── utils/               # Utilities
-│           ├── api.ts           # API client
-│           └── patch.ts         # Data Dragon helpers
-├── planning/                    # Planning documents
-│   ├── research/                # Technical research
-│   ├── requirements/            # Feature requirements
-│   └── user-stories/            # User stories
-├── logs/                        # Scraper logs (gitignored)
-├── docker-compose.yml           # Docker deployment
-├── SECURITY.md                  # Security documentation
-└── README.md                    # This file
-```
-
----
-
-## Docker Deployment (Production)
-
-```bash
-# Build and start all services
-docker-compose up -d --build
-
-# Run migrations
-docker-compose exec backend alembic upgrade head
-
-# Seed champion data
-docker-compose exec backend python scripts/seed_champions.py
-
-# View logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Backend won't start:**
-- Check Python version: `python --version` (need 3.12+)
-- Ensure virtual environment is activated
-- Check `.env` file exists and has valid values
-
-**Frontend won't start:**
-- Check Node version: `node --version` (need 18+)
-- Run `npm install` to ensure dependencies are installed
-- Check `VITE_API_URL` in `.env`
-
-**Database errors:**
-- Delete `tryndraft.db` and restart to recreate
-- Run migrations: `alembic upgrade head`
-
-**HuggingFace billing:**
-- Set `USE_HUGGINGFACE_API=false` in backend `.env` to use rule-based analysis (free)
-- Only enable when ready for production testing
-
-**CORS errors:**
-- Check `CORS_ORIGINS` in backend `.env` includes your frontend URL
-
----
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch from `dev`
-3. Make your changes
-4. Write/update tests
-5. Submit a pull request to `dev`
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
----
-
-## License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## Disclaimer
-
-TrynDraft isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc.
+| Layer | Tech |
+|-------|------|
+| Frontend | React 19, TypeScript 5.6, Vite, TailwindCSS, Zustand |
+| AI (in-browser) | ONNX Runtime Web, Transformers.js v3 (Qwen2.5) |
+| Data sources | Riot Data Dragon CDN, Deeplol CDN (`b2c-api-cdn.deeplol.gg`) |
+| Model training | Python 3.12, PyTorch, ONNX export |
+| CI | GitHub Actions (lint + build) |
+| Hosting | Vercel / Netlify (static) |
 
 ---
 
 ## Acknowledgments
 
-- **Riot Games** for the Riot API and Data Dragon
-- **HuggingFace** for LLM inference API
-- **Community Dragon** for champion and role icons
-- **MOBAFire** and **LoLalytics** for community data
+- **Rohan Cherukuri** — DraftTransformer model, frontend AI integration, Deeplol proficiency system
+- **Riot Games** — Riot API, Data Dragon
+- **HuggingFace** — Transformers.js, model hosting
+- **Deeplol.gg** — Player stats CDN
+
+**Built by [Idan Talker](https://github.com/talkeridan17) & [Rohan Cherukuri](https://github.com/greenden007)**
 
 ---
 
-**Built by [Idan Talker](https://github.com/talkeridan17)**
+*TrynDraft is not endorsed by Riot Games and does not reflect the views or opinions of Riot Games, Inc. League of Legends and Riot Games are trademarks of Riot Games, Inc.*

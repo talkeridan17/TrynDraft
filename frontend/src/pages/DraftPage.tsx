@@ -2,14 +2,13 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDraftStore } from '../store/useDraftStore';
 import { getLatestPatch, getChampionImageUrl, getChampionSplashUrl } from '../utils/patch';
-import { Search, X, Settings, Loader2 } from 'lucide-react';
+import { Search, X, Settings, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { RoleIcon } from '../components/common/RoleIcon';
 import { recommendationService, type ScoredChampion, type AnalysisResult, type DraftState, type MatchupInfo, type DraftStats } from '../utils/api';
 import type { RoleType } from '../store/useDraftStore';
 import { getDraftSequence, getTurnFromSlot, type DraftMode } from '../utils/draftOrder';
 
 const ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
-const PICK_ROLES: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT', 'FLEX'];
 
 export const DraftPage: React.FC = () => {
   const {
@@ -21,7 +20,6 @@ export const DraftPage: React.FC = () => {
     setCurrentTurn,
     addBan,
     addPick,
-    setRole,
     resetDraft,
     getCurrentPicker,
     allChampions,
@@ -55,6 +53,12 @@ export const DraftPage: React.FC = () => {
   });
   const [hoveredChampion, setHoveredChampion] = useState<string | null>(null);
 
+  // SID (Summoner ID / Riot ID) quick-entry
+  const [sidInput, setSidInput] = useState('');
+  const [sidStatus, setSidStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [profCount, setProfCount] = useState(0);
+  const [summonerInfo, setSummonerInfo] = useState<{ gameName: string; tagLine: string; tier?: string; division?: string } | null>(null);
+
   // Matchup info from NN predictions
   const [matchupInfo, setMatchupInfo] = useState<MatchupInfo | null>(null);
   const [matchupOverride, setMatchupOverride] = useState<string | null>(null);  // User can override assumed matchup
@@ -71,6 +75,24 @@ export const DraftPage: React.FC = () => {
   const lastAnalysisTurnRef = useRef<number>(-1);
 
   const currentPicker = getCurrentPicker();
+  const currentSlotRole = (() => {
+    if (!currentPicker || currentPicker.isBan) return settings.role;
+    const picksForSide = currentPicker.side === 'BLUE' ? picks.blue : picks.red;
+    return picksForSide[currentPicker.position]?.role || settings.role;
+  })();
+
+  // Read proficiency count + summoner info from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('deeplol_proficiencies') || '{}');
+      const count = Object.keys(saved).length;
+      if (count > 0) setProfCount(count);
+      const playerSettings = JSON.parse(localStorage.getItem('tryndraft_player_settings') || '{}');
+      if (playerSettings.soloRiotIds?.[0]) setSidInput(playerSettings.soloRiotIds[0]);
+      const info = JSON.parse(localStorage.getItem('tryndraft_summoner_info') || 'null');
+      if (info) setSummonerInfo(info);
+    } catch { /* ignore */ }
+  }, []);
 
   const loadLocalProfileSettings = useCallback(() => {
     try {
@@ -165,6 +187,43 @@ export const DraftPage: React.FC = () => {
     }
   }, [buildDraftState, draftPhase]);
 
+  const handleSidLoad = useCallback(async () => {
+    const trimmed = sidInput.trim();
+    if (!trimmed) return;
+    setSidStatus('loading');
+    try {
+      const playerSettings = JSON.parse(localStorage.getItem('tryndraft_player_settings') || '{}');
+      const region = playerSettings.deeplolRegion || 'NA1';
+      const season = playerSettings.deeplolSeason || 27;
+
+      const result = await recommendationService.fetchDeeplolProficienciesByRiotIds([trimmed], region, season);
+
+      const updated = { ...playerSettings, soloRiotIds: [trimmed] };
+      localStorage.setItem('tryndraft_player_settings', JSON.stringify(updated));
+      setProfileSettings(prev => ({ ...prev, soloRiotIds: [trimmed] }));
+
+      setProfCount(result.imported);
+      setSidStatus(result.found ? 'loaded' : 'error');
+      try {
+        const info = JSON.parse(localStorage.getItem('tryndraft_summoner_info') || 'null');
+        if (info) setSummonerInfo(info);
+      } catch { /* ignore */ }
+    } catch {
+      setSidStatus('error');
+    }
+  }, [sidInput]);
+
+  const handleReset = useCallback(() => {
+    resetDraft();
+    manualPhaseChangeRef.current = true;
+    setDraftPhase('BAN');
+    localStorage.removeItem('deeplol_proficiencies');
+    localStorage.removeItem('tryndraft_summoner_info');
+    setSidStatus('idle');
+    setSummonerInfo(null);
+    setProfCount(0);
+  }, [resetDraft]);
+
   // Determine user's pick position based on role (0-4)
   const getUserPickPosition = useCallback((): number => {
     const roleOrder: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
@@ -187,65 +246,43 @@ export const DraftPage: React.FC = () => {
     }
   }, [currentPicker, settings.side, getUserPickPosition]);
 
-  // Check if it's user's team's turn (for brief teammate pick updates)
-  const isUserTeamsTurn = useCallback((): boolean => {
-    if (!currentPicker) return false;
-    return currentPicker.side === settings.side && !currentPicker.isBan;
-  }, [currentPicker, settings.side]);
+  // Fetch LLM analysis — only called when user explicitly clicks "Explain"
+  const fetchLLMAnalysis = useCallback(async () => {
+    const freshState = useDraftStore.getState();
+    const hasActivity =
+      freshState.bans.blue.some(b => b) || freshState.bans.red.some(b => b) ||
+      freshState.picks.blue.some(p => p.champion) || freshState.picks.red.some(p => p.champion);
+    if (!hasActivity) return;
 
-  // Fetch LLM analysis with abort support
-  const fetchLLMAnalysis = useCallback(async (forceTurn?: number) => {
-    const turnToFetch = forceTurn ?? currentTurn;
-
-    // Trigger conditions:
-    // 1. Throughout entire ban phase - suggest bans to user
-    // 2. Any of user's team's pick turns (brief for teammates, detailed for user)
-    // 3. Draft complete
-    const userTurn = isUsersTurn();
-    const teamPickTurn = isUserTeamsTurn();
-
-    // During ban phase, always provide suggestions (user wants help with their bans)
-    // During pick phase, only on user's team's turns
-    // Always fetch for COMPLETE phase
-    if (draftPhase === 'PICK' && !teamPickTurn) return;
-
-    // Cancel any pending request
     if (llmAbortRef.current) {
       llmAbortRef.current.abort();
     }
 
-    // Create new abort controller for this request
     const abortController = new AbortController();
     llmAbortRef.current = abortController;
-    lastAnalysisTurnRef.current = turnToFetch;
+    lastAnalysisTurnRef.current = currentTurn;
 
     setIsLoadingAnalysis(true);
     try {
       const draftState = buildDraftState();
-      // Add flag for whether this is user's specific turn (for detailed vs brief response)
       const result = await recommendationService.getAnalysis({
         ...draftState,
-        is_user_turn: userTurn || draftPhase === 'BAN' // Always detailed during ban phase
+        is_user_turn: isUsersTurn() || draftPhase === 'BAN',
       });
 
-      // Only update if this request wasn't cancelled and turn hasn't changed
-      if (!abortController.signal.aborted && lastAnalysisTurnRef.current === turnToFetch) {
-        if (result) {
-          setLlmAnalysis(result);
-        }
+      if (!abortController.signal.aborted && lastAnalysisTurnRef.current === currentTurn) {
+        if (result) setLlmAnalysis(result);
       }
     } catch (error) {
-      // Ignore abort errors
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Failed to fetch LLM analysis:', error);
       }
     } finally {
-      // Only clear loading if this is still the active request
       if (!abortController.signal.aborted) {
         setIsLoadingAnalysis(false);
       }
     }
-  }, [buildDraftState, isUsersTurn, isUserTeamsTurn, draftPhase, currentTurn]);
+  }, [buildDraftState, isUsersTurn, draftPhase, currentTurn]);
 
   useEffect(() => {
     // Load champions if not already loaded
@@ -264,6 +301,13 @@ export const DraftPage: React.FC = () => {
     const llm = recommendationService.getFrontendLLMOptions();
     setLlmModel(llm.current);
     setLlmOptions(llm.options);
+
+    // If draft is empty, reset to turn 0 (prevents persisted turn jumping straight to PICK)
+    const freshState = useDraftStore.getState();
+    const hasAnyActivity =
+      freshState.bans.blue.some(b => b) || freshState.bans.red.some(b => b) ||
+      freshState.picks.blue.some(p => p.champion) || freshState.picks.red.some(p => p.champion);
+    if (!hasAnyActivity) setCurrentTurn(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -277,13 +321,10 @@ export const DraftPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [settings.role, draftPhase, currentTurn, matchupOverride, fetchSortedChampions]);
 
-  // Fetch LLM analysis when turn changes (debounced since it's slow)
+  // Clear stale LLM analysis when the turn changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchLLMAnalysis();
-    }, 500); // Reduced debounce
-    return () => clearTimeout(timer);
-  }, [currentTurn, draftPhase]);
+    setLlmAnalysis(null);
+  }, [currentTurn]);
 
   // Fetch draft stats when draft is complete
   useEffect(() => {
@@ -605,12 +646,14 @@ export const DraftPage: React.FC = () => {
       return;
     }
 
-    // If dragging from a slot
+    // Slot drag
     if (draggedIndex === null || draggedSide === null || draggedIsBan) return;
     if (draggedSide !== side) return;
     if (draggedIndex === targetIndex) return;
 
     const pickList = side === 'BLUE' ? picks.blue : picks.red;
+    // On enemy side, only allow moving a champion — not reordering empty boxes
+    if (side !== settings.side && !pickList[draggedIndex].champion) return;
     const sourceChampion = pickList[draggedIndex].champion;
     const targetChampion = pickList[targetIndex].champion;
     const sourceRole = pickList[draggedIndex].role;
@@ -654,19 +697,6 @@ export const DraftPage: React.FC = () => {
     // Clear hovered slot to prevent issues with stale state
     setHoveredSlot(null);
   };
-
-  const renderRolePicker = (side: 'BLUE' | 'RED', index: number, role: RoleType) => (
-    <select
-      value={role}
-      onClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onChange={(e) => setRole(index, side, e.target.value as RoleType)}
-      className="absolute right-2 top-2 bg-black/70 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-gray-200"
-      title="Pick role"
-    >
-      {PICK_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-    </select>
-  );
 
   // Handle dragging back to center (picker or LLM box) to clear slot
   const handleDropOnCenter = (e: React.DragEvent) => {
@@ -720,6 +750,20 @@ export const DraftPage: React.FC = () => {
             <button onClick={() => setSettings({ side: 'RED' })} className={`px-5 py-2 rounded text-sm font-medium ${settings.side === 'RED' ? 'bg-gray-700 text-white' : 'text-gray-500'}`}>Red</button>
           </div>
 
+          {/* My Role */}
+          <div className="flex items-center gap-1 bg-gray-900 rounded p-1" title="Your role">
+            {ROLES.map(r => (
+              <button
+                key={r}
+                onClick={() => setSettings({ role: r })}
+                className={`p-1.5 rounded transition-colors ${settings.role === r ? 'bg-amber-600' : 'opacity-30 hover:opacity-70'}`}
+                title={r}
+              >
+                <RoleIcon role={r} size={18} />
+              </button>
+            ))}
+          </div>
+
           {/* Patch */}
           <div className="text-sm text-gray-500 font-mono">{latestPatch}</div>
 
@@ -742,7 +786,7 @@ export const DraftPage: React.FC = () => {
             </button>
           </div>
 
-          <button onClick={() => { resetDraft(); manualPhaseChangeRef.current = true; setDraftPhase('BAN'); }} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
+          <button onClick={handleReset} className="px-3 py-2 text-sm text-gray-500 hover:text-white">Reset</button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -807,12 +851,15 @@ export const DraftPage: React.FC = () => {
                   {pick.champion ? (
                     <>
                       <img src={getChampionSplashUrl(pick.champion)} alt={pick.champion} className="w-full h-full object-cover object-center pointer-events-none" />
-                      {renderRolePicker('BLUE', i, pick.role)}
+                      {settings.side === 'BLUE' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <RoleIcon role={pick.role} size={30} className="opacity-40 drop-shadow-lg" />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="w-full h-full bg-gray-950 flex items-center justify-center border border-gray-900">
-                      <RoleIcon role={pick.role} size={24} className="text-gray-800" />
-                      {renderRolePicker('BLUE', i, pick.role)}
+                      {settings.side === 'BLUE' && <RoleIcon role={pick.role} size={24} className="text-gray-800" />}
                     </div>
                   )}
                 </button>
@@ -824,18 +871,50 @@ export const DraftPage: React.FC = () => {
         {/* CENTER - Statistics Bar, Champion Picker and LLM Box */}
         <div className={`flex-1 flex flex-col border-l border-r ${phaseColorClass} min-w-0`}>
           <div className="px-3 pt-2 pb-1 border-b border-gray-900 flex items-center gap-2">
-            <div className="text-[11px] px-2 py-1 rounded bg-gray-900 border border-gray-700 text-gray-300">
-              Mode: {settings.mode}
+            {/* Inline SID / Riot ID entry */}
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <input
+                type="text"
+                value={sidInput}
+                onChange={e => { setSidInput(e.target.value); setSidStatus('idle'); }}
+                onKeyDown={e => e.key === 'Enter' && handleSidLoad()}
+                placeholder="Name#TAG"
+                className="flex-1 min-w-0 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-gray-300 placeholder-gray-700 focus:outline-none focus:border-amber-500/50"
+              />
+              <button
+                onClick={handleSidLoad}
+                disabled={sidStatus === 'loading' || !sidInput.trim()}
+                className="shrink-0 px-2 py-1 rounded text-[11px] font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {sidStatus === 'loading' ? <Loader2 size={12} className="animate-spin" /> : 'Load'}
+              </button>
+              {sidStatus === 'loaded' && (
+                <span className="shrink-0 flex items-center gap-1 text-[10px]">
+                  <CheckCircle size={10} className="text-green-400 shrink-0" />
+                  {summonerInfo && (
+                    <span className="font-mono text-amber-400 tracking-tight">
+                      {summonerInfo.gameName}
+                    </span>
+                  )}
+                </span>
+              )}
+              {sidStatus === 'error' && (
+                <span className="shrink-0 flex items-center gap-1 text-[10px] text-red-400">
+                  <AlertCircle size={10} /> not found
+                </span>
+              )}
+              {sidStatus === 'idle' && profCount > 0 && (
+                <span className="shrink-0 flex items-center gap-1 text-[10px] text-gray-600">
+                  {summonerInfo && <span className="font-mono text-amber-400/60">{summonerInfo.gameName}</span>}
+                </span>
+              )}
             </div>
-            <div className="text-[10px] text-gray-500 truncate">
-              Load Deeplol in Settings
-            </div>
+
             <select
               value={llmModel}
               onChange={(e) => {
                 setLlmModel(e.target.value);
                 recommendationService.setFrontendLLMModel(e.target.value);
-                fetchLLMAnalysis();
               }}
               className="text-[11px] bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-300"
               title="Explainability LLM model"
@@ -983,165 +1062,158 @@ export const DraftPage: React.FC = () => {
             </div>
           )}
 
-          {/* LLM Box - Expands to fill space when draft is complete */}
+          {/* Recommendations + AI Analysis box */}
           <div
             className={`${draftPhase === 'COMPLETE' ? 'flex-1' : 'h-1/2'} bg-black/90 border-t-2 ${phaseColorClass} p-3 flex flex-col`}
             onDragOver={handleDragOver}
             onDrop={handleDropOnCenter}>
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">AI Analysis</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">Recommendations</div>
               <div className="flex items-center gap-2">
                 {isLoadingAnalysis && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
                 <span className="text-[10px] text-gray-700 font-mono">
-                  {modelType === 'frontend_onnx_only' ? 'Local ONNX+Softmax' : modelType === 'neural_network' ? 'NN' : modelType === 'rule_based' ? 'Rules' : ''}
+                  {modelType === 'frontend_onnx_only' ? 'ONNX' : ''}
                 </span>
+                <button
+                  onClick={() => fetchLLMAnalysis()}
+                  disabled={isLoadingAnalysis}
+                  className="text-[10px] px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Generate LLM explanation for current recommendations"
+                >
+                  Explain
+                </button>
               </div>
             </div>
-            <div className="flex-1 text-base text-gray-400 overflow-y-auto">
-              {isLoadingAnalysis && !llmAnalysis ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
-                </div>
-              ) : llmAnalysis ? (
-                <div className="space-y-2">
-                  {/* Analysis text - larger and more readable */}
-                  <p className="text-gray-100 leading-relaxed text-[16px] whitespace-pre-line">{llmAnalysis.analysis}</p>
+            <div className="flex-1 text-base text-gray-400 overflow-y-auto custom-scrollbar">
+              <div className="space-y-2">
 
-                  {/* Champion suggestions section - synced with picker using sortedChampions */}
-                  {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (
-                    <div className="pt-2 border-t border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-xs text-amber-500 uppercase tracking-wider font-bold">
-                          {draftPhase === 'BAN' ? 'Recommended Bans' : 'Recommended Picks'}
+                {/* Recommended Picks/Bans — always visible once ONNX loads */}
+                {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs text-amber-500 uppercase tracking-wider font-bold">
+                        {draftPhase === 'BAN' ? 'Recommended Bans' : `Recommended Picks · ${currentSlotRole}`}
+                      </div>
+                      {draftPhase === 'PICK' && matchupInfo && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-500">
+                            {matchupInfo.matchup_type === 'counter' ? `vs ${matchupInfo.matchup_champion}` : 'Blind'}
+                          </span>
+                          <select
+                            value={matchupOverride || ''}
+                            onChange={(e) => setMatchupOverride(e.target.value || null)}
+                            className="text-[10px] bg-gray-800 border border-gray-600 rounded px-1.5 py-0.5 text-gray-300 cursor-pointer"
+                          >
+                            <option value="">Auto</option>
+                            {Object.entries(matchupInfo.all_enemy_roles || {}).map(([champ, role]) => (
+                              <option key={champ} value={champ}>{champ} ({role})</option>
+                            ))}
+                            <option value="__blind__">Blind</option>
+                          </select>
                         </div>
-                        {/* Matchup dropdown - inline with header */}
-                        {draftPhase === 'PICK' && matchupInfo && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-500">
-                              {matchupInfo.matchup_type === 'counter' ? `vs ${matchupInfo.matchup_champion}` : 'Blind'}
-                            </span>
-                            <select
-                              value={matchupOverride || ''}
-                              onChange={(e) => setMatchupOverride(e.target.value || null)}
-                              className="text-[10px] bg-gray-800 border border-gray-600 rounded px-1.5 py-0.5 text-gray-300 cursor-pointer"
-                            >
-                              <option value="">Auto</option>
-                              {Object.entries(matchupInfo.all_enemy_roles || {}).map(([champ, role]) => (
-                                <option key={champ} value={champ}>
-                                  {champ} ({role})
-                                </option>
-                              ))}
-                              <option value="__blind__">Blind</option>
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {/* Use sortedChampions (same as picker) to ensure sync */}
-                        {sortedChampions
-                          .filter(c => c.available && !allBannedPicked.has(c.name))
-                          .slice(0, 5)
-                          .map((champ, idx) => {
-                            const isInPool = championPoolNames.has(champ.name);
-                            return (
-                              <button
-                                key={idx}
-                                onClick={() => handleChampionSelect(champ.name)}
-                                className={`flex items-center gap-1.5 rounded px-2 py-1.5 border transition-all cursor-pointer ${
-                                  isInPool
-                                    ? 'bg-cyan-900/30 border-cyan-500 hover:border-cyan-400 hover:bg-cyan-800/40'
-                                    : 'bg-gray-800/90 border-gray-700 hover:border-amber-500 hover:bg-gray-700/90'
-                                }`}
-                              >
-                                <img src={getChampionImageUrl(champ.name, latestPatch)} alt={champ.name} className="w-6 h-6 rounded" />
-                                <span className="text-sm text-gray-200 font-medium">{champ.name}</span>
-                                <span className="text-[10px] text-gray-500">{champ.score.toFixed(1)}</span>
-                              </button>
-                            );
-                          })}
-                      </div>
+                      )}
                     </div>
-                  )}
+                    <div className="flex flex-wrap gap-2">
+                      {sortedChampions
+                        .filter(c => c.available && !allBannedPicked.has(c.name))
+                        .slice(0, 5)
+                        .map((champ, idx) => {
+                          const isInPool = championPoolNames.has(champ.name);
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleChampionSelect(champ.name)}
+                              className={`flex items-center gap-1.5 rounded px-2 py-1.5 border transition-all cursor-pointer ${
+                                isInPool
+                                  ? 'bg-cyan-900/30 border-cyan-500 hover:border-cyan-400 hover:bg-cyan-800/40'
+                                  : 'bg-gray-800/90 border-gray-700 hover:border-amber-500 hover:bg-gray-700/90'
+                              }`}
+                            >
+                              <img src={getChampionImageUrl(champ.name, latestPatch)} alt={champ.name} className="w-6 h-6 rounded" />
+                              <span className="text-sm text-gray-200 font-medium">{champ.name}</span>
+                              <span className="text-[10px] text-gray-500">#{idx + 1}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
 
-                  {/* Top Pick Stats - Transparency Section */}
-                  {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (() => {
-                    // Show stats for hovered champion, or top pick if no hover
-                    const displayChamp = hoveredChampion
-                      ? sortedChampions.find(c => c.name === hoveredChampion)
-                      : sortedChampions[0];
-
-                    if (!displayChamp) return null;
-
-                    return (
+                {/* Stats transparency — always visible */}
+                {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (() => {
+                  const displayChamp = hoveredChampion
+                    ? sortedChampions.find(c => c.name === hoveredChampion)
+                    : sortedChampions[0];
+                  if (!displayChamp) return null;
+                  return (
                     <div className="pt-2 border-t border-gray-700">
-
-                      {/* Champion Stats */}
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 font-bold">
-                        {hoveredChampion ? '🎯 Hovered' : '⭐ Top Pick'} Stats ({displayChamp.target_role || settings.role})
+                        {hoveredChampion ? 'Hovered' : 'Top Pick'} · {displayChamp.target_role || settings.role}
                       </div>
                       <div className="bg-gray-900/60 rounded p-2">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <img
-                            src={getChampionImageUrl(displayChamp.name, latestPatch)}
-                            alt={displayChamp.name}
-                            className="w-8 h-8 rounded"
-                          />
+                          <img src={getChampionImageUrl(displayChamp.name, latestPatch)} alt={displayChamp.name} className="w-8 h-8 rounded" />
                           <div>
                             <div className="text-gray-200 font-semibold text-sm">{displayChamp.name}</div>
-                            <div className="text-[10px] text-gray-500">Score: {displayChamp.score?.toFixed(1)}</div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
-                          <div className="bg-gray-800/50 rounded p-1.5">
+                        <div className="flex gap-1.5 text-center text-xs">
+                          <div className="flex-1 bg-gray-800/50 rounded p-1.5">
                             <div className="text-amber-400 font-bold">
-                              {displayChamp.role_win_rate
-                                ? `${(displayChamp.role_win_rate * 100).toFixed(1)}%`
-                                : displayChamp.win_rate
-                                ? `${(displayChamp.win_rate * 100).toFixed(1)}%`
-                                : 'N/A'}
+                              #{sortedChampions.findIndex(c => c.name === displayChamp.name) + 1}
                             </div>
-                            <div className="text-[9px] text-gray-500">Win Rate</div>
+                            <div className="text-[9px] text-gray-500">Model Rank</div>
                           </div>
-                          <div className="bg-gray-800/50 rounded p-1.5">
-                            <div className="text-blue-400 font-bold">
-                              {displayChamp.role_games?.toLocaleString() || '0'}
+                          {displayChamp.in_user_pool && (displayChamp.role_games || 0) > 0 ? (
+                            <>
+                              <div className="flex-1 bg-gray-800/50 rounded p-1.5">
+                                <div className="text-blue-400 font-bold">{displayChamp.role_games}</div>
+                                <div className="text-[9px] text-gray-500">Your Games</div>
+                              </div>
+                              <div className="flex-1 bg-gray-800/50 rounded p-1.5">
+                                <div className="text-green-400 font-bold">
+                                  {displayChamp.role_win_rate ? `${(displayChamp.role_win_rate * 100).toFixed(0)}%` : '—'}
+                                </div>
+                                <div className="text-[9px] text-gray-500">Your WR</div>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex-1 bg-gray-800/50 rounded p-1.5 flex items-center justify-center">
+                              <span className="text-[9px] text-gray-600">
+                                {displayChamp.in_user_pool ? 'No pool data' : 'Not in your pool'}
+                              </span>
                             </div>
-                            <div className="text-[9px] text-gray-500">Games</div>
-                          </div>
-                          <div className="bg-gray-800/50 rounded p-1.5">
-                            <div className="text-green-400 font-bold">
-                              {displayChamp.role_kda?.toFixed(2) || 'N/A'}
-                            </div>
-                            <div className="text-[9px] text-gray-500">KDA</div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                    );
-                  })()}
+                  );
+                })()}
 
-                  {/* Source indicator */}
-                  <div className="text-[9px] text-gray-700 pt-1">
-                    {llmAnalysis.model} · {llmAnalysis.source}
+                {/* LLM explanation — only when user clicks Explain */}
+                {llmAnalysis && (
+                  <div className="pt-2 border-t border-gray-700">
+                    <p className="text-gray-100 leading-relaxed text-[15px] whitespace-pre-line">{llmAnalysis.analysis}</p>
+                    <div className="text-[9px] text-gray-700 pt-1">{llmAnalysis.model} · {llmAnalysis.source}</div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-gray-600">
-                  {draftPhase === 'COMPLETE' ? (
-                    <div className="text-center mt-8">
-                      <p className="text-lg font-bold mb-2 text-gray-500">Draft Complete!</p>
-                      <p className="text-sm">Generating final analysis...</p>
-                    </div>
-                  ) : (
-                    <div>
-                      {draftPhase === 'BAN'
-                        ? `${bans.blue.filter(b => b).length + bans.red.filter(b => b).length}/10 bans`
-                        : `${picks.blue.filter(p => p.champion).length + picks.red.filter(p => p.champion).length}/10 picks`}
-                      <p className="text-xs text-gray-700 mt-2">AI suggestions loading...</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+
+                {/* Draft complete placeholder */}
+                {draftPhase === 'COMPLETE' && (
+                  <div className="text-center mt-6">
+                    <p className="text-gray-500 font-bold mb-1">Draft Complete</p>
+                    {!llmAnalysis && <p className="text-xs text-gray-700">Click Explain for AI summary.</p>}
+                  </div>
+                )}
+
+                {/* ONNX still loading */}
+                {sortedChampions.length === 0 && draftPhase !== 'COMPLETE' && (
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Loading model...</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1199,12 +1271,15 @@ export const DraftPage: React.FC = () => {
                   {pick.champion ? (
                     <>
                       <img src={getChampionSplashUrl(pick.champion)} alt={pick.champion} className="w-full h-full object-cover object-center pointer-events-none" />
-                      {renderRolePicker('RED', i, pick.role)}
+                      {settings.side === 'RED' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <RoleIcon role={pick.role} size={30} className="opacity-40 drop-shadow-lg" />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="w-full h-full bg-gray-950 flex items-center justify-center border border-gray-900">
-                      <RoleIcon role={pick.role} size={24} className="text-gray-800" />
-                      {renderRolePicker('RED', i, pick.role)}
+                      {settings.side === 'RED' && <RoleIcon role={pick.role} size={24} className="text-gray-800" />}
                     </div>
                   )}
                 </button>

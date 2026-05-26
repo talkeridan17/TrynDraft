@@ -53,11 +53,39 @@ type DraftInput = {
   picks_red: Array<{ champion: string; role: string }>;
 };
 
+// Maps Deeplol role strings to our canonical role names
+const DEEPLOL_ROLE_MAP: Record<string, string> = {
+  top: 'TOP', jungle: 'JUNGLE', middle: 'MID', bot: 'ADC', supporter: 'SUPPORT',
+};
+
+// Deeplol sometimes returns tier as an integer index
+const TIER_ID_MAP: Record<string, string> = {
+  '0': 'UNRANKED', '1': 'IRON', '2': 'BRONZE', '3': 'SILVER',
+  '4': 'GOLD', '5': 'PLATINUM', '6': 'EMERALD', '7': 'DIAMOND',
+  '8': 'MASTER', '9': 'GRANDMASTER', '10': 'CHALLENGER',
+};
+
+function extractTierDivision(si: any): { tier: string | null; division: string | null } {
+  const divMap: Record<string, string> = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' };
+  // Try all known field names, including nested objects
+  const rawTier = (
+    si.tier ?? si.league_tier ?? si.soloq_tier ?? si.solo_tier ?? si.rank ??
+    si.soloq?.tier ?? si.solo_queue?.tier ?? si.ranked?.tier ?? ''
+  ).toString().trim();
+  // Convert numeric tier to string name
+  const tierStr = TIER_ID_MAP[rawTier] ?? rawTier;
+  const validTier = tierStr && !['UNRANKED', 'NONE', ''].includes(tierStr.toUpperCase())
+    ? tierStr.toUpperCase()
+    : null;
+  const rawDiv = si.division ?? si.league_division ?? si.soloq?.division ?? null;
+  const division = rawDiv !== null ? (divMap[String(rawDiv)] ?? String(rawDiv).toUpperCase()) : null;
+  return { tier: validTier, division };
+}
+
+
 let ddCache: any = null;
 let ortLoadPromise: Promise<any> | null = null;
 let ortSessionPromise: Promise<any> | null = null;
-let transformersLoadPromise: Promise<any> | null = null;
-let llmPipelinePromise: Promise<any> | null = null;
 let tagIndexPromise: Promise<{
   validTags: Set<string>;
   champToId: Map<string, number>;
@@ -104,13 +132,19 @@ function buildEventArrays(input: DraftInput, dd: any) {
   const seenPick = { 0: 0, 1: 0 } as Record<number, number>;
 
   for (let slot = 0; slot < sequence.length; slot++) {
-    const [side, _phase, eventType] = sequence[slot];
+    const [side, , eventType] = sequence[slot];
     const isPick = eventType === 1;
     if (isPick) {
       const idx = seenPick[side];
       const pick = side === 0 ? input.picks_blue[idx] : input.picks_red[idx];
       seenPick[side] += 1;
-      if (!pick?.champion) continue;
+      if (!pick?.champion) {
+        // Inject role hint at the target slot so the model knows which lane to fill
+        if (input.phase === 'PICK' && slot === Math.max(0, Math.min(19, input.turn))) {
+          lanes[slot] = laneToId(pick?.role || input.role);
+        }
+        continue;
+      }
       const champ = dd.byName.get(pick.champion);
       champion_ids[slot] = champ ? Number(champ.key) : 0;
       lanes[slot] = laneToId(pick.role);
@@ -130,14 +164,14 @@ function buildEventArrays(input: DraftInput, dd: any) {
 
 async function loadOrt() {
   if (ortLoadPromise) return ortLoadPromise;
-  ortLoadPromise = new Promise(async (resolve, reject) => {
-    if ((window as any).ort) return resolve((window as any).ort);
+  ortLoadPromise = new Promise((resolve, reject) => {
+    if ((window as any).ort) { resolve((window as any).ort); return; }
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js';
     script.async = true;
     script.crossOrigin = 'anonymous';
     script.onload = () => resolve((window as any).ort);
-    script.onerror = reject;
+    script.onerror = (e) => { ortLoadPromise = null; reject(e); };
     document.head.appendChild(script);
   });
   const ort = await ortLoadPromise;
@@ -171,6 +205,7 @@ async function loadDraftSession() {
       { path: 'model.onnx.data', data },
       { path: './model.onnx.data', data },
       { path: '"model.onnx.data"', data },
+      // eslint-disable-next-line no-useless-escape
       { path: '\"model.onnx.data\"', data },
     ];
 
@@ -297,10 +332,11 @@ export async function fetchAndStoreDeeplolByRiotIds(
   riotIds: string[],
   region: string = 'NA1',
   season: number = 27
-): Promise<{ imported: number; source: string }> {
+): Promise<{ imported: number; source: string; found: boolean }> {
   const base = 'https://b2c-api-cdn.deeplol.gg';
   const platformId = normalizeRegion(region);
   let imported = Object.keys(getSavedProficiencies()).length;
+  let found = false;
 
   for (const rawId of riotIds) {
     const parsed = parseRiotId(rawId);
@@ -311,17 +347,45 @@ export async function fetchAndStoreDeeplolByRiotIds(
     );
     const puuId = puuidResponse?.summoner_basic_info_dict?.puu_id || puuidResponse?.summoner?.puu_id;
     if (!puuId) continue;
+    found = true;
+
+    // Store summoner info from the summoner endpoint immediately (before champStats check)
+    try {
+      const si = puuidResponse?.summoner_basic_info_dict || puuidResponse?.summoner || {};
+      const { tier: validTier, division } = extractTierDivision(si);
+      // eslint-disable-next-line no-console
+      console.log('[Deeplol] summoner info keys:', Object.keys(si), '| tier:', validTier, '| division:', division);
+      localStorage.setItem('tryndraft_summoner_info', JSON.stringify({
+        gameName: parsed.gameName, tagLine: parsed.tagLine, tier: validTier, division,
+      }));
+    } catch { /* ignore */ }
 
     const champStats = await fetchDeeplolCandidate(
       `${base}/summoner/champion-stat?puu_id=${encodeURIComponent(puuId)}&season=${encodeURIComponent(String(season))}&platform_id=${encodeURIComponent(platformId)}`
     );
     if (!champStats) continue;
 
+    // If champStats has rank data that summoner endpoint lacked, update stored info
+    try {
+      const ci = champStats?.summoner_basic_info_dict || champStats?.summoner || {};
+      const stored = JSON.parse(localStorage.getItem('tryndraft_summoner_info') || '{}');
+      if (!stored.tier && ci) {
+        const { tier: validTier, division } = extractTierDivision(ci);
+        // eslint-disable-next-line no-console
+        console.log('[Deeplol] champStats tier fallback:', validTier, '| keys:', Object.keys(ci));
+        if (validTier) {
+          stored.tier = validTier;
+          stored.division = division;
+          localStorage.setItem('tryndraft_summoner_info', JSON.stringify(stored));
+        }
+      }
+    } catch { /* ignore */ }
+
     const parsedStats = actualStats(champStats);
     imported = upsertDeeplolEntries(parsedStats).imported;
   }
 
-  return { imported, source: base };
+  return { imported, source: base, found };
 }
 
 function parseChampionTagsCsv(csvText: string, validTagSet: Set<string>): Map<string, string[]> {
@@ -333,7 +397,8 @@ function parseChampionTagsCsv(csvText: string, validTagSet: Set<string>): Map<st
     const firstComma = line.indexOf(',');
     if (firstComma <= 0) continue;
     const champion = line.slice(0, firstComma).trim();
-    const tagMatch = line.match(/\"\\[(.*?)\\]\"/);
+    // eslint-disable-next-line no-useless-escape
+    const tagMatch = line.match(/\"\\[(.*?)\\]\"/);  // intentional escapes for CSV format
     if (!tagMatch) continue;
     const raw = tagMatch[1].trim();
     if (!raw) continue;
@@ -380,7 +445,8 @@ export function setLLMModel(modelId: string) {
   const mapped = LEGACY_MODEL_MAP[modelId] || modelId;
   const valid = (mapped in LLM_MODELS) ? mapped : DEFAULT_LLM_MODEL;
   localStorage.setItem('explainability_llm_model', valid);
-  llmPipelinePromise = null;
+  // Terminate existing worker so next call loads the new model
+  if (_llmWorker) { _llmWorker.terminate(); _llmWorker = null; }
 }
 
 function resolveStoredLLMModel(): string {
@@ -404,52 +470,36 @@ export function getLLMModelOptions() {
   };
 }
 
-async function loadTransformers() {
-  if (transformersLoadPromise) return transformersLoadPromise;
-  const importer = (0, eval)('u => import(u)') as (u: string) => Promise<any>;
-  // Update to v3 for better compatibility with onnx-community models
-  transformersLoadPromise = importer('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/dist/transformers.min.js');
-  return transformersLoadPromise;
+// LLM runs in a Web Worker so it never blocks the main thread.
+let _llmWorker: Worker | null = null;
+
+function getLLMWorker(): Worker {
+  if (!_llmWorker) {
+    _llmWorker = new Worker(
+      new URL('../workers/llm.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+  }
+  return _llmWorker;
 }
 
-async function getLLMPipeline() {
-  if (llmPipelinePromise) return llmPipelinePromise;
-  llmPipelinePromise = (async () => {
-    try {
-      // eslint-disable-next-line no-console
-      console.log('Loading LLM model...');
-      const t = await loadTransformers();
-      t.env.allowLocalModels = false;
-      const model = resolveStoredLLMModel();
-      // eslint-disable-next-line no-console
-      console.log('Creating pipeline for model:', model);
+function runLLMInWorker(prompt: string, modelId: string, maxNewTokens: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const worker = getLLMWorker();
+    const requestId = Date.now() + Math.random();
 
-      const options: any = {
-        quantized: true,
-      };
+    const handler = (e: MessageEvent) => {
+      if (e.data.requestId !== requestId) return;
+      if (e.data.type === 'result' || e.data.type === 'error') {
+        worker.removeEventListener('message', handler);
+      }
+      if (e.data.type === 'result') resolve(e.data.text as string);
+      else if (e.data.type === 'error') reject(new Error(e.data.message as string));
+    };
 
-      // Add progress callback to help user see loading status
-      options.progress_callback = (progress: any) => {
-        if (progress.status === 'progress') {
-          // eslint-disable-next-line no-console
-          console.log(`Loading ${model}: ${progress.progress.toFixed(1)}% (${progress.loaded}/${progress.total} bytes)`);
-        } else if (progress.status === 'done') {
-          // eslint-disable-next-line no-console
-          console.log(`Finished loading ${progress.file}`);
-        }
-      };
-
-      const pipeline = await t.pipeline('text-generation', model, options);
-      // eslint-disable-next-line no-console
-      console.log('LLM pipeline loaded successfully');
-      return pipeline;
-    } catch (err) {
-      // Reset promise so we can retry on next call
-      llmPipelinePromise = null;
-      throw err;
-    }
-  })();
-  return llmPipelinePromise;
+    worker.addEventListener('message', handler);
+    worker.postMessage({ type: 'generate', requestId, prompt, modelId, maxNewTokens });
+  });
 }
 
 export async function runFrontendRanking(input: DraftInput) {
@@ -460,7 +510,13 @@ export async function runFrontendRanking(input: DraftInput) {
   const { champion_ids, sides, phases, lanes, event_types } = buildEventArrays(input, dd);
 
   const turn = Math.max(0, Math.min(19, input.turn));
-  const target_mask = Array.from({ length: 20 }, (_, i) => i >= turn ? 1 : 0);
+  // During PICK phase, unmask the target slot so the model can attend to its lane hint.
+  // During BAN phase, keep original >= mask (no role to hint).
+  const target_mask = Array.from({ length: 20 }, (_, i) => {
+    if (i < turn) return 0;
+    if (i === turn && input.phase === 'PICK') return 0;
+    return 1;
+  });
 
   const feeds: Record<string, any> = {
     champion_ids: new ort.Tensor('int64', BigInt64Array.from(champion_ids.map(BigInt)), [1, 20]),
@@ -475,7 +531,7 @@ export async function runFrontendRanking(input: DraftInput) {
   let output: any;
   try {
     output = await session.run(feeds);
-  } catch (error) {
+  } catch {
     // Session may be poisoned after low-level wasm runtime fault; recreate once.
     ortSessionPromise = null;
     const freshSession = await loadDraftSession();
@@ -500,11 +556,17 @@ export async function runFrontendRanking(input: DraftInput) {
 
   const scored = probs
     .map((p, idx) => ({ id: idx, p }))
-    .filter((x) => x.p > 0 && dd.byKey.has(x.id))
+    .filter((x) => {
+      if (x.p <= 0 || !dd.byKey.has(x.id)) return false;
+      return true;
+    })
     .map((x) => {
       const champ = dd.byKey.get(x.id);
       const prof = profByKey[String(x.id)] || null;
-      const profAdj = prof ? (prof.proficiency * 0.1) : 0;
+      // Only boost if champion's stored role matches the current draft slot role
+      const profRoleNorm = prof?.role ? (DEEPLOL_ROLE_MAP[prof.role.toLowerCase()] ?? null) : null;
+      const roleMatch = !profRoleNorm || profRoleNorm === (input.role || '').toUpperCase();
+      const profAdj = (prof && roleMatch && input.phase !== 'BAN') ? (prof.proficiency * 0.1) : 0;
       const score = x.p + profAdj;
       return {
         id: String(champ.id),
@@ -568,47 +630,9 @@ Assistant:
 1.`;
 
   try {
-    const generator = await getLLMPipeline();
-    const t = await loadTransformers();
-
-    // eslint-disable-next-line no-console
-    console.log('Generating explanation with prompt length:', prompt.length);
-
-    let streamedText = '';
-    const streamer = args.onStream ? new t.TextStreamer(generator.tokenizer, {
-      skip_prompt: true,
-      callback_function: (text: string) => {
-        streamedText += text;
-        // Clean up tokens in real-time and prepend the '1.' we forced
-        const cleaned = streamedText.replace(/<\|im_start\|>|<\|im_end\|>|system|user|assistant/gi, '').trim();
-        args.onStream?.('1. ' + cleaned);
-      },
-    }) : undefined;
-
-    const output = await generator(prompt, {
-      max_new_tokens: args.isUserTurn ? 160 : 96,
-      temperature: 0.35,
-      do_sample: true,
-      repetition_penalty: 1.15,
-      return_full_text: false,
-      streamer,
-    });
-    // eslint-disable-next-line no-console
-    console.log('LLM raw output:', output);
-    let raw = '';
-    const first = output?.[0]?.generated_text;
-    // eslint-disable-next-line no-console
-    console.log('First generated_text:', first);
-    if (typeof first === 'string') {
-      // Clean up any remaining artifacts and prepend the '1.' we forced in the prompt
-      const cleaned = first.replace(/<\|im_start\|>|<\|im_end\|>|system|user|assistant/gi, '').trim();
-      raw = '1. ' + cleaned;
-    } else {
-      raw = String(first || '').trim();
-    }
-    return { analysis: raw || 'LLM response was empty. Try a smaller model or reload.', model: current, source: 'frontend_llm_rag' };
+    const text = await runLLMInWorker(prompt, current, args.isUserTurn ? 160 : 96);
+    return { analysis: text, model: current, source: 'frontend_llm_rag' };
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('LLM explainability error:', err);
     const quick = args.topChampions.slice(0, 3).map(c => c.name).join(', ');
     return {

@@ -1,43 +1,155 @@
 # TrynDraft - Production Deployment Guide
 
-Complete guide for deploying TrynDraft to production environments.
+**Last Updated:** 2026-05-25
+
+TrynDraft is now a **static frontend-only application**. There is no backend required for the core draft experience — the ONNX model, LLM, and Deeplol proficiency lookup all run client-side in the browser.
 
 ---
 
-## Architecture Overview
+## Current Architecture (v0.7)
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL  │
-│   (React)    │     │  (FastAPI)   │     │              │
-│   Port 3000  │     │   Port 8000  │     │   Port 5432  │
-└──────────────┘     └──────────────┘     └──────────────┘
-                            │
-                     ┌──────┴──────┐
-                     ▼             ▼
-              ┌───────────┐ ┌───────────┐
-              │   Redis   │ │ Scheduler │
-              │   Cache   │ │ (Scraping)│
-              └───────────┘ └───────────┘
+┌────────────────────────────────────────────────────┐
+│             Browser (React + ONNX Runtime Web)     │
+│                                                    │
+│  ┌──────────────┐  ┌──────────────┐               │
+│  │  ONNX Model  │  │  Qwen2.5 LLM │               │
+│  │  (20MB, CDN) │  │  (HuggingFace│               │
+│  └──────────────┘  └──────────────┘               │
+│                                                    │
+│  ┌──────────────┐  ┌──────────────┐               │
+│  │  Data Dragon │  │  Deeplol CDN │               │
+│  │  (champions) │  │  (SID stats) │               │
+│  └──────────────┘  └──────────────┘               │
+└────────────────────────────────────────────────────┘
+        ↑ served as static files from any CDN
 ```
+
+No database, no auth, no Redis, no backend process. Serves as a `dist/` folder from any static host.
 
 ## Technology Stack
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | Frontend | React 19 + TypeScript + Vite | User interface |
-| Backend | FastAPI + Python 3.12 | API server |
-| Database | PostgreSQL 15 | Data persistence |
-| Cache | Redis 7 | Session & rate limiting |
-| AI/ML | PyTorch + HuggingFace | Neural network & LLM |
-| Scraping | APScheduler + aiohttp | Automated data collection |
-| Deployment | Docker + Docker Compose | Container orchestration |
+| AI Inference | ONNX Runtime Web (CDN) | DraftTransformer in browser |
+| LLM | HuggingFace Transformers.js v3 | Explainability (Qwen2.5) |
+| Player Data | Deeplol.gg CDN API | Champion proficiency per Riot ID |
+| Champion Data | Riot Data Dragon CDN | Champion names, images, patches |
+| Deployment | Vercel / Netlify / GitHub Pages | Static site hosting |
 
 ---
 
-## Quick Start with Docker
+## Deploying to Vercel (Recommended — 5 minutes)
 
-### 1. Clone and Configure
+This is the fastest path to a live URL.
+
+### 1. Build locally to verify
+
+```bash
+cd frontend
+npm install
+npm run build       # produces frontend/dist/
+```
+
+### 2. Deploy via Vercel CLI
+
+```bash
+npm install -g vercel
+cd frontend
+vercel --prod
+```
+
+Or connect the GitHub repo to vercel.com → set **Root Directory** to `frontend` → auto-deploys on every push to `main`.
+
+### 3. Set the one required env var
+
+In Vercel project settings → Environment Variables:
+
+```
+VITE_API_URL=   (leave blank — frontend-only mode, no backend)
+```
+
+That's it. The ONNX model, LLM weights, and all data are fetched client-side at runtime.
+
+---
+
+## Deploying to Netlify
+
+```bash
+cd frontend
+npm run build
+npx netlify deploy --prod --dir=dist
+```
+
+Or drag `frontend/dist/` onto app.netlify.com.
+
+Add a `frontend/public/_redirects` file to handle SPA routing:
+```
+/*    /index.html   200
+```
+
+---
+
+## Custom Domain
+
+Once you have a domain (e.g. tryndraft.com):
+
+1. In Vercel/Netlify: Add custom domain → point DNS to their nameservers
+2. TLS is automatic (Let's Encrypt)
+3. Update `CORS_ORIGINS` if you later add a backend
+
+**Estimated time from domain purchase to live site: 1–2 hours** (DNS propagation is the bottleneck).
+
+---
+
+## CI/CD (GitHub Actions)
+
+The existing `.github/workflows/ci.yml` already:
+- Type-checks and lints the frontend on every push to `dev` or `main`
+- Builds the frontend and verifies it compiles
+
+To add auto-deploy on merge to `main`, uncomment the Vercel step in `ci.yml` and add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` to GitHub Secrets.
+
+---
+
+## Model Updates
+
+When the DraftTransformer is retrained (new patch data), update the browser model:
+
+```bash
+cd llm-ai-stuff
+python training/refresh.py --skip-scrape --epochs 50 --fine-tune
+# This copies updated ONNX files to frontend/public/models/ automatically
+```
+
+Then commit + push → CI builds → Vercel deploys → users get the new model on next page load.
+
+---
+
+## Legacy: Docker / Backend Setup
+
+The backend (`backend/`) still exists and can be used for saved drafts or additional analytics in the future. The Docker Compose setup from earlier versions still works. See git history for the full backend deployment guide. For the current release, it is not needed.
+
+---
+
+## Deployment Timeline
+
+| Date | Milestone |
+|---|---|
+| 2026-04-18 | DraftTransformer model complete (Rohan) |
+| 2026-05-25 | Merge frontend-AI branch, remove auth, SID lookup integrated |
+| **Target: 2026-06-01** | **Domain live, first public users** |
+| Target: 2026-06-15 | Model retrain on Season 2026 patch data |
+| Target: 2026-07 | Clash mode end-to-end tested, team sharing feature |
+
+---
+
+## Legacy Docker Setup (pre-v0.7)
+
+> The following is kept for reference. Not needed for the current static deployment.
+
+### Quick Start with Docker
 
 ```bash
 git clone https://github.com/yourusername/TrynDraft.git
@@ -47,9 +159,7 @@ cd TrynDraft
 cp .env.example .env
 ```
 
-### 2. Configure Environment Variables
-
-Edit `.env` with production values:
+### Environment Variables
 
 ```bash
 # Security (REQUIRED)
