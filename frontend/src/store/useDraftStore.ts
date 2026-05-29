@@ -1,16 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { championService } from '../utils/api';
+import { getDraftSequence, type DraftMode } from '../utils/draftOrder';
 
-export type GameModeType = 'SWIFT' | 'DRAFT' | 'RANKED' | 'ARAM' | 'FLEX' | 'CLASH' | 'CUSTOM' | 'PRO';
+export type GameModeType = DraftMode;
 export type TeamSide = 'BLUE' | 'RED';
-export type RoleType = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT';
+export type RoleType = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' | 'FLEX';
 
 interface DraftSettings {
   mode: GameModeType;
   side: TeamSide;
   role: RoleType;
-  elo: string;
   patch: string;
   phase: 'BAN' | 'PICK';
 }
@@ -31,9 +31,6 @@ interface DraftState {
     red: Array<{ champion: string; role: RoleType }>;
   };
   
-  // Backend draft ID
-  draftId: string | null;
-  
   // Computed getter functions
   getTakenChampions: () => Set<string>;
   getAvailableChampions: () => string[];
@@ -47,9 +44,7 @@ interface DraftState {
   previousTurn: () => void;
   
   loadChampions: () => Promise<void>;
-  createDraft: () => Promise<string | null>;
-  syncWithBackend: () => Promise<void>;
-  
+
   // Draft actions
   addBan: (champion: string, side: TeamSide, position?: number) => boolean;
   removeBan: (champion: string, side: TeamSide) => void;
@@ -64,10 +59,9 @@ interface DraftState {
 const defaultRoles: RoleType[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
 
 const defaultSettings: DraftSettings = {
-  mode: 'DRAFT',
+  mode: 'SOLOQ',
   side: 'BLUE',
   role: 'TOP',
-  elo: 'PLATINUM',
   patch: '16.2.1',
   phase: 'BAN',
 };
@@ -75,6 +69,7 @@ const defaultSettings: DraftSettings = {
 const defaultPicks = defaultRoles.map(role => ({ champion: '', role }));
 
 // Helper function to compute taken champions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const computeTakenChampions = (bans: { blue: string[]; red: string[] }, picks: { blue: any[]; red: any[] }) => {
   const taken = new Set<string>();
   
@@ -101,12 +96,10 @@ export const useDraftStore = create<DraftState>()(
       
       allChampions: [],
       loadingChampions: false,
-      
+
       bans: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] },
       picks: { blue: [...defaultPicks], red: [...defaultPicks] },
-      
-      draftId: null,
-      
+
       // Computed getters
       getTakenChampions: () => {
         const state = get();
@@ -130,32 +123,10 @@ export const useDraftStore = create<DraftState>()(
 
         // If turn is -1, no cursor (all slots filled)
         if (turn === -1) return null;
-
-        const userSide = state.settings.side;
-        const enemySide: TeamSide = userSide === 'BLUE' ? 'RED' : 'BLUE';
-
-        if (turn < 10) { // Ban phase - user's 5 bans first, then enemy's 5
-          if (turn < 5) {
-            return { side: userSide, position: turn, isBan: true };
-          } else {
-            return { side: enemySide, position: turn - 5, isBan: true };
-          }
-        } else { // Pick phase
-          const pickOrder = [
-            { side: 'BLUE' as TeamSide, position: 0 },
-            { side: 'RED' as TeamSide, position: 0 },
-            { side: 'RED' as TeamSide, position: 1 },
-            { side: 'BLUE' as TeamSide, position: 1 },
-            { side: 'BLUE' as TeamSide, position: 2 },
-            { side: 'RED' as TeamSide, position: 2 },
-            { side: 'RED' as TeamSide, position: 3 },
-            { side: 'BLUE' as TeamSide, position: 3 },
-            { side: 'BLUE' as TeamSide, position: 4 },
-            { side: 'RED' as TeamSide, position: 4 },
-          ];
-          const picker = pickOrder[turn - 10];
-          return { ...picker, isBan: false };
-        }
+        const sequence = getDraftSequence(state.settings.mode);
+        const picker = sequence[turn];
+        if (!picker) return null;
+        return picker;
       },
       
       // Actions
@@ -184,60 +155,6 @@ export const useDraftStore = create<DraftState>()(
         } catch (error) {
           console.error('Failed to load champions:', error);
           set({ loadingChampions: false });
-        }
-      },
-      
-      createDraft: async () => {
-        try {
-          // TODO: Implement actual API call with draft data
-          // const state = get();
-          // const draftData = {
-          //   game_mode: state.settings.mode,
-          //   side: state.settings.side,
-          //   role: state.settings.role,
-          //   elo: state.settings.elo,
-          //   patch: state.settings.patch,
-          //   phase: state.settings.phase,
-          //   current_turn: state.currentTurn,
-          //   bans_blue: state.bans.blue,
-          //   bans_red: state.bans.red,
-          //   picks_blue: state.picks.blue,
-          //   picks_red: state.picks.red
-          // };
-          // const draft = await draftService.create(draftData);
-          // set({ draftId: draft.id });
-          // return draft.id;
-
-          // Mock implementation for now
-          const mockId = `draft-${Date.now()}`;
-          set({ draftId: mockId });
-          return mockId;
-          
-        } catch (error) {
-          console.error('Failed to create draft:', error);
-          return null;
-        }
-      },
-      
-      syncWithBackend: async () => {
-        const { draftId } = get();
-        if (!draftId) return;
-        
-        try {
-          // TODO: Implement actual API call
-          // const draft = await draftService.get(draftId);
-          // set({
-          //   bans: { blue: draft.bans_blue || [], red: draft.bans_red || [] },
-          //   picks: { blue: draft.picks_blue || defaultPicks, red: draft.picks_red || defaultPicks },
-          //   currentTurn: draft.current_turn || 0,
-          //   settings: {
-          //     ...get().settings,
-          //     phase: draft.phase || 'BAN',
-          //     patch: draft.patch || '14.5.1'
-          //   }
-          // });
-        } catch (error) {
-          console.error('Failed to sync draft:', error);
         }
       },
       
@@ -445,15 +362,14 @@ export const useDraftStore = create<DraftState>()(
         set((state) => ({
           settings: {
             ...defaultSettings,
-            // Preserve user's role and elo settings
+            // Preserve user's role and mode settings
             role: state.settings.role,
-            elo: state.settings.elo,
+            mode: state.settings.mode,
             patch: state.settings.patch,
           },
           currentTurn: 0,
           bans: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] },
           picks: { blue: [...defaultPicks], red: [...defaultPicks] },
-          draftId: null
         }));
       }
     }),
@@ -465,12 +381,12 @@ export const useDraftStore = create<DraftState>()(
         currentTurn: state.currentTurn,
         bans: state.bans,
         picks: state.picks,
-        draftId: state.draftId,
         // Don't persist allChampions - fetch fresh every time
       }),
       // Migrate old state format to new format
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       migrate: (persistedState: any, version: number) => {
-        // Helper to fix bans arrays
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fixBansArray = (arr: any): string[] => {
           const result = ['', '', '', '', ''];
           if (Array.isArray(arr)) {
@@ -484,7 +400,8 @@ export const useDraftStore = create<DraftState>()(
         };
 
         // Helper to fix picks arrays
-        const fixPicksArray = (arr: any): Array<{ champion: string; role: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' }> => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fixPicksArray = (arr: any): Array<{ champion: string; role: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT' | 'FLEX' }> => {
           const defaultRoles: Array<'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'> = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
           const result = defaultRoles.map(role => ({ champion: '', role }));
           if (Array.isArray(arr)) {
@@ -492,7 +409,7 @@ export const useDraftStore = create<DraftState>()(
               if (i < 5 && pick && typeof pick === 'object') {
                 result[i] = {
                   champion: typeof pick.champion === 'string' ? pick.champion : '',
-                  role: defaultRoles.includes(pick.role) ? pick.role : defaultRoles[i]
+                  role: [...defaultRoles, 'FLEX'].includes(pick.role) ? pick.role : defaultRoles[i]
                 };
               }
             });
@@ -530,6 +447,12 @@ export const useDraftStore = create<DraftState>()(
 
           // Reset currentTurn to 0
           persistedState.currentTurn = 0;
+        }
+
+        // Normalize mode after older schemas
+        if (!persistedState.settings) persistedState.settings = { ...defaultSettings };
+        if (persistedState.settings.mode !== 'SOLOQ' && persistedState.settings.mode !== 'CLASH') {
+          persistedState.settings.mode = 'SOLOQ';
         }
 
         return persistedState;

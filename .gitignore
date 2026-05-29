@@ -372,6 +372,7 @@ backend/*.pyc
 backend/data_cache/
 backend/logs/
 backend/training_data/  # LLM training data (can be large)
+!llm-ai-stuff/data/
 
 # Docker
 docker-compose.override.yml
@@ -387,3 +388,15 @@ docker-compose.override.yml
 Thumbs.db
 
 .claude
+llm-ai-stuff/training/temp_data/*
+llm-ai-stuff/training/deeplol_collector.py
+
+# Model training — large binary artifacts, never commit these
+model-training/models/*.pt
+model-training/models/*.pth
+model-training/data/cleaned_matches_df.pkl
+model-training/data/cleaned_soloq_matches_df.pkl
+model-training/data/unified_data.pkl
+model-training/data/raw_soloq/
+model-training/.venv/
+model-training/refresh.log
