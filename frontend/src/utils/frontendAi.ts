@@ -368,8 +368,6 @@ export async function fetchAndStoreDeeplolByRiotIds(
     try {
       const si = puuidResponse?.summoner_basic_info_dict || puuidResponse?.summoner || {};
       const { tier: validTier, division } = extractTierDivision(si);
-      // eslint-disable-next-line no-console
-      console.log('[Deeplol] summoner info keys:', Object.keys(si), '| tier:', validTier, '| division:', division);
       localStorage.setItem('tryndraft_summoner_info', JSON.stringify({
         gameName: parsed.gameName, tagLine: parsed.tagLine, tier: validTier, division,
       }));
@@ -387,8 +385,6 @@ export async function fetchAndStoreDeeplolByRiotIds(
       const stored = JSON.parse(localStorage.getItem('tryndraft_summoner_info') || '{}');
       if (!stored.tier && ci) {
         const { tier: validTier, division } = extractTierDivision(ci);
-        // eslint-disable-next-line no-console
-        console.log('[Deeplol] champStats tier fallback:', validTier, '| keys:', Object.keys(ci));
         if (validTier) {
           stored.tier = validTier;
           stored.division = division;
@@ -489,8 +485,6 @@ function resolveStoredLLMModel(): string {
   const valid = (mapped in LLM_MODELS) ? mapped : DEFAULT_LLM_MODEL;
   if (valid !== raw) {
     localStorage.setItem('explainability_llm_model', valid);
-    // eslint-disable-next-line no-console
-    console.log('Migrated LLM model from', raw, 'to', valid);
   }
   return valid;
 }

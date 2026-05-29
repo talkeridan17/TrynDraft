@@ -52,7 +52,7 @@ export const DraftPage: React.FC = () => {
   });
   const [hoveredChampion, setHoveredChampion] = useState<string | null>(null);
   // Cache ranked champion data so hovering a placed pick still shows stats
-  const champInfoCache = useRef<Record<string, any>>({});
+  const champInfoCache = useRef<Record<string, ScoredChampion>>({});
 
   // SID (Summoner ID / Riot ID) quick-entry
   const [sidInput, setSidInput] = useState('');
@@ -174,7 +174,7 @@ export const DraftPage: React.FC = () => {
       });
       if (result.champions.length > 0) {
         setSortedChampions(result.champions);
-        result.champions.forEach((c: any) => { champInfoCache.current[c.name] = c; });
+        result.champions.forEach((c: ScoredChampion) => { champInfoCache.current[c.name] = c; });
         setModelType(result.model_type);
         console.log('💾 [PICKER] Set sortedChampions state with', result.champions.length, 'champions');
         // Update matchup info from response
