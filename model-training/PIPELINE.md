@@ -1,13 +1,13 @@
 # TrynDraft AI Pipeline
 
-This document describes every component in the `llm-ai-stuff/` folder and how to use it end-to-end — from raw match data all the way to the ONNX model running live in the browser.
+This document describes every component in the `model-training/` folder and how to use it end-to-end — from raw match data all the way to the ONNX model running live in the browser.
 
 ---
 
 ## Directory Structure
 
 ```
-llm-ai-stuff/
+model-training/
 ├── checkpoints/           # Exported JSON artifacts (champ_to_id, tags, valid_tags)
 ├── data/                  # All data artifacts and processing scripts
 │   ├── annotated_abilities_df.pkl  # Champion ability → tag annotations
@@ -33,8 +33,9 @@ llm-ai-stuff/
     ├── export_onnx.py      # Export .pt checkpoint → ONNX
     ├── inference.py        # Python inference wrapper
     ├── proficiency.py      # Deeplol champion proficiency scoring
-    ├── refresh.py          # ⭐ Full pipeline orchestration script
-    └── testing_general.py  # Inference smoke tests
+    ├── refresh.py              # ⭐ Full pipeline orchestration script
+    ├── compute_role_affinity.py # Computes per-champion role frequencies → role_affinity.json
+    └── inference.py            # Python inference wrapper (dev use)
 ```
 
 ---
@@ -76,20 +77,27 @@ Each event in the 20-step sequence encodes:
 | `pick_ban_logits` | Raw logit per champion | `[batch, 1000]` |
 | `win_probability_logit` | Blue-side win probability logit | `[batch]` |
 
-### Proficiency Adjustment (Frontend)
+### Role Affinity + Proficiency Adjustment (Frontend)
 
-After softmax over `pick_ban_logits`, the browser adds a player-specific proficiency boost:
+After softmax over `pick_ban_logits`, two post-processing steps are applied:
 
+**1. Role affinity multiplier** (data-driven, never hardcoded):
 ```
-final_score = softmax_prob + (proficiency * 0.1)
+role_mult = role_affinity[champion][target_role]  # 0.0–1.0
+adjusted_prob = softmax_prob * role_mult
 ```
+`role_affinity.json` stores per-champion role frequencies computed from pro-play picks. A champion with 0% affinity for the requested role gets a score of 0.
 
+**2. Player proficiency boost** (if Riot ID loaded):
+```
+final_score = adjusted_prob + (proficiency * 0.1)
+```
 `proficiency` is computed from the player's Deeplol.gg data:
 ```
 proficiency = 0.50 * ai_score_norm + 0.30 * wr_score + 0.20 * games_score
 ```
 
-This personalizes recommendations without requiring a server.
+Both steps run entirely in the browser with no backend required.
 
 ---
 
@@ -126,32 +134,36 @@ Two static feature matrices are baked into the model at export time:
 ### Prerequisites
 
 ```bash
-cd llm-ai-stuff
-pip install torch pandas requests psutil onnx onnxruntime python-dotenv
+cd model-training
+python -m venv .venv && source .venv/bin/activate
+pip install torch onnx onnxruntime onnxscript pandas numpy tqdm scipy requests python-dotenv psutil
 ```
 
-Set your Riot API key:
-```bash
-export RIOT_API_KEY=RGAPI-your-key-here
+Set your Riot API key and key type in `model-training/.env`:
+```
+RIOT_API_KEY=RGAPI-your-key-here
+RIOT_KEY_TYPE=personal   # or "production" for higher rate limits
 ```
 
 ### Full Pipeline (scrape + train + export + deploy)
 
 ```bash
 python training/refresh.py \
-  --riot-key $RIOT_API_KEY \
   --platform na1 \
   --tier EMERALD \
-  --max-games 10000 \
-  --epochs 50
+  --max-games 5000 \
+  --fine-tune \
+  --epochs 30
 ```
 
 This will:
-1. Scrape up to 10,000 fresh Emerald+ SoloQ games from `na1`
-2. Clean and merge with existing pro-play data
-3. Train the DraftTransformer for 50 epochs (fine-tuning from existing checkpoint)
-4. Export to ONNX
-5. Copy `model.onnx`, `model.onnx.data`, `model.json`, `champ_to_id.json`, `tags.json`, `champion_tags.csv` → `frontend/public/models/`
+1. Scrape up to 5,000 fresh Emerald+ SoloQ games from `na1`
+2. Clean and unify with existing pro-play data
+3. Fine-tune the DraftTransformer for 30 epochs from `models/best.pt`
+4. Recompute role affinity frequencies → `checkpoints/role_affinity.json`
+5. Export to ONNX
+6. Copy `model.onnx`, `model.onnx.data`, `model.json`, `role_affinity.json`, `champ_to_id.json`, `tags.json`, `champion_tags.csv` → `frontend/public/models/`
+7. Clean up intermediate epoch checkpoints automatically
 
 After this completes, the updated model is immediately active next time you run or build the frontend.
 

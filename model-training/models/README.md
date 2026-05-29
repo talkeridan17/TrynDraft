@@ -114,7 +114,7 @@ model.eval()
 | Dataset           | Source                                          | Matches  | Time Period |
 | ----------------- | ----------------------------------------------- | -------- | ----------- |
 | **Pro Matches**   | Professional leagues (LCK, LPL, LEC, LCS, etc.) | ~60,000  | 2020-2024   |
-| **SoloQ Matches** | High ELO ranked games                           | ~100,000 | 2026        |
+| **SoloQ Matches** | High ELO ranked games (Emerald+)                | Pending production key | 2026 |
 
 ### Data Features
 
