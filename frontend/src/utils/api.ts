@@ -222,10 +222,6 @@ export const recommendationService = {
     }
   },
 
-  getGameplan: async (draftState: DraftState): Promise<any> => {
-    return recommendationService.getAnalysis(draftState);
-  },
-
   getDraftStats: async (draftState: DraftState): Promise<DraftStats | null> => {
     try {
       const local = await runFrontendRanking(draftState);
@@ -253,12 +249,6 @@ export const recommendationService = {
       console.error('Failed to get draft stats:', error);
       return null;
     }
-  },
-
-  getAvailableModels: async (): Promise<{ models: Record<string, boolean>; has_any_model: boolean; recommendation_mode: string }> => {
-    const llm = getLLMModelOptions();
-    const models = llm.options.reduce((acc, model) => { acc[model.id] = true; return acc; }, {} as Record<string, boolean>);
-    return { models, has_any_model: true, recommendation_mode: 'frontend_onnx_llm' };
   },
 
   getFrontendLLMOptions: () => getLLMModelOptions(),

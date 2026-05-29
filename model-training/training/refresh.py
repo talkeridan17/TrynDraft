@@ -23,6 +23,7 @@ import json
 import shutil
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]           # repo root
@@ -33,12 +34,33 @@ CHECKPOINTS_DIR = LLM_DIR / "checkpoints"
 MODELS_DIR = LLM_DIR / "models"
 FRONTEND_MODELS = ROOT / "frontend" / "public" / "models"
 
-CHECKPOINT_PT = MODELS_DIR / "base_prediction_model.pt"
+CHECKPOINT_PT = MODELS_DIR / "best.pt"
+CHECKPOINT_PT_FALLBACK = MODELS_DIR / "base_prediction_model.pt"
 ONNX_OUTPUT = MODELS_DIR / "model.onnx"
 
 TAG_DF = DATA_DIR / "annotated_abilities_df.pkl"
 DAMAGE_DF = DATA_DIR / "champion_damage_breakdown.pkl"
 UNIFIED_DF = DATA_DIR / "cleaned_matches_df.pkl"
+
+LOG_FILE = LLM_DIR / "refresh.log"
+
+
+class _Tee:
+    """Write to both stdout and the log file simultaneously."""
+    def __init__(self, log_path: Path):
+        self._log = open(log_path, "w", buffering=1)
+        self._stdout = sys.__stdout__
+
+    def write(self, data: str):
+        self._stdout.write(data)
+        self._log.write(data)
+
+    def flush(self):
+        self._stdout.flush()
+        self._log.flush()
+
+    def close(self):
+        self._log.close()
 
 
 def run(cmd: list[str], cwd: Path = LLM_DIR, env_extra: dict | None = None) -> int:
@@ -66,13 +88,19 @@ def step_scrape(args: argparse.Namespace) -> bool:
     raw_output = DATA_DIR / "raw_soloq"
     raw_output.mkdir(parents=True, exist_ok=True)
 
+    # Translate --max-games to scraper's --max-summoners / --matches-per-summoner.
+    # Default: 50 summoners × 100 matches each = 5,000 games (after dedup, ~3–4K unique).
+    matches_per = 100
+    max_summoners = max(1, args.max_games // matches_per)
+
     rc = run(
         [
             sys.executable, "scraping/scraper.py",
             "--platform", args.platform,
             "--tier", args.tier,
             "--output", str(raw_output),
-            "--max-games", str(args.max_games),
+            "--max-summoners", str(max_summoners),
+            "--matches-per-summoner", str(matches_per),
         ],
         env_extra={"RIOT_API_KEY": args.riot_key},
     )
@@ -94,11 +122,22 @@ def step_clean(args: argparse.Namespace) -> bool:
 
     rc = run(
         [sys.executable, "-c", f"""
-import sys
+import sys, os, pickle
 sys.path.insert(0, "{DATA_DIR}")
-from unify import unify
-df = unify("{proplay_pkl}", "{raw_soloq}")
-import pickle
+from unify import clean_soloq_matches, unify
+
+# Step 1: raw JSON directory → cleaned soloq pickle
+raw_dir = "{raw_soloq}"
+soloq_pkl = "{DATA_DIR / 'cleaned_soloq_matches_df.pkl'}"
+if os.path.isdir(raw_dir) and any(f.endswith('.json') for f in os.listdir(raw_dir)):
+    print(f"Cleaning {{len([f for f in os.listdir(raw_dir) if f.endswith('.json')])}} raw JSON files...")
+    clean_soloq_matches(raw_dir)
+elif not os.path.exists(soloq_pkl):
+    print("⚠  No raw soloq data found, using proplay only")
+    soloq_pkl = None
+
+# Step 2: unify proplay + soloq into training format
+df = unify("{proplay_pkl}", soloq_pkl) if soloq_pkl else __import__('pandas').read_pickle("{proplay_pkl}")
 with open("{UNIFIED_DF}", "wb") as f:
     pickle.dump(df, f)
 print(f"Unified DataFrame saved: {{len(df)}} records")
@@ -127,10 +166,37 @@ def step_train(args: argparse.Namespace) -> bool:
         "--output", str(MODELS_DIR),
         "--epochs", str(args.epochs),
     ]
-    if args.fine_tune and CHECKPOINT_PT.exists():
-        cmd += ["--resume", str(CHECKPOINT_PT)]
+    resume_ckpt = CHECKPOINT_PT if CHECKPOINT_PT.exists() else CHECKPOINT_PT_FALLBACK
+    if args.fine_tune and resume_ckpt.exists():
+        cmd += ["--resume", str(resume_ckpt)]
 
     rc = run(cmd)
+    return rc == 0
+
+
+def step_cleanup() -> None:
+    """Remove intermediate training artifacts that aren't needed after export."""
+    removed = []
+    # Periodic epoch checkpoints
+    for f in MODELS_DIR.glob("epoch_*.pt"):
+        f.unlink()
+        removed.append(f.name)
+    # Tag index file written by train.py (baked into model.json already)
+    tags_cache = MODELS_DIR / "valid_tags.json"
+    if tags_cache.exists():
+        tags_cache.unlink()
+        removed.append(tags_cache.name)
+    if removed:
+        print(f"  Cleaned up: {', '.join(removed)}")
+
+
+def step_role_affinity() -> bool:
+    """Compute per-champion role affinity from pro-play data."""
+    print("\n" + "="*60)
+    print("STEP 3.5: Computing role affinity")
+    print("="*60)
+
+    rc = run([sys.executable, str(TRAINING_DIR / "compute_role_affinity.py")])
     return rc == 0
 
 
@@ -140,14 +206,17 @@ def step_export() -> bool:
     print("STEP 4: Exporting to ONNX")
     print("="*60)
 
-    if not CHECKPOINT_PT.exists():
-        print(f"❌ Checkpoint not found: {CHECKPOINT_PT}")
+    ckpt = CHECKPOINT_PT if CHECKPOINT_PT.exists() else CHECKPOINT_PT_FALLBACK
+    if not ckpt.exists():
+        print(f"❌ No checkpoint found at {CHECKPOINT_PT} or {CHECKPOINT_PT_FALLBACK}")
         return False
+    if ckpt == CHECKPOINT_PT_FALLBACK:
+        print(f"⚠  best.pt not found, falling back to {CHECKPOINT_PT_FALLBACK.name}")
 
     rc = run(
         [
             sys.executable, str(TRAINING_DIR / "export_onnx.py"),
-            "--checkpoint", str(CHECKPOINT_PT),
+            "--checkpoint", str(ckpt),
             "--tags", str(TAG_DF),
             "--damage", str(DAMAGE_DF),
             "--output", str(ONNX_OUTPUT),
@@ -189,6 +258,11 @@ def step_deploy_frontend() -> bool:
     tags_csv = DATA_DIR / "champion_tags.csv"
     if tags_csv.exists():
         files_to_copy.append((tags_csv, FRONTEND_MODELS / "champion_tags.csv"))
+
+    # role_affinity.json lives in checkpoints/
+    role_affinity = CHECKPOINTS_DIR / "role_affinity.json"
+    if role_affinity.exists():
+        files_to_copy.append((role_affinity, FRONTEND_MODELS / "role_affinity.json"))
 
     success = True
     for src, dst in files_to_copy:
@@ -237,6 +311,11 @@ def main():
         import os
         args.riot_key = os.environ.get("RIOT_API_KEY")
 
+    # Mirror all output to refresh.log (overwritten each run)
+    tee = _Tee(LOG_FILE)
+    sys.stdout = tee  # type: ignore[assignment]
+
+    print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("TrynDraft Model Refresh Pipeline")
     print(f"  Platform : {args.platform}")
     print(f"  Tier     : {args.tier}")
@@ -261,6 +340,8 @@ def main():
             print("❌ Training failed. Aborting.")
             sys.exit(1)
 
+    step_role_affinity()
+
     if not args.skip_export:
         ok = step_export()
         if not ok:
@@ -272,10 +353,14 @@ def main():
         if not ok:
             print("⚠  Some files missing from deploy step")
 
+    step_cleanup()
+
     print("\n" + "="*60)
     print("✅ Refresh pipeline complete!")
     print(f"   Model: {ONNX_OUTPUT}")
     print(f"   Frontend: {FRONTEND_MODELS}/model.onnx")
+    print(f"   Finished: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"   Log: {LOG_FILE}")
     print("="*60)
 
 

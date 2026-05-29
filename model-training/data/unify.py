@@ -77,11 +77,13 @@ def unify(proplay_fp, soloq_fp):
         new_df_row['bans'] = match['bans']
         new_df_row['picks'] = match['picks'] # Assume pick and bans are in order in array
         for ban in new_df_row['bans']:
-            ban['side'] = 0 if ban['side'] == 'blue' else 1
-            ban['champion_name'] = champion_map[ban['champion_id']]
+            s = ban['side']
+            ban['side'] = 0 if s == 'blue' else (1 if s == 'red' else int(s))
+            ban['champion_name'] = champion_map.get(ban['champion_id'], str(ban['champion_id']))
         for pick in new_df_row['picks']:
-            pick['side'] = 0 if pick['side'] == 'blue' else 1
-            pick['champion_name'] = champion_map[pick['champion_id']]
+            s = pick['side']
+            pick['side'] = 0 if s == 'blue' else (1 if s == 'red' else int(s))
+            pick['champion_name'] = champion_map.get(pick['champion_id'], str(pick['champion_id']))
         
         new_df = pd.concat([new_df, pd.DataFrame([new_df_row])], ignore_index=True)
     

@@ -91,6 +91,8 @@ let tagIndexPromise: Promise<{
   champToId: Map<string, number>;
   champTags: Map<string, string[]>;
 }> | null = null;
+// role_affinity.json: { "champId": { "MID": 0.998, "TOP": 0.001, ... } }
+let roleAffinityPromise: Promise<Map<number, Record<string, number>>> | null = null;
 
 async function loadDataDragon() {
   if (ddCache) return ddCache;
@@ -328,10 +330,23 @@ function actualStats(inputDict: any) {
   return final;
 }
 
+async function detectDeeplolSeason(base: string, puuId: string, platformId: string): Promise<number> {
+  // Try seasons from newest likely value down until we find one with data.
+  // Deeplol uses an internal split counter; current is roughly 29-32 in 2026.
+  for (let s = 35; s >= 25; s--) {
+    const data = await fetchDeeplolCandidate(
+      `${base}/summoner/champion-stat?puu_id=${encodeURIComponent(puuId)}&season=${s}&platform_id=${encodeURIComponent(platformId)}`
+    );
+    const stats = data ? actualStats(data) : null;
+    if (stats && Object.values(stats).some(arr => arr.length > 0)) return s;
+  }
+  return 27;
+}
+
 export async function fetchAndStoreDeeplolByRiotIds(
   riotIds: string[],
   region: string = 'NA1',
-  season: number = 27
+  season: number = 0
 ): Promise<{ imported: number; source: string; found: boolean }> {
   const base = 'https://b2c-api-cdn.deeplol.gg';
   const platformId = normalizeRegion(region);
@@ -360,8 +375,9 @@ export async function fetchAndStoreDeeplolByRiotIds(
       }));
     } catch { /* ignore */ }
 
+    const resolvedSeason = season > 0 ? season : await detectDeeplolSeason(base, puuId, platformId);
     const champStats = await fetchDeeplolCandidate(
-      `${base}/summoner/champion-stat?puu_id=${encodeURIComponent(puuId)}&season=${encodeURIComponent(String(season))}&platform_id=${encodeURIComponent(platformId)}`
+      `${base}/summoner/champion-stat?puu_id=${encodeURIComponent(puuId)}&season=${encodeURIComponent(String(resolvedSeason))}&platform_id=${encodeURIComponent(platformId)}`
     );
     if (!champStats) continue;
 
@@ -419,6 +435,23 @@ function parseChampionTagsCsv(csvText: string, validTagSet: Set<string>): Map<st
     out.set(champ, sorted);
   }
   return out;
+}
+
+async function loadRoleAffinity(): Promise<Map<number, Record<string, number>>> {
+  if (roleAffinityPromise) return roleAffinityPromise;
+  roleAffinityPromise = (async () => {
+    const out = new Map<number, Record<string, number>>();
+    try {
+      const resp = await fetch('/models/role_affinity.json');
+      if (!resp.ok) return out;
+      const raw: Record<string, Record<string, number>> = await resp.json();
+      for (const [idStr, roles] of Object.entries(raw)) {
+        out.set(Number(idStr), roles);
+      }
+    } catch { /* silently degrade if file missing */ }
+    return out;
+  })();
+  return roleAffinityPromise;
 }
 
 async function loadModelTagIndex() {
@@ -507,6 +540,7 @@ export async function runFrontendRanking(input: DraftInput) {
   const profByKey = getSavedProficiencies();
   const session = await loadDraftSession();
   const ort = await loadOrt();
+  const roleAffinity = await loadRoleAffinity();
   const { champion_ids, sides, phases, lanes, event_types } = buildEventArrays(input, dd);
 
   const turn = Math.max(0, Math.min(19, input.turn));
@@ -563,11 +597,31 @@ export async function runFrontendRanking(input: DraftInput) {
     .map((x) => {
       const champ = dd.byKey.get(x.id);
       const prof = profByKey[String(x.id)] || null;
-      // Only boost if champion's stored role matches the current draft slot role
       const profRoleNorm = prof?.role ? (DEEPLOL_ROLE_MAP[prof.role.toLowerCase()] ?? null) : null;
       const roleMatch = !profRoleNorm || profRoleNorm === (input.role || '').toUpperCase();
       const profAdj = (prof && roleMatch && input.phase !== 'BAN') ? (prof.proficiency * 0.1) : 0;
-      const score = x.p + profAdj;
+
+      // Role affinity: multiply score by how often this champion plays the target role.
+      // Uses data-derived frequencies from pro-play — never hardcoded.
+      // - Champion not in data at all (new/unknown): no penalty (mult = 1.0)
+      // - Champion in data but 0% in this role: strong penalty (mult = 0.2)
+      // - Primary role (99%+ affinity): essentially no change (mult ~1.0)
+      const affinityMap = roleAffinity.get(x.id);
+      const targetRole = (input.role || '').toUpperCase();
+      // Normalize frontend role names to affinity map keys (affinity uses "BOT"/"MID"/etc.)
+      const ROLE_TO_AFFINITY: Record<string, string> = { ADC: 'BOT', BOTTOM: 'BOT', MIDDLE: 'MID' };
+      const affKey = ROLE_TO_AFFINITY[targetRole] ?? targetRole;
+      let affinityMult = 1.0;
+      if (input.phase === 'PICK' && affinityMap) {
+        const affinityScore = affinityMap[affKey] ?? 0;
+        affinityMult = 0.2 + 0.8 * affinityScore;
+      }
+      const primaryRole = affinityMap
+        ? Object.entries(affinityMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+        : null;
+      const affinityScore = affinityMap?.[affKey] ?? null;
+
+      const score = x.p * affinityMult + profAdj;
       return {
         id: String(champ.id),
         name: champ.name,
@@ -584,6 +638,8 @@ export async function runFrontendRanking(input: DraftInput) {
         role_games: prof?.games || 0,
         role_kda: null,
         target_role: input.role,
+        primary_role: primaryRole,
+        role_affinity: affinityScore,
         proficiency_data: prof,
       };
     })

@@ -31,9 +31,6 @@ interface DraftState {
     red: Array<{ champion: string; role: RoleType }>;
   };
   
-  // Backend draft ID
-  draftId: string | null;
-  
   // Computed getter functions
   getTakenChampions: () => Set<string>;
   getAvailableChampions: () => string[];
@@ -47,9 +44,7 @@ interface DraftState {
   previousTurn: () => void;
   
   loadChampions: () => Promise<void>;
-  createDraft: () => Promise<string | null>;
-  syncWithBackend: () => Promise<void>;
-  
+
   // Draft actions
   addBan: (champion: string, side: TeamSide, position?: number) => boolean;
   removeBan: (champion: string, side: TeamSide) => void;
@@ -101,12 +96,10 @@ export const useDraftStore = create<DraftState>()(
       
       allChampions: [],
       loadingChampions: false,
-      
+
       bans: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] },
       picks: { blue: [...defaultPicks], red: [...defaultPicks] },
-      
-      draftId: null,
-      
+
       // Computed getters
       getTakenChampions: () => {
         const state = get();
@@ -162,60 +155,6 @@ export const useDraftStore = create<DraftState>()(
         } catch (error) {
           console.error('Failed to load champions:', error);
           set({ loadingChampions: false });
-        }
-      },
-      
-      createDraft: async () => {
-        try {
-          // TODO: Implement actual API call with draft data
-          // const state = get();
-          // const draftData = {
-          //   game_mode: state.settings.mode,
-          //   side: state.settings.side,
-          //   role: state.settings.role,
-          //   elo: state.settings.elo,
-          //   patch: state.settings.patch,
-          //   phase: state.settings.phase,
-          //   current_turn: state.currentTurn,
-          //   bans_blue: state.bans.blue,
-          //   bans_red: state.bans.red,
-          //   picks_blue: state.picks.blue,
-          //   picks_red: state.picks.red
-          // };
-          // const draft = await draftService.create(draftData);
-          // set({ draftId: draft.id });
-          // return draft.id;
-
-          // Mock implementation for now
-          const mockId = `draft-${Date.now()}`;
-          set({ draftId: mockId });
-          return mockId;
-          
-        } catch (error) {
-          console.error('Failed to create draft:', error);
-          return null;
-        }
-      },
-      
-      syncWithBackend: async () => {
-        const { draftId } = get();
-        if (!draftId) return;
-        
-        try {
-          // TODO: Implement actual API call
-          // const draft = await draftService.get(draftId);
-          // set({
-          //   bans: { blue: draft.bans_blue || [], red: draft.bans_red || [] },
-          //   picks: { blue: draft.picks_blue || defaultPicks, red: draft.picks_red || defaultPicks },
-          //   currentTurn: draft.current_turn || 0,
-          //   settings: {
-          //     ...get().settings,
-          //     phase: draft.phase || 'BAN',
-          //     patch: draft.patch || '14.5.1'
-          //   }
-          // });
-        } catch (error) {
-          console.error('Failed to sync draft:', error);
         }
       },
       
@@ -431,7 +370,6 @@ export const useDraftStore = create<DraftState>()(
           currentTurn: 0,
           bans: { blue: ['', '', '', '', ''], red: ['', '', '', '', ''] },
           picks: { blue: [...defaultPicks], red: [...defaultPicks] },
-          draftId: null
         }));
       }
     }),
@@ -443,7 +381,6 @@ export const useDraftStore = create<DraftState>()(
         currentTurn: state.currentTurn,
         bans: state.bans,
         picks: state.picks,
-        draftId: state.draftId,
         // Don't persist allChampions - fetch fresh every time
       }),
       // Migrate old state format to new format

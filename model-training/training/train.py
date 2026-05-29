@@ -186,14 +186,44 @@ class DraftDataset(Dataset):
         soloq = [i for i, r in enumerate(self.records) if r["domain"] == DOMAIN_SOLOQ]
         return pro, soloq
     
+    @staticmethod
+    def _normalize_domain(raw) -> int:
+        """Accept both integer and string domain labels from different data vintages."""
+        if isinstance(raw, str):
+            return DOMAIN_PRO if raw.lower() in ("pro", "proplay", "0") else DOMAIN_SOLOQ
+        return int(raw)
+
+    @staticmethod
+    def _add_missing_fields(bans: list, picks: list) -> tuple[list, list]:
+        """
+        Older scraped data lacks pick_turn and phase. Reconstruct from position:
+        - pick_turn = index in the list
+        - phase: first 6 items → phase 1, last 4 → phase 2 (standard pro/soloq split)
+        """
+        need_pick_turn = bans and "pick_turn" not in bans[0]
+        need_phase     = bans and "phase"     not in bans[0]
+        if need_pick_turn or need_phase:
+            bans = [
+                dict(b,
+                     pick_turn=(b.get("pick_turn", i)),
+                     phase=(b.get("phase", 1 if i < 6 else 2)))
+                for i, b in enumerate(bans)
+            ]
+        need_pick_turn = picks and "pick_turn" not in picks[0]
+        need_phase     = picks and "phase"     not in picks[0]
+        if need_pick_turn or need_phase:
+            picks = [
+                dict(p,
+                     pick_turn=(p.get("pick_turn", i)),
+                     phase=(p.get("phase", 1 if i < 6 else 2)))
+                for i, p in enumerate(picks)
+            ]
+        return bans, picks
+
     def _parse_row(self, row) -> dict | None:
         try:
-            picks = row["picks"]
-            bans  = row["bans"]
-
-            sorted_picks = sorted(picks, key=lambda p: p["pick_turn"])
-            sorted_bans  = sorted(bans,  key=lambda b: b["pick_turn"])
-
+            picks = list(row["picks"])
+            bans  = list(row["bans"])
 
             if not isinstance(picks, list) or not isinstance(bans, list):
                 return None
@@ -204,10 +234,15 @@ class DraftDataset(Dataset):
             if any(b.get("champion_id") is None for b in bans):
                 return None
 
-            domain         = int(row["domain"])
+            domain         = self._normalize_domain(row["domain"])
             blue_win       = float(row["blue_win"])
             recency_weight = float(row["recency_weight"])
             game_length_s  = int(row["game_length_s"])
+
+            bans, picks = self._add_missing_fields(bans, picks)
+
+            sorted_picks = sorted(picks, key=lambda p: p["pick_turn"])
+            sorted_bans  = sorted(bans,  key=lambda b: b["pick_turn"])
 
             if domain == DOMAIN_PRO:
                 p1_bans  = [b for b in sorted_bans  if b["phase"] == 1]
@@ -215,11 +250,7 @@ class DraftDataset(Dataset):
                 p1_picks = [p for p in sorted_picks if p["phase"] == 1]
                 p2_picks = [p for p in sorted_picks if p["phase"] == 2]
 
-                for ban in p1_bans:
-                    if ban["champion_id"] == -1:
-                        ban["champion_id"] = NO_BAN_ID
-
-                for ban in p2_bans:
+                for ban in p1_bans + p2_bans:
                     if ban["champion_id"] == -1:
                         ban["champion_id"] = NO_BAN_ID
 
@@ -241,7 +272,6 @@ class DraftDataset(Dataset):
                     for p in p2_picks]
                 )
             else:
-
                 for ban in sorted_bans:
                     if ban["champion_id"] == -1:
                         ban["champion_id"] = NO_BAN_ID
@@ -257,9 +287,6 @@ class DraftDataset(Dataset):
             if len(events) != 20:
                 return None
 
-            # Win confidence — longer games are more draft-determined
-            # A 15 min game is often decided by one early fight, not the draft.
-            # A 40+ min game is much more likely to reflect draft quality.
             win_confidence = min(game_length_s / (40 * 60), 1.0)
 
             return {
@@ -338,18 +365,24 @@ def make_dataloaders(
     train_set = torch.utils.data.Subset(dataset, train_idx)
     val_set   = torch.utils.data.Subset(dataset, list(val_idx))
 
-    sampler = StratifiedSampler(
-        train_pro, train_soloq,
-        batch_size=batch_size,
-        pro_fraction=pro_fraction,
-    )
+    # Fall back to simple random batching when only one domain is present
+    if train_pro and train_soloq:
+        sampler = StratifiedSampler(
+            train_pro, train_soloq,
+            batch_size=batch_size,
+            pro_fraction=pro_fraction,
+        )
+        batch_sampler_arg = {"batch_sampler": sampler}
+    else:
+        print("⚠  Single-domain data — using standard random sampler (no stratification)")
+        batch_sampler_arg = {"batch_size": batch_size, "shuffle": True}
 
     train_loader = DataLoader(
         train_set,
-        batch_sampler=sampler,
         collate_fn=collate_fn,
         num_workers=num_workers,
-        pin_memory=True
+        pin_memory=True,
+        **batch_sampler_arg,
     )
 
     val_loader = DataLoader(
@@ -657,6 +690,11 @@ def main(args):
     model.register_static_features(tag_matrix.to(device), damage_matrix_tensor.to(device))
     print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
+    if args.resume:
+        ckpt = torch.load(args.resume, map_location=device, weights_only=True)
+        model.load_state_dict(ckpt["model"])
+        print(f"Resumed from {args.resume} (epoch {ckpt.get('epoch', '?')}, val_acc={ckpt.get('val_pick_acc', '?'):.4f})")
+
     loss_fn   = DraftLoss(champion_weights)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.lr, weight_decay=0.05
@@ -722,6 +760,7 @@ if __name__ == "__main__":
     parser.add_argument("--pro-fraction", type=float, default=0.40)
     parser.add_argument("--val-split",    type=float, default=0.05)
     parser.add_argument("--num-workers",  type=int,   default=2)
+    parser.add_argument("--resume",       default=None, help="Path to .pt checkpoint to fine-tune from")
     args = parser.parse_args()
     main(args)
 

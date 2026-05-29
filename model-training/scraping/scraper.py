@@ -60,11 +60,16 @@ log = logging.getLogger(__name__)
 QUEUE_RANKED_SOLO = 420
 MIN_GAME_DURATION_SECONDS = 15 * 60
 
-# Dev key limits per Riot docs: 20/second, 100/2 minutes
-APP_RATE_LIMITS = [
-    {"requests": 20,  "window_seconds": 1},
-    {"requests": 100, "window_seconds": 120},
-]
+# Rate limits auto-selected by key type.
+# Set RIOT_KEY_TYPE=production in .env when you switch to a production key.
+_KEY_TYPE = os.getenv("RIOT_KEY_TYPE", "personal").lower()
+APP_RATE_LIMITS = (
+    # Production key: 500/10s, 30000/10min
+    [{"requests": 500, "window_seconds": 10}, {"requests": 30000, "window_seconds": 600}]
+    if _KEY_TYPE == "production" else
+    # Personal/dev key: 20/s, 100/2min
+    [{"requests": 20,  "window_seconds": 1},  {"requests": 100,  "window_seconds": 120}]
+)
 
 REGIONAL_HOSTS = {
     "americas": "americas.api.riotgames.com",

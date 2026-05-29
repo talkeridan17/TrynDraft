@@ -1,0 +1,105 @@
+name: Model Refresh on New Patch
+
+# Runs every Wednesday at 10:00 AM Pacific (18:00 UTC) — typical LoL patch day.
+# Only proceeds if Data Dragon reports a patch newer than the one baked into model.json.
+on:
+  schedule:
+    - cron: '0 18 * * 3'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force refresh even if patch unchanged'
+        required: false
+        default: 'false'
+
+jobs:
+  check-and-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for new LoL patch
+        id: patch-check
+        run: |
+          LATEST=$(curl -s https://ddragon.leagueoflegends.com/api/versions.json | python3 -c "import sys,json; v=json.load(sys.stdin); print(v[0])")
+          CURRENT=$(python3 -c "import json; d=json.load(open('frontend/public/models/model.json')); print(d.get('patch','none'))" 2>/dev/null || echo "none")
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          if [ "$LATEST" != "$CURRENT" ] || [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "should_refresh=true" >> $GITHUB_OUTPUT
+            echo "New patch detected: $CURRENT -> $LATEST"
+          else
+            echo "should_refresh=false" >> $GITHUB_OUTPUT
+            echo "Patch unchanged ($CURRENT), skipping refresh."
+          fi
+
+      - name: Set up Python
+        if: steps.patch-check.outputs.should_refresh == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install ML dependencies
+        if: steps.patch-check.outputs.should_refresh == 'true'
+        working-directory: model-training
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch onnx onnxruntime onnxscript pandas numpy tqdm scipy requests python-dotenv psutil
+
+      - name: Scrape new games (skip training — too slow for CI, retrain locally)
+        if: steps.patch-check.outputs.should_refresh == 'true'
+        working-directory: model-training
+        env:
+          RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+          RIOT_KEY_TYPE: ${{ vars.RIOT_KEY_TYPE || 'personal' }}
+        run: |
+          python training/refresh.py \
+            --riot-key "$RIOT_API_KEY" \
+            --platform na1 \
+            --tier EMERALD \
+            --max-games 5000 \
+            --skip-train \
+            --skip-export \
+            --skip-deploy
+
+      - name: Stamp patch version into model.json
+        if: steps.patch-check.outputs.should_refresh == 'true'
+        run: |
+          PATCH=${{ steps.patch-check.outputs.latest }}
+          python3 -c "
+          import json
+          path = 'frontend/public/models/model.json'
+          with open(path) as f: d = json.load(f)
+          d['patch'] = '$PATCH'
+          with open(path, 'w') as f: json.dump(d, f, indent=2)
+          print('Stamped patch:', '$PATCH')
+          "
+
+      - name: Create pull request with updated model
+        if: steps.patch-check.outputs.should_refresh == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: model-refresh/patch-${{ steps.patch-check.outputs.latest }}
+          base: dev
+          title: "model: refresh for patch ${{ steps.patch-check.outputs.latest }}"
+          body: |
+            New patch detected — fresh SoloQ games scraped, ready for local retrain.
+
+            - Previous patch: `${{ steps.patch-check.outputs.current }}`
+            - New patch: `${{ steps.patch-check.outputs.latest }}`
+            - Scraped up to 5,000 fresh Emerald+ games from NA (raw JSON in `data/raw_soloq/`)
+
+            **To retrain locally** (fast on Apple Silicon, ~30 min):
+            ```bash
+            cd model-training
+            python training/refresh.py --skip-scrape --fine-tune --epochs 30
+            ```
+            Then commit the updated `frontend/public/models/` and merge this PR.
+          commit-message: "model: refresh for patch ${{ steps.patch-check.outputs.latest }}"
+          labels: model-refresh, automated

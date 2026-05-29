@@ -36,7 +36,6 @@ export const DraftPage: React.FC = () => {
   const [draggedChampion, setDraggedChampion] = useState<string | null>(null);
 
   // Champion pool state
-  const [championPoolNames] = useState<Set<string>>(new Set());
 
   // NN-sorted champions and LLM analysis
   const [sortedChampions, setSortedChampions] = useState<ScoredChampion[]>([]);
@@ -52,6 +51,8 @@ export const DraftPage: React.FC = () => {
     clashEnemyUnknown: false,
   });
   const [hoveredChampion, setHoveredChampion] = useState<string | null>(null);
+  // Cache ranked champion data so hovering a placed pick still shows stats
+  const champInfoCache = useRef<Record<string, any>>({});
 
   // SID (Summoner ID / Riot ID) quick-entry
   const [sidInput, setSidInput] = useState('');
@@ -173,6 +174,7 @@ export const DraftPage: React.FC = () => {
       });
       if (result.champions.length > 0) {
         setSortedChampions(result.champions);
+        result.champions.forEach((c: any) => { champInfoCache.current[c.name] = c; });
         setModelType(result.model_type);
         console.log('💾 [PICKER] Set sortedChampions state with', result.champions.length, 'champions');
         // Update matchup info from response
@@ -845,8 +847,8 @@ export const DraftPage: React.FC = () => {
                   onDragOver={handleDragOver}
                   onDrop={() => handlePickDrop('BLUE', i)}
                   onDragEnd={handleDragEnd}
-                  onMouseEnter={() => setHoveredSlot({side: 'BLUE', index: i, isBan: false})}
-                  onMouseLeave={() => setHoveredSlot(null)}
+                  onMouseEnter={() => { setHoveredSlot({side: 'BLUE', index: i, isBan: false}); if (pick.champion) setHoveredChampion(pick.champion); }}
+                  onMouseLeave={() => { setHoveredSlot(null); setHoveredChampion(null); }}
                   className={`h-[calc((100vh-16rem)/5)] rounded overflow-hidden relative border ${isActive ? `ring-2 ${phaseColorClass}` : 'border-gray-900'} flex items-center ${isDragging ? 'opacity-50' : ''} ${hasChampion ? 'cursor-move' : 'cursor-pointer'}`}>
                   {pick.champion ? (
                     <>
@@ -927,12 +929,6 @@ export const DraftPage: React.FC = () => {
             </select>
           </div>
           {/* Statistics Bar - Only visible when draft is complete */}
-          {/* TODO: These statistics are placeholders. Will be calculated from scraped data:
-              - Lane matchup win rates from opponent.gg/op.gg
-              - Team synergy scores from high-elo game analysis
-              - Composition win rates and counter-matchups
-              - Damage type analysis for itemization strategy
-              - Backend endpoint: /api/v1/drafts/{draft_id}/statistics */}
           {draftPhase === 'COMPLETE' && (
             <div className="h-20 bg-gradient-to-r from-black/90 via-gray-900/80 to-black/90 border-b-2 border-amber-500/30 px-6 flex items-center justify-between">
               <div className="flex items-center gap-8">
@@ -1035,7 +1031,6 @@ export const DraftPage: React.FC = () => {
                 onDrop={handleDropOnCenter}>
                 <div className="grid grid-cols-8 gap-2 pr-1">
                   {filteredChamps.map((champ, idx) => {
-                    const isInPool = championPoolNames.has(champ);
                     return (
                       <button
                         key={`${champ}-${idx}`}
@@ -1045,11 +1040,7 @@ export const DraftPage: React.FC = () => {
                         onDragEnd={handleDragEnd}
                         onMouseEnter={() => setHoveredChampion(champ)}
                         onMouseLeave={() => setHoveredChampion(null)}
-                        className={`aspect-square rounded overflow-hidden relative group hover:scale-105 hover:z-10 transition-transform cursor-grab active:cursor-grabbing ${
-                          isInPool
-                            ? 'border-2 border-cyan-400 shadow-lg shadow-cyan-400/50 ring-1 ring-cyan-400/30'
-                            : 'border border-gray-900 hover:border-amber-500'
-                        }`}>
+                        className="aspect-square rounded overflow-hidden relative group hover:scale-105 hover:z-10 transition-transform cursor-grab active:cursor-grabbing border border-gray-900 hover:border-amber-500">
                         <img src={getChampionImageUrl(champ, latestPatch)} alt={champ} className="w-full h-full object-cover pointer-events-none" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-1 pointer-events-none">
                           <span className="text-white font-bold text-[10px] uppercase tracking-wide">{champ}</span>
@@ -1118,16 +1109,11 @@ export const DraftPage: React.FC = () => {
                         .filter(c => c.available && !allBannedPicked.has(c.name))
                         .slice(0, 5)
                         .map((champ, idx) => {
-                          const isInPool = championPoolNames.has(champ.name);
                           return (
                             <button
                               key={idx}
                               onClick={() => handleChampionSelect(champ.name)}
-                              className={`flex items-center gap-1.5 rounded px-2 py-1.5 border transition-all cursor-pointer ${
-                                isInPool
-                                  ? 'bg-cyan-900/30 border-cyan-500 hover:border-cyan-400 hover:bg-cyan-800/40'
-                                  : 'bg-gray-800/90 border-gray-700 hover:border-amber-500 hover:bg-gray-700/90'
-                              }`}
+                              className="flex items-center gap-1.5 rounded px-2 py-1.5 border transition-all cursor-pointer bg-gray-800/90 border-gray-700 hover:border-amber-500 hover:bg-gray-700/90"
                             >
                               <img src={getChampionImageUrl(champ.name, latestPatch)} alt={champ.name} className="w-6 h-6 rounded" />
                               <span className="text-sm text-gray-200 font-medium">{champ.name}</span>
@@ -1142,7 +1128,7 @@ export const DraftPage: React.FC = () => {
                 {/* Stats transparency — always visible */}
                 {sortedChampions.length > 0 && draftPhase !== 'COMPLETE' && (() => {
                   const displayChamp = hoveredChampion
-                    ? sortedChampions.find(c => c.name === hoveredChampion)
+                    ? (sortedChampions.find(c => c.name === hoveredChampion) ?? champInfoCache.current[hoveredChampion])
                     : sortedChampions[0];
                   if (!displayChamp) return null;
                   return (
@@ -1265,8 +1251,8 @@ export const DraftPage: React.FC = () => {
                   onDragOver={handleDragOver}
                   onDrop={() => handlePickDrop('RED', i)}
                   onDragEnd={handleDragEnd}
-                  onMouseEnter={() => setHoveredSlot({side: 'RED', index: i, isBan: false})}
-                  onMouseLeave={() => setHoveredSlot(null)}
+                  onMouseEnter={() => { setHoveredSlot({side: 'RED', index: i, isBan: false}); if (pick.champion) setHoveredChampion(pick.champion); }}
+                  onMouseLeave={() => { setHoveredSlot(null); setHoveredChampion(null); }}
                   className={`h-[calc((100vh-16rem)/5)] rounded overflow-hidden relative border ${isActive ? `ring-2 ${phaseColorClass}` : 'border-gray-900'} flex items-center ${isDragging ? 'opacity-50' : ''} ${hasChampion ? 'cursor-move' : 'cursor-pointer'}`}>
                   {pick.champion ? (
                     <>
