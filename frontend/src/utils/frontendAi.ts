@@ -607,8 +607,7 @@ export async function runFrontendRanking(input: DraftInput) {
       const affKey = ROLE_TO_AFFINITY[targetRole] ?? targetRole;
       let affinityMult = 1.0;
       if (input.phase === 'PICK' && affinityMap) {
-        const affinityScore = affinityMap[affKey] ?? 0;
-        affinityMult = 0.2 + 0.8 * affinityScore;
+        affinityMult = affinityMap[affKey] ?? 0;
       }
       const primaryRole = affinityMap
         ? Object.entries(affinityMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
