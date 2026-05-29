@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Beta_Ready-green" alt="Status"/>
+  <img src="https://img.shields.io/badge/Status-Live-brightgreen" alt="Status"/>
   <img src="https://img.shields.io/badge/React-19-blue" alt="React"/>
   <img src="https://img.shields.io/badge/TypeScript-5.6-blue" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/ONNX-Runtime_Web-orange" alt="ONNX"/>
@@ -136,12 +136,12 @@ Auto-deploy to Vercel on merge to `main` can be enabled — see [DEPLOYMENT.md](
 | ✅ Done | LLM explainability (Qwen2.5 in-browser) |
 | ✅ Done | Inline Riot ID entry on Draft page |
 | ✅ Done | Frontend-only app (no login/profile) |
-| 🔄 Now | Domain acquisition, final QA |
-| 🟡 Next | Deploy static site → live URL (est. 1–2 days) |
-| 🟡 Next | Model retrain with latest patch data |
-| 🟠 Soon | Patch staleness warning, Clash team proficiency |
-
-**Target launch: early June 2026**
+| ✅ Done | Role affinity system (data-driven, auto-refreshes) |
+| ✅ Done | Live at [tryndraft.vercel.app](https://tryndraft.vercel.app) |
+| ✅ Done | Automated weekly model refresh on patch drop |
+| 🔄 Now | Production Riot API key (application submitted) |
+| 🟡 Next | Large-scale SoloQ data collection + model retrain |
+| 🟠 Soon | Custom domain (tryndraft.com), Settings page, Clash team proficiency |
 
 ---
 

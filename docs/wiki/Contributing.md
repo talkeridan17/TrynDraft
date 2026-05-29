@@ -1,191 +1,97 @@
 # Contributing to TrynDraft
 
-Thank you for your interest in contributing to TrynDraft! This guide will help you get started.
+Thank you for your interest in contributing! This document explains how to get started.
 
-## Ways to Contribute
+## Getting Started
 
-### Report Bugs
-Found something broken? Open a GitHub Issue with:
-- Clear description of the problem
-- Steps to reproduce
-- Expected vs actual behavior
-- Screenshots if applicable
+1. Fork the repository on GitHub
+2. Clone your fork locally
+3. Set up the dev environment: `cd frontend && npm install && npm run dev`
+4. Create a branch for your work from `dev`
 
-### Suggest Features
-Have an idea? Open a GitHub Discussion with:
-- What problem it solves
-- How you envision it working
-- Any implementation ideas
+## Branch Strategy
 
-### Submit Code
-Ready to code? Follow the process below.
+| Branch | Purpose |
+|--------|---------|
+| `main` | Production — auto-deploys to Vercel |
+| `dev` | Development — all PRs target here |
 
----
+Create branches from `dev`:
 
-## Development Process
+| Pattern | Purpose | Example |
+|---------|---------|---------|
+| `feat/*` | New features | `feat/champion-filter` |
+| `bug/*` | Bug fixes | `bug/cursor-fix` |
+| `task/*` | Refactors, docs | `task/update-readme` |
 
-### 1. Fork and Clone
+**Workflow:** branch from `dev` → PR to `dev` → periodically merge `dev` to `main`
 
-```bash
-# Fork the repo on GitHub, then:
-git clone https://github.com/YOUR-USERNAME/TrynDraft.git
-cd TrynDraft
+## Commit Messages
+
+Use conventional commits:
+```
+feat: add champion search filter
+fix: resolve cursor position bug
+docs: update pipeline documentation
+refactor: simplify draft state management
+chore: update dependencies
 ```
 
-### 2. Set Up Development Environment
+## Pull Requests
 
-See [Development Setup](Development-Setup) for detailed instructions.
-
-### 3. Create a Branch
-
-**Always branch from `dev`**, never from `main`:
-
-```bash
-git checkout dev
-git pull origin dev
-git checkout -b feat/your-feature-name
-```
-
-Use the correct branch prefix (see [Branching Standards](Branching-Standards)):
-- `feat/*` - New features
-- `bug/*` - Bug fixes
-- `task/*` - Refactors, documentation, chores
-
-### 4. Make Your Changes
-
-- Follow the code standards below
-- Write tests if adding new functionality
-- Update documentation if needed
-
-### 5. Commit Your Changes
-
-Use conventional commit messages:
-
-```bash
-git commit -m "feat: add champion filter by role"
-git commit -m "fix: resolve cursor position bug"
-git commit -m "docs: update API documentation"
-```
-
-### 6. Push and Create PR
-
-```bash
-git push origin feat/your-feature-name
-```
-
-Then create a Pull Request on GitHub:
-- **Target branch**: `dev` (not `main`)
-- Fill out the PR template
-- Link any related issues
-
----
+1. Target `dev` (not `main`)
+2. Describe what changed and why
+3. Ensure CI passes (lint + build)
+4. No `console.log` or debug statements
+5. No hardcoded secrets or credentials
 
 ## Code Standards
 
-### Python (Backend)
-
-```python
-# Use type hints
-def get_champion_stats(champion_name: str, patch: str) -> Optional[ChampionStats]:
-    """
-    Fetch champion statistics for a specific patch.
-
-    Args:
-        champion_name: The champion's display name
-        patch: The game patch version (e.g., "14.24")
-
-    Returns:
-        ChampionStats object or None if not found
-    """
-    ...
-```
-
-- Follow PEP 8 style guide
-- Use type hints for function signatures
-- Write docstrings for public functions
-- Keep functions under 50 lines when possible
-- Format with `black`: `black app/`
-- Lint with `flake8`: `flake8 app/`
-
 ### TypeScript (Frontend)
+- Use TypeScript strict mode — avoid `any`
+- Functional components with hooks
+- Define interfaces for props and state
 
-```typescript
-interface ChampionCardProps {
-  champion: ScoredChampion;
-  onClick: (name: string) => void;
-  isSelected: boolean;
-}
+### Python (Model Training)
+- Follow PEP 8
+- Use type hints for function signatures
+- Run from the `model-training/` directory with the `.venv` active
 
-export const ChampionCard: React.FC<ChampionCardProps> = ({
-  champion,
-  onClick,
-  isSelected
-}) => {
-  // ...
-};
+## Project Structure
+
+### Frontend (`frontend/src/`)
+- `pages/` — page-level components (DraftPage, SettingsPage)
+- `components/` — reusable UI components
+- `utils/frontendAi.ts` — ONNX inference + LLM + Deeplol
+- `utils/api.ts` — service layer
+- `store/useDraftStore.ts` — Zustand draft state
+
+### Model Training (`model-training/`)
+- `training/refresh.py` — full pipeline (scrape → train → export → deploy)
+- `training/train.py` — DraftTransformer definition + training loop
+- `training/export_onnx.py` — PyTorch → ONNX export
+- `scraping/scraper.py` — Riot API data collection
+- `data/unify.py` — merge pro-play + SoloQ DataFrames
+
+### Adding a New Page
+1. Create component in `frontend/src/pages/`
+2. Add route in `frontend/src/App.tsx`
+
+### Adding a New Component
+1. Create in `frontend/src/components/common/` (shared) or `drafting/` (draft-specific)
+
+## Running Linters
+
+```bash
+cd frontend
+npm run lint
+npm run build   # catches TypeScript errors
 ```
 
-- Use TypeScript strict mode
-- Define interfaces for all props and state
-- Use functional components with hooks
-- Avoid `any` type
-- Lint with `npm run lint`
+## Questions?
 
-### CSS/Styling
-
-- Use TailwindCSS utility classes
-- Avoid custom CSS unless necessary
-- Follow mobile-first responsive design
-- Use semantic color classes from design system
-
----
-
-## Pull Request Checklist
-
-Before submitting your PR, ensure:
-
-- [ ] Branch is up to date with `dev`
-- [ ] Code follows project style guidelines
-- [ ] Tests added/updated for new functionality
-- [ ] Documentation updated if needed
-- [ ] No `console.log` or debug statements
-- [ ] No hardcoded secrets or credentials
-- [ ] Linting passes (`npm run lint`, `flake8`)
-- [ ] Tests pass (`pytest`, `npm test`)
-
----
-
-## Review Process
-
-1. **Automated checks**: CI runs tests and linting
-2. **Code review**: A maintainer reviews your code
-3. **Feedback**: Address any requested changes
-4. **Merge**: Once approved, your PR is merged to `dev`
-5. **Release**: Periodically, `dev` is merged to `main` for releases
-
----
-
-## Getting Help
-
-- **Questions**: Open a GitHub Discussion
-- **Bugs**: Open a GitHub Issue
-- **Real-time**: Contact maintainers
-
----
-
-## Code of Conduct
-
-- Be respectful and inclusive
-- Provide constructive feedback
-- Help others learn and grow
-- Focus on the code, not the person
-
----
+Open an issue or start a discussion on GitHub.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
-
----
-
-**Thank you for contributing!**
+By contributing, you agree your contributions will be licensed under the MIT License.

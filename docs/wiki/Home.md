@@ -1,62 +1,60 @@
 # TrynDraft Wiki
 
-Welcome to the TrynDraft wiki - your comprehensive guide to the AI-powered League of Legends drafting assistant.
+Welcome to the TrynDraft wiki — your guide to the AI-powered League of Legends draft assistant.
 
 ## What is TrynDraft?
 
-TrynDraft is an intelligent drafting tool that helps League of Legends players make better pick and ban decisions. It combines:
+TrynDraft is a fully client-side League of Legends draft tool. Open the page, enter your Riot ID, and get AI-powered pick and ban suggestions — no login, no server, no backend.
 
-- **Neural Network Recommendations**: A 50-feature PyTorch model that scores champions based on draft state, matchups, synergies, and user preferences
-- **LLM Analysis**: Strategic analysis powered by Qwen2.5-72B (or rule-based fallback) that explains why picks are good and provides gameplan advice
-- **User Preferences**: Personalized recommendations based on your champion pool, role, and proficiency ratings
+- **DraftTransformer** — 5M-parameter Transformer trained on ~63K pro matches, runs in-browser via ONNX Runtime Web
+- **Role Affinity** — data-driven per-champion role frequencies ensure recommendations stay on-role
+- **Deeplol Proficiency** — enter your Riot ID to bias recommendations toward your champion pool
+- **LLM Explainability** — Qwen2.5 (0.5B/1.5B) explains top picks in natural language, runs in a Web Worker
+
+**Live at:** https://tryndraft.vercel.app
 
 ## Quick Links
 
 | Page | Description |
 |------|-------------|
-| [Development Setup](Development-Setup) | How to set up the development environment |
-| [User Guide](User-Guide) | How to use TrynDraft effectively |
-| [Contributing](Contributing) | Guidelines for contributing to the project |
-| [Branching Standards](Branching-Standards) | Git workflow and branch naming conventions |
+| [Development Setup](Development-Setup) | Set up the local dev environment |
+| [User Guide](User-Guide) | How to use TrynDraft |
+| [Contributing](Contributing) | Guidelines for contributors |
+| [Branching Standards](Branching-Standards) | Git workflow and branch naming |
 | [FAQ](FAQ) | Frequently asked questions |
 
 ## Current Version
 
-**Version:** 0.5.0-alpha
-**Status:** Active Development (Phase 3 - AI Integration)
+**Version:** 0.7.0-beta  
+**Status:** Live
 
 ### What's Working
-- Complete draft interface with pick/ban phases
-- Manual cursor control (click any slot to select)
-- Drag-and-drop champion swapping
-- Champion search and filtering
-- Clickable recommendations in LLM panel
-- User authentication and profiles
-- Champion pool management with proficiency ratings
-- Neural network recommendations
-- LLM/rule-based analysis
+- Full SoloQ + Clash draft interface (bans + picks)
+- DraftTransformer ONNX running in-browser
+- Role-aware recommendations (data-driven affinity)
+- Deeplol Riot ID proficiency integration
+- LLM explainability (Qwen2.5, runs in Web Worker)
+- Automated weekly model refresh on patch drop
 
-### In Progress
-- Data scraping pipeline (MOBAFire, LoLalytics)
-- LLM fine-tuning with LoL-specific content
-- Real matchup data integration
+### Coming Soon
+- Settings page (SoloQ/Clash team proficiency)
+- Custom domain (tryndraft.com)
+- Larger-scale model retrain with production API key
 
 ## Tech Stack
 
 | Layer | Technologies |
 |-------|-------------|
 | **Frontend** | React 19, TypeScript, Vite, TailwindCSS, Zustand |
-| **Backend** | FastAPI, Python 3.12, SQLAlchemy, PyTorch |
-| **AI/ML** | PyTorch NN (50 features), HuggingFace Qwen2.5-72B |
-| **Database** | SQLite (dev), PostgreSQL (prod) |
-| **Assets** | Riot Data Dragon, Community Dragon |
+| **AI (in-browser)** | ONNX Runtime Web, Transformers.js v3 (Qwen2.5) |
+| **Data sources** | Riot Data Dragon CDN, Deeplol CDN |
+| **Model training** | Python 3.12, PyTorch, ONNX export |
+| **Hosting** | Vercel (static) |
 
 ## Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/TrynDraft/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/TrynDraft/discussions)
-- **Documentation**: This wiki + [README.md](https://github.com/your-repo/TrynDraft/blob/main/README.md)
+- **Issues**: [GitHub Issues](https://github.com/talkeridan17/TrynDraft/issues)
 
 ---
 
-**Last Updated:** 2026-01-26
+**Last Updated:** 2026-05-29

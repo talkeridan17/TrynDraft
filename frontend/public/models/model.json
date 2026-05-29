@@ -142,6 +142,7 @@
     "zone",
     "zoning_tool"
   ],
+  "patch": "16.11.1",
   "opset_version": 17,
   "static_matrices": {
     "tag_matrix": {
