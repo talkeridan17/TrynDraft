@@ -15,6 +15,8 @@ self.onmessage = async (e: MessageEvent) => {
     const cdnUrl = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/dist/transformers.min.js';
     const t: any = await (0, eval)(`import("${cdnUrl}")`);
     t.env.allowLocalModels = false;
+    // Force WASM files to load from CDN to prevent "Unauthorized access to file://" errors
+    t.env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
 
     if (!pipeline || loadedModelId !== modelId) {
       self.postMessage({ type: 'loading', requestId });

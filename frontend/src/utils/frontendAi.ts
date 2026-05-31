@@ -40,6 +40,8 @@ type DraftInput = {
   phase: 'BAN' | 'PICK' | 'COMPLETE';
   turn: number;
   role: string;
+  user_role?: string;
+  is_user_slot?: boolean;
   mode?: 'SOLOQ' | 'CLASH';
   solo_riot_id?: string;
   clash_blue_ids?: string[];
@@ -67,12 +69,10 @@ const TIER_ID_MAP: Record<string, string> = {
 
 function extractTierDivision(si: any): { tier: string | null; division: string | null } {
   const divMap: Record<string, string> = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' };
-  // Try all known field names, including nested objects
   const rawTier = (
     si.tier ?? si.league_tier ?? si.soloq_tier ?? si.solo_tier ?? si.rank ??
     si.soloq?.tier ?? si.solo_queue?.tier ?? si.ranked?.tier ?? ''
   ).toString().trim();
-  // Convert numeric tier to string name
   const tierStr = TIER_ID_MAP[rawTier] ?? rawTier;
   const validTier = tierStr && !['UNRANKED', 'NONE', ''].includes(tierStr.toUpperCase())
     ? tierStr.toUpperCase()
@@ -86,11 +86,6 @@ function extractTierDivision(si: any): { tier: string | null; division: string |
 let ddCache: any = null;
 let ortLoadPromise: Promise<any> | null = null;
 let ortSessionPromise: Promise<any> | null = null;
-let tagIndexPromise: Promise<{
-  validTags: Set<string>;
-  champToId: Map<string, number>;
-  champTags: Map<string, string[]>;
-}> | null = null;
 // role_affinity.json: { "champId": { "MID": 0.998, "TOP": 0.001, ... } }
 let roleAffinityPromise: Promise<Map<number, Record<string, number>>> | null = null;
 
@@ -141,7 +136,6 @@ function buildEventArrays(input: DraftInput, dd: any) {
       const pick = side === 0 ? input.picks_blue[idx] : input.picks_red[idx];
       seenPick[side] += 1;
       if (!pick?.champion) {
-        // Inject role hint at the target slot so the model knows which lane to fill
         if (input.phase === 'PICK' && slot === Math.max(0, Math.min(19, input.turn))) {
           lanes[slot] = laneToId(pick?.role || input.role);
         }
@@ -177,8 +171,6 @@ async function loadOrt() {
     document.head.appendChild(script);
   });
   const ort = await ortLoadPromise;
-  // Firefox/JSEP stability: force pure WASM runtime path.
-  // Avoid threaded-jsep execution crashes like "f.$c is null".
   ort.env.wasm.proxy = false;
   ort.env.wasm.numThreads = 1;
   ort.env.wasm.simd = true;
@@ -202,7 +194,6 @@ async function loadDraftSession() {
     ]);
     const data = new Uint8Array(dataBuffer);
 
-    // Explicitly provide external data to avoid filesystem-based lookup in browser.
     const externalData = [
       { path: 'model.onnx.data', data },
       { path: './model.onnx.data', data },
@@ -217,6 +208,12 @@ async function loadDraftSession() {
     });
   })();
   return ortSessionPromise;
+}
+
+// Call this when the draft is complete to free the ONNX model from WASM memory.
+// The session will be recreated on the next draft if needed.
+export function releaseOnnxSession() {
+  ortSessionPromise = null;
 }
 
 function getSavedProficiencies(): Record<string, Proficiency> {
@@ -331,8 +328,6 @@ function actualStats(inputDict: any) {
 }
 
 async function detectDeeplolSeason(base: string, puuId: string, platformId: string): Promise<number> {
-  // Try seasons from newest likely value down until we find one with data.
-  // Deeplol uses an internal split counter; current is roughly 29-32 in 2026.
   for (let s = 35; s >= 25; s--) {
     const data = await fetchDeeplolCandidate(
       `${base}/summoner/champion-stat?puu_id=${encodeURIComponent(puuId)}&season=${s}&platform_id=${encodeURIComponent(platformId)}`
@@ -364,7 +359,6 @@ export async function fetchAndStoreDeeplolByRiotIds(
     if (!puuId) continue;
     found = true;
 
-    // Store summoner info from the summoner endpoint immediately (before champStats check)
     try {
       const si = puuidResponse?.summoner_basic_info_dict || puuidResponse?.summoner || {};
       const { tier: validTier, division } = extractTierDivision(si);
@@ -379,7 +373,6 @@ export async function fetchAndStoreDeeplolByRiotIds(
     );
     if (!champStats) continue;
 
-    // If champStats has rank data that summoner endpoint lacked, update stored info
     try {
       const ci = champStats?.summoner_basic_info_dict || champStats?.summoner || {};
       const stored = JSON.parse(localStorage.getItem('tryndraft_summoner_info') || '{}');
@@ -400,38 +393,6 @@ export async function fetchAndStoreDeeplolByRiotIds(
   return { imported, source: base, found };
 }
 
-function parseChampionTagsCsv(csvText: string, validTagSet: Set<string>): Map<string, string[]> {
-  const lines = csvText.split('\n');
-  const map = new Map<string, Map<string, number>>();
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line) continue;
-    const firstComma = line.indexOf(',');
-    if (firstComma <= 0) continue;
-    const champion = line.slice(0, firstComma).trim();
-    // eslint-disable-next-line no-useless-escape
-    const tagMatch = line.match(/\"\\[(.*?)\\]\"/);  // intentional escapes for CSV format
-    if (!tagMatch) continue;
-    const raw = tagMatch[1].trim();
-    if (!raw) continue;
-    const tags = raw
-      .split(',')
-      .map((t) => t.trim().replace(/^'+|'+$/g, ''))
-      .filter((t) => t && validTagSet.has(t));
-    if (!tags.length) continue;
-    if (!map.has(champion)) map.set(champion, new Map<string, number>());
-    const counter = map.get(champion)!;
-    for (const tag of tags) {
-      counter.set(tag, (counter.get(tag) || 0) + 1);
-    }
-  }
-  const out = new Map<string, string[]>();
-  for (const [champ, counter] of map.entries()) {
-    const sorted = [...counter.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([tag]) => tag);
-    out.set(champ, sorted);
-  }
-  return out;
-}
 
 async function loadRoleAffinity(): Promise<Map<number, Record<string, number>>> {
   if (roleAffinityPromise) return roleAffinityPromise;
@@ -450,37 +411,16 @@ async function loadRoleAffinity(): Promise<Map<number, Record<string, number>>> 
   return roleAffinityPromise;
 }
 
-async function loadModelTagIndex() {
-  if (tagIndexPromise) return tagIndexPromise;
-  tagIndexPromise = (async () => {
-    const [tagsResp, champToIdResp, csvResp] = await Promise.all([
-      fetch('/models/tags.json'),
-      fetch('/models/champ_to_id.json'),
-      fetch('/models/champion_tags.csv'),
-    ]);
-    const tagsJson = tagsResp.ok ? await tagsResp.json() : [];
-    const champToIdJson = champToIdResp.ok ? await champToIdResp.json() : {};
-    const csvText = csvResp.ok ? await csvResp.text() : '';
-    const validTags = new Set<string>(Array.isArray(tagsJson) ? tagsJson : []);
-    const champToId = new Map<string, number>();
-    Object.entries(champToIdJson || {}).forEach(([k, v]) => champToId.set(k, Number(v)));
-    const champTags = parseChampionTagsCsv(csvText, validTags);
-    return { validTags, champToId, champTags };
-  })();
-  return tagIndexPromise;
-}
 
 export function setLLMModel(modelId: string) {
   const mapped = LEGACY_MODEL_MAP[modelId] || modelId;
   const valid = (mapped in LLM_MODELS) ? mapped : DEFAULT_LLM_MODEL;
   localStorage.setItem('explainability_llm_model', valid);
-  // Terminate existing worker so next call loads the new model
   if (_llmWorker) { _llmWorker.terminate(); _llmWorker = null; }
 }
 
 function resolveStoredLLMModel(): string {
   const raw = localStorage.getItem('explainability_llm_model') || DEFAULT_LLM_MODEL;
-  // Migrate old onnx-community models to Xenova equivalents
   const mapped = LEGACY_MODEL_MAP[raw] || raw;
   const valid = (mapped in LLM_MODELS) ? mapped : DEFAULT_LLM_MODEL;
   if (valid !== raw) {
@@ -497,7 +437,6 @@ export function getLLMModelOptions() {
   };
 }
 
-// LLM runs in a Web Worker so it never blocks the main thread.
 let _llmWorker: Worker | null = null;
 
 function getLLMWorker(): Worker {
@@ -538,8 +477,6 @@ export async function runFrontendRanking(input: DraftInput) {
   const { champion_ids, sides, phases, lanes, event_types } = buildEventArrays(input, dd);
 
   const turn = Math.max(0, Math.min(19, input.turn));
-  // During PICK phase, unmask the target slot so the model can attend to its lane hint.
-  // During BAN phase, keep original >= mask (no role to hint).
   const target_mask = Array.from({ length: 20 }, (_, i) => {
     if (i < turn) return 0;
     if (i === turn && input.phase === 'PICK') return 0;
@@ -560,7 +497,6 @@ export async function runFrontendRanking(input: DraftInput) {
   try {
     output = await session.run(feeds);
   } catch {
-    // Session may be poisoned after low-level wasm runtime fault; recreate once.
     ortSessionPromise = null;
     const freshSession = await loadDraftSession();
     output = await freshSession.run(feeds);
@@ -593,16 +529,10 @@ export async function runFrontendRanking(input: DraftInput) {
       const prof = profByKey[String(x.id)] || null;
       const profRoleNorm = prof?.role ? (DEEPLOL_ROLE_MAP[prof.role.toLowerCase()] ?? null) : null;
       const roleMatch = !profRoleNorm || profRoleNorm === (input.role || '').toUpperCase();
-      const profAdj = (prof && roleMatch && input.phase !== 'BAN') ? (prof.proficiency * 0.1) : 0;
+      const profAdj = (prof && roleMatch && input.phase !== 'BAN' && !!input.is_user_slot) ? (prof.proficiency * 0.1) : 0;
 
-      // Role affinity: multiply score by how often this champion plays the target role.
-      // Uses data-derived frequencies from pro-play — never hardcoded.
-      // - Champion not in data at all (new/unknown): no penalty (mult = 1.0)
-      // - Champion in data but 0% in this role: strong penalty (mult = 0.2)
-      // - Primary role (99%+ affinity): essentially no change (mult ~1.0)
       const affinityMap = roleAffinity.get(x.id);
       const targetRole = (input.role || '').toUpperCase();
-      // Normalize frontend role names to affinity map keys (affinity uses "BOT"/"MID"/etc.)
       const ROLE_TO_AFFINITY: Record<string, string> = { ADC: 'BOT', BOTTOM: 'BOT', MIDDLE: 'MID' };
       const affKey = ROLE_TO_AFFINITY[targetRole] ?? targetRole;
       let affinityMult = 1.0;
@@ -652,41 +582,58 @@ export async function runFrontendExplainability(args: {
   onStream?: (text: string) => void;
 }) {
   const { current } = getLLMModelOptions();
-  const tagIndex = await loadModelTagIndex();
 
-  const top5 = args.topChampions.slice(0, 5).map((c, i) => {
-    const prof = c.proficiency ? `games=${c.proficiency.games}, wr=${c.proficiency.win_rate.toFixed(1)}%, ai=${c.proficiency.ai_score.toFixed(1)}` : 'no deeplol profile data';
-    const tags = (tagIndex.champTags.get(c.name) || []).slice(0, 5).join(', ') || 'none';
-    const champId = tagIndex.champToId.get(c.name);
-    return `${i + 1}. ${c.name} (softmax=${(c.softmax * 100).toFixed(2)}%, ${prof}, model_champion_id=${champId ?? 'unknown'}, tag_index_evidence=[${tags}])`;
-  }).join('\n');
+  // Build champion-specific gameplan prompt for COMPLETE phase
+  const role = args.draftState.role;
+  const ds = args.draftState as any; // DraftState has side field even if DraftInput doesn't declare it
+  const side: string = ds.side || 'BLUE';
+  const ROLE_ORDER = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'];
+  const userPos = ROLE_ORDER.indexOf(role);
+  const userPicks: Array<{ champion: string; role: string }> =
+    side === 'BLUE' ? args.draftState.picks_blue : args.draftState.picks_red;
+  const enemyPicks: Array<{ champion: string; role: string }> =
+    side === 'BLUE' ? args.draftState.picks_red : args.draftState.picks_blue;
 
-  const prompt = `System: You are a League of Legends draft assistant. Use ONLY the provided evidence.
+  const userChampion = userPicks.find(p => p.role === role)?.champion
+    || userPicks[userPos]?.champion
+    || args.topChampions[0]?.name
+    || 'Unknown';
 
-Candidate:
-${top5}
+  const laneOpponent = enemyPicks.find(p => p.role === role)?.champion;
+  const allies = userPicks.filter(p => p.champion && p.champion !== userChampion).map(p => `${p.champion} (${p.role})`).join(', ') || 'unknown allies';
+  const enemies = enemyPicks.filter(p => p.champion).map(p => `${p.champion} (${p.role})`).join(', ') || 'unknown enemies';
 
-Role: ${args.draftState.role}
-Phase: ${args.draftState.phase}
+  const isJungle = role === 'JUNGLE';
+  const laneContext = isJungle
+    ? `Allies to consider ganking for: ${allies}. Enemy carries to track: ${enemies}.`
+    : `Lane opponent: ${laneOpponent || 'unknown'}. Enemy team: ${enemies}.`;
 
-Instruction: For each candidate, write 1 short sentence using their tag_index_evidence. If tags are "none", mention they are a high-confidence model pick.
+  const paragraph2Instruction = isJungle
+    ? `Paragraph 2: Specific early pathing route for ${userChampion} in this game — which side to start, first clear, which ally lanes to prioritize for ganks based on their champions and the enemy composition.`
+    : `Paragraph 2: Laning phase advice for ${userChampion} against ${laneOpponent || 'this opponent'} — key trade patterns, power spikes, when to push or freeze, and how to use the rest of the enemy team composition to make decisions.`;
 
-Example Format:
-1. Champion: Explanation.
-2. Champion: Explanation.
+  const prompt = `You are a professional League of Legends coach. Write a concise gameplan for this player.
 
-Assistant:
-1.`;
+Player: ${userChampion} (${role})
+${laneContext}
+Bans: ${[...args.draftState.bans_blue, ...args.draftState.bans_red].filter(Boolean).join(', ') || 'none'}
+
+Paragraph 1: General win condition and gameplan for ${userChampion} in this specific draft — power spikes, macro strategy, team fight role, and when this composition is strongest.
+${paragraph2Instruction}
+
+Write exactly 2 paragraphs. Be specific to these champions. No bullet points. Start directly with the first paragraph.`;
 
   try {
-    const text = await runLLMInWorker(prompt, current, args.isUserTurn ? 160 : 96);
+    const text = await runLLMInWorker(prompt, current, 400);
+    // Terminate worker after inference to free model weights (~250-750MB) from memory
+    if (_llmWorker) { _llmWorker.terminate(); _llmWorker = null; }
     return { analysis: text, model: current, source: 'frontend_llm_rag' };
   } catch (err) {
+    if (_llmWorker) { _llmWorker.terminate(); _llmWorker = null; }
     console.error('LLM explainability error:', err);
-    const quick = args.topChampions.slice(0, 3).map(c => c.name).join(', ');
     return {
-      analysis: `Error: ${err instanceof Error ? err.message : String(err)}. Model-first picks: ${quick}.`,
-      model: `${current} (fallback)`,
+      analysis: `LLM analysis unavailable (${err instanceof Error ? err.message.slice(0, 80) : 'load error'}). This feature requires a stable connection and may not work in all browsers. Your draft data is saved.`,
+      model: `${current} (unavailable)`,
       source: 'frontend_fallback',
     };
   }
