@@ -133,15 +133,17 @@ Auto-deploy to Vercel on merge to `main` can be enabled — see [DEPLOYMENT.md](
 | ✅ Done | DraftTransformer ONNX, full client-side inference |
 | ✅ Done | Deeplol Riot ID proficiency, cached in localStorage |
 | ✅ Done | SoloQ + Clash draft sequences |
-| ✅ Done | LLM explainability (Qwen2.5 in-browser) |
-| ✅ Done | Inline Riot ID entry on Draft page |
-| ✅ Done | Frontend-only app (no login/profile) |
+| ✅ Done | LLM explainability (Qwen2.5 in-browser, Web Worker) |
 | ✅ Done | Role affinity system (data-driven, auto-refreshes) |
+| ✅ Done | SoloQ / Clash mode toggle on draft page |
+| ✅ Done | Clash: per-slot IGN lookup for all 10 players |
+| ✅ Done | op.gg build link (updates live on hover) |
 | ✅ Done | Live at [tryndraft.vercel.app](https://tryndraft.vercel.app) |
 | ✅ Done | Automated weekly model refresh on patch drop |
 | 🔄 Now | Production Riot API key (application submitted) |
-| 🟡 Next | Large-scale SoloQ data collection + model retrain |
-| 🟠 Soon | Custom domain (tryndraft.com), Settings page, Clash team proficiency |
+| 🟡 Next | Large-scale fresh SoloQ data collection + retrain (no pro data) |
+| 🟠 Soon | Custom domain (tryndraft.com) |
+| 🟠 Soon | LLM explainability improvements (currently deprioritised) |
 
 ---
 

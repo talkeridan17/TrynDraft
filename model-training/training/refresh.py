@@ -200,6 +200,21 @@ def step_role_affinity() -> bool:
     return rc == 0
 
 
+def step_matchup_winrates() -> bool:
+    """Compute per-champion matchup win rates from scraped SoloQ data."""
+    print("\n" + "="*60)
+    print("STEP 3.6: Computing matchup win rates")
+    print("="*60)
+
+    raw_dir = DATA_DIR / "raw_soloq"
+    if not raw_dir.exists() or not any(raw_dir.glob("*.json")):
+        print("⚠  No raw SoloQ data found — skipping matchup computation")
+        return True
+
+    rc = run([sys.executable, str(TRAINING_DIR / "compute_matchup_winrates.py")])
+    return rc == 0
+
+
 def step_export() -> bool:
     """Export the trained .pt checkpoint to ONNX."""
     print("\n" + "="*60)
@@ -259,10 +274,11 @@ def step_deploy_frontend() -> bool:
     if tags_csv.exists():
         files_to_copy.append((tags_csv, FRONTEND_MODELS / "champion_tags.csv"))
 
-    # role_affinity.json lives in checkpoints/
-    role_affinity = CHECKPOINTS_DIR / "role_affinity.json"
-    if role_affinity.exists():
-        files_to_copy.append((role_affinity, FRONTEND_MODELS / "role_affinity.json"))
+    # role_affinity.json and matchup_winrates.json live in checkpoints/
+    for ckpt_file in ["role_affinity.json", "matchup_winrates.json"]:
+        src = CHECKPOINTS_DIR / ckpt_file
+        if src.exists():
+            files_to_copy.append((src, FRONTEND_MODELS / ckpt_file))
 
     success = True
     for src, dst in files_to_copy:
@@ -341,6 +357,7 @@ def main():
             sys.exit(1)
 
     step_role_affinity()
+    step_matchup_winrates()
 
     if not args.skip_export:
         ok = step_export()
