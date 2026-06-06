@@ -1,0 +1,85 @@
+name: Biweekly Retrain Reminder
+
+# Opens a GitHub issue on the 1st and 15th of every month reminding
+# the developer to retrain the model with fresh data.
+on:
+  schedule:
+    - cron: '0 10 1,15 * *'
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current model patch
+        id: model-info
+        run: |
+          PATCH=$(python3 -c "
+          import json, sys
+          try:
+              d = json.load(open('frontend/public/models/model.json'))
+              print(d.get('patch', 'unknown'))
+          except Exception:
+              print('unknown')
+          " 2>/dev/null || echo "unknown")
+          echo "patch=$PATCH" >> $GITHUB_OUTPUT
+          echo "date=$(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Create retrain reminder issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const patch = '${{ steps.model-info.outputs.patch }}';
+            const date = '${{ steps.model-info.outputs.date }}';
+
+            // Check if an open reminder issue already exists (avoid duplicates)
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'model-retrain-reminder',
+              state: 'open',
+            });
+            if (issues.length > 0) {
+              console.log(`Skipping — open reminder issue #${issues[0].number} already exists`);
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `model: biweekly retrain reminder (${date})`,
+              labels: ['model-retrain-reminder'],
+              body: `## Time to refresh the TrynDraft model
+
+            **Current model patch:** \`${patch}\`
+            **Reminder date:** ${date}
+
+            ### Steps to retrain
+
+            1. Make sure your \`.env\` has a valid \`RIOT_API_KEY\` (and \`RIOT_KEY_TYPE=production\` if using a production key).
+
+            2. Run from the repo root on the **dev branch**:
+               \`\`\`bash
+               git checkout dev
+               ./refresh.sh
+               \`\`\`
+
+               Or for a faster fine-tune on existing data (no scrape):
+               \`\`\`bash
+               ./refresh.sh --skip-scrape --fine-tune --epochs 30
+               \`\`\`
+
+            3. Commit the updated model files and push to dev:
+               \`\`\`bash
+               git add frontend/public/models/
+               git commit -m "model: retrain $(date +%Y-%m-%d)"
+               git push origin dev
+               \`\`\`
+
+            4. Open a PR from \`dev\` → \`main\`.
+
+            Close this issue once the retrain PR is merged.
+            `,
+            });

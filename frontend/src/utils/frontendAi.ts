@@ -40,6 +40,7 @@ type DraftInput = {
   phase: 'BAN' | 'PICK' | 'COMPLETE';
   turn: number;
   role: string;
+  side?: 'BLUE' | 'RED';
   user_role?: string;
   is_user_slot?: boolean;
   mode?: 'SOLOQ' | 'CLASH';
@@ -216,16 +217,27 @@ export function releaseOnnxSession() {
   ortSessionPromise = null;
 }
 
+export const ALLY_PROF_KEY = 'deeplol_proficiencies';
+export const ENEMY_PROF_KEY = 'tryndraft_enemy_proficiencies';
+
 function getSavedProficiencies(): Record<string, Proficiency> {
   try {
-    return JSON.parse(localStorage.getItem('deeplol_proficiencies') || '{}');
+    return JSON.parse(localStorage.getItem(ALLY_PROF_KEY) || '{}');
   } catch {
     return {};
   }
 }
 
-function saveProficiencies(map: Record<string, Proficiency>) {
-  localStorage.setItem('deeplol_proficiencies', JSON.stringify(map));
+function getEnemyProficiencies(): Record<string, Proficiency> {
+  try {
+    return JSON.parse(localStorage.getItem(ENEMY_PROF_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveProficiencies(map: Record<string, Proficiency>, key: string = ALLY_PROF_KEY) {
+  localStorage.setItem(key, JSON.stringify(map));
 }
 
 function computeProficiency(games: number, winRate: number, aiScore: number): number {
@@ -235,8 +247,10 @@ function computeProficiency(games: number, winRate: number, aiScore: number): nu
   return Number((0.5 * aiNorm + 0.3 * wrScore + 0.2 * gamesScore).toFixed(4));
 }
 
-function upsertDeeplolEntries(parsed: any): { imported: number } {
-  const out: Record<string, Proficiency> = getSavedProficiencies();
+function upsertDeeplolEntries(parsed: any, storageKey: string = ALLY_PROF_KEY): { imported: number } {
+  const out: Record<string, Proficiency> = storageKey === ALLY_PROF_KEY
+    ? getSavedProficiencies()
+    : getEnemyProficiencies();
   const VALID_ROLES = new Set(['top', 'jungle', 'middle', 'bot', 'supporter']);
 
   const addOne = (entry: any, role?: string) => {
@@ -261,7 +275,7 @@ function upsertDeeplolEntries(parsed: any): { imported: number } {
     });
   }
 
-  saveProficiencies(out);
+  saveProficiencies(out, storageKey);
   return { imported: Object.keys(out).length };
 }
 
@@ -341,7 +355,8 @@ async function detectDeeplolSeason(base: string, puuId: string, platformId: stri
 export async function fetchAndStoreDeeplolByRiotIds(
   riotIds: string[],
   region: string = 'NA1',
-  season: number = 0
+  season: number = 0,
+  storageKey: string = ALLY_PROF_KEY
 ): Promise<{ imported: number; source: string; found: boolean }> {
   const base = 'https://b2c-api-cdn.deeplol.gg';
   const platformId = normalizeRegion(region);
@@ -387,7 +402,7 @@ export async function fetchAndStoreDeeplolByRiotIds(
     } catch { /* ignore */ }
 
     const parsedStats = actualStats(champStats);
-    imported = upsertDeeplolEntries(parsedStats).imported;
+    imported = upsertDeeplolEntries(parsedStats, storageKey).imported;
   }
 
   return { imported, source: base, found };
@@ -409,6 +424,35 @@ async function loadRoleAffinity(): Promise<Map<number, Record<string, number>>> 
     return out;
   })();
   return roleAffinityPromise;
+}
+
+// matchup_winrates.json: { "champId": { "ROLE": { "enemyChampId": win_rate } } }
+// Role keys: TOP, JUNGLE, MID, BOT, SUPPORT (matches role_affinity.json convention)
+let matchupWinratesPromise: Promise<Map<number, Map<string, Map<number, number>>>> | null = null;
+
+async function loadMatchupWinrates(): Promise<Map<number, Map<string, Map<number, number>>>> {
+  if (matchupWinratesPromise) return matchupWinratesPromise;
+  matchupWinratesPromise = (async () => {
+    const out = new Map<number, Map<string, Map<number, number>>>();
+    try {
+      const resp = await fetch('/models/matchup_winrates.json');
+      if (!resp.ok) return out;
+      const raw: Record<string, Record<string, Record<string, number>>> = await resp.json();
+      for (const [cidStr, roles] of Object.entries(raw)) {
+        const roleMap = new Map<string, Map<number, number>>();
+        for (const [role, enemies] of Object.entries(roles)) {
+          const enemyMap = new Map<number, number>();
+          for (const [enemyStr, wr] of Object.entries(enemies)) {
+            enemyMap.set(Number(enemyStr), wr);
+          }
+          roleMap.set(role, enemyMap);
+        }
+        out.set(Number(cidStr), roleMap);
+      }
+    } catch { /* silently degrade if file missing */ }
+    return out;
+  })();
+  return matchupWinratesPromise;
 }
 
 
@@ -471,9 +515,11 @@ function runLLMInWorker(prompt: string, modelId: string, maxNewTokens: number): 
 export async function runFrontendRanking(input: DraftInput) {
   const dd = await loadDataDragon();
   const profByKey = getSavedProficiencies();
+  const enemyProfByKey = getEnemyProficiencies();
   const session = await loadDraftSession();
   const ort = await loadOrt();
   const roleAffinity = await loadRoleAffinity();
+  const matchupWinrates = await loadMatchupWinrates();
   const { champion_ids, sides, phases, lanes, event_types } = buildEventArrays(input, dd);
 
   const turn = Math.max(0, Math.min(19, input.turn));
@@ -518,6 +564,19 @@ export async function runFrontendRanking(input: DraftInput) {
   const masked = logits.map((v, idx) => (idx === 0 || idx === NO_BAN_ID || taken.has(idx)) ? -1e9 : v);
   const probs = softmax(masked);
 
+  // Find the enemy pick in the same role as the current slot (for counterpick scoring).
+  // Only applies during PICK phase when an enemy lane opponent is already revealed.
+  const slotRole = (input.role || '').toUpperCase();
+  const enemyPickList = input.side === 'RED' ? input.picks_blue : input.picks_red;
+  const enemyLanePick = input.phase === 'PICK'
+    ? enemyPickList.find((p) => {
+        const r = (p.role || '').toUpperCase();
+        return r === slotRole || (slotRole === 'ADC' && r === 'BOTTOM') || (slotRole === 'SUPPORT' && r === 'UTILITY');
+      })
+    : undefined;
+  const enemyLaneChamp = enemyLanePick ? dd.byName.get(enemyLanePick.champion) : null;
+  const enemyLaneKey = enemyLaneChamp ? Number(enemyLaneChamp.key) : null;
+
   const scored = probs
     .map((p, idx) => ({ id: idx, p }))
     .filter((x) => {
@@ -530,6 +589,10 @@ export async function runFrontendRanking(input: DraftInput) {
       const profRoleNorm = prof?.role ? (DEEPLOL_ROLE_MAP[prof.role.toLowerCase()] ?? null) : null;
       const roleMatch = !profRoleNorm || profRoleNorm === (input.role || '').toUpperCase();
       const profAdj = (prof && roleMatch && input.phase !== 'BAN' && !!input.is_user_slot) ? (prof.proficiency * 0.1) : 0;
+
+      // During BAN phase, boost champions that enemies are strong on so they rank as ban priorities
+      const enemyProf = enemyProfByKey[String(x.id)] || null;
+      const enemyBanAdj = (enemyProf && input.phase === 'BAN') ? (enemyProf.proficiency * 0.25) : 0;
 
       const affinityMap = roleAffinity.get(x.id);
       const targetRole = (input.role || '').toUpperCase();
@@ -544,7 +607,15 @@ export async function runFrontendRanking(input: DraftInput) {
         : null;
       const affinityScore = affinityMap?.[affKey] ?? null;
 
-      const score = x.p * affinityMult + profAdj;
+      // Boost/penalize based on 1v1 matchup win rate vs the revealed lane opponent.
+      // matchupWinrates uses BOT for ADC (matches role_affinity.json convention via affKey).
+      const matchupWr = enemyLaneKey != null
+        ? matchupWinrates.get(x.id)?.get(affKey)?.get(enemyLaneKey)
+        : undefined;
+      // wr=0.55 → +10% on base score, wr=0.45 → -10%
+      const matchupMult = matchupWr !== undefined ? (1 + (matchupWr - 0.5) * 2) : 1;
+
+      const score = x.p * affinityMult * matchupMult + profAdj + enemyBanAdj;
       return {
         id: String(champ.id),
         name: champ.name,

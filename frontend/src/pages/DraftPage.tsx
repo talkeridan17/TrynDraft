@@ -811,8 +811,13 @@ export const DraftPage: React.FC = () => {
     if (!ign.trim()) return;
     const key = `${side}-${position}`;
     setClashIgnStatus(prev => ({ ...prev, [key]: 'loading' }));
+    // Enemy team IGNs go into a separate pool used only for ban suggestions
+    const isEnemy = side !== settings.side;
     try {
-      const result = await recommendationService.fetchDeeplolProficienciesByRiotIds([ign], 'NA1');
+      const fetchFn = isEnemy
+        ? recommendationService.fetchEnemyDeeplolProficienciesByRiotIds
+        : recommendationService.fetchDeeplolProficienciesByRiotIds;
+      const result = await fetchFn([ign], 'NA1');
       if (result.found) {
         const gameName = ign.split('#')[0] || ign;
         setClashIgnNames(prev => ({ ...prev, [key]: gameName }));
@@ -845,9 +850,10 @@ export const DraftPage: React.FC = () => {
     const key = `${side}-${position}`;
     setClashIgnStatus(prev => { const n = { ...prev }; delete n[key]; return n; });
     setClashIgnNames(prev => { const n = { ...prev }; delete n[key]; return n; });
-    // Clear merged proficiency pool so this player's data doesn't linger in recommendations
-    localStorage.removeItem('deeplol_proficiencies');
-    setProfCount(0);
+    // Clear the appropriate pool — ally slots use main proficiency pool, enemy slots use enemy pool
+    const isEnemy = side !== settings.side;
+    localStorage.removeItem(isEnemy ? 'tryndraft_enemy_proficiencies' : 'deeplol_proficiencies');
+    if (!isEnemy) setProfCount(0);
     lastOnnxKeyRef.current = '';
     setProfVersion(v => v + 1);
   };

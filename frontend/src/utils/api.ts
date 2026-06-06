@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
-import { fetchAndStoreDeeplolByRiotIds, getLLMModelOptions, importDeeplolJson, releaseOnnxSession, runFrontendExplainability, runFrontendRanking, setLLMModel } from './frontendAi';
+import { fetchAndStoreDeeplolByRiotIds, getLLMModelOptions, importDeeplolJson, releaseOnnxSession, runFrontendExplainability, runFrontendRanking, setLLMModel, ALLY_PROF_KEY, ENEMY_PROF_KEY } from './frontendAi';
 
 // Champion service — fetches from Riot Data Dragon CDN
 export const championService = {
@@ -257,6 +257,8 @@ export const recommendationService = {
   setFrontendLLMModel: (modelId: string) => setLLMModel(modelId),
   importDeeplolProficiencies: (rawJson: string) => importDeeplolJson(rawJson),
   fetchDeeplolProficienciesByRiotIds: async (riotIds: string[], region?: string, season?: number) =>
-    fetchAndStoreDeeplolByRiotIds(riotIds, region, season),
+    fetchAndStoreDeeplolByRiotIds(riotIds, region, season, ALLY_PROF_KEY),
+  fetchEnemyDeeplolProficienciesByRiotIds: async (riotIds: string[], region?: string, season?: number) =>
+    fetchAndStoreDeeplolByRiotIds(riotIds, region, season, ENEMY_PROF_KEY),
   releaseOnnxSession: () => releaseOnnxSession(),
 };
